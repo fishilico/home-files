@@ -1,0 +1,25 @@
+bell_msg "^G Bell in window %n"
+autodetach on
+startup_message off
+nonblock on
+defnonblock on
+vbell on
+defutf8 on
+defscrollback 1000
+
+# show command name instead of bash/zsh
+#shell bash
+shelltitle "*"
+
+caption always
+hardstatus string "%?%F%{= kG}%:%{= Wk}%? [$USER@%H] %n : %t"
+
+# Always show lastline
+caption string "%{= g}[ %{G}${USER}@%H%{g} ][%= %{= w}%?%-Lw%?%{r}(%{W}%n*%f %t%?(%u)%?%{r})%{w}%?%+Lw%?%?%= %{g}][%{B} %d/%m %{W}%c:%s %{g}][%{Y}%l%{g}]%{=b C}%{W}"
+
+# Turn off ti/te entries (= smcup/rmcup) to keep screen content on log out
+# Source: http://www.shallowsky.com/linux/noaltscreen.html
+#termcapinfo xterm* ti@:te@
+# Allow scrollback in xterm
+#termcap xterm* LP
+altscreen off
