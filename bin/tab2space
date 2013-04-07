@@ -1,0 +1,21 @@
+#!/bin/bash
+# Convert tabs into 4-spaces in specified files
+
+TAB=$'\t'
+
+for file in $*
+do
+    # Replace tab by 4 spaces
+    if grep -q "$TAB" < "$file"
+    then
+        echo "[tab] $file"
+        sed -i "s/$TAB/    /g" "$file"
+    fi
+    
+    # End of line spaces
+    if grep -q -E " +\$" < "$file"
+    then
+        echo "[eol] $file"
+        sed -i "s/ \+\$//" "$file"
+    fi
+done

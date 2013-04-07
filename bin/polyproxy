@@ -1,0 +1,10 @@
+#!/bin/sh
+# Polytechnique proxy configuration
+# Use this file with "source"
+
+all_proxy="http://kuzh.polytechnique.fr:8080/"
+http_proxy="http://kuzh.polytechnique.fr:8080/"
+https_proxy="http://kuzh.polytechnique.fr:8080/"
+ftp_proxy="http://kuzh.polytechnique.fr:8080/"
+no_proxy="eleves.polytechnique.fr"
+alias sshExt='ssh -o ProxyCommand="socat - PROXY:kuzh.polytechnique.fr:%h:%p,proxyport=8080" $*'

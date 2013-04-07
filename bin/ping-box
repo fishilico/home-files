@@ -1,0 +1,118 @@
+#!/bin/bash
+# Ping my net box at home, wifi unstable wifi interface
+
+function echo_red()
+{
+    echo -e "\e[31;1m!! $*\e[m"
+}
+function echo_green()
+{
+    echo -e "\e[32m[] $*\e[m"
+}
+function echo_blue()
+{
+    echo -e "\e[34;1m[] $*\e[m"
+}
+function echo_white()
+{
+    echo -e "\e[m[] $*\e[m"
+}
+function echo_startgray()
+{
+    echo -ne "\e[37m"
+}
+
+function test_wifi()
+{
+    IFACE=$1
+
+    # Do nothing if Wifi does not have an IP address
+    if [ "x$(ip -oneline -4 addr show dev $IFACE)" != "x" ]
+    then
+        echo_white $(date)
+        echo_startgray
+        ip -4 addr show dev $IFACE
+        echo_green "Network is UP on $IFACE"
+    else
+        echo -ne "\r!! No IP address for $IFACE"
+        return 1
+    fi
+
+    # Default gateway
+    IPGW=$(ip -oneline -4 route show default dev wlan0 |
+        sed 's/^.* via \([^ ]\+\) .*$/\1/')
+    if ! (arp -n |grep -q "$IPGW")
+    then
+        # Fill ARP table with a ping
+        echo_startgray
+    fi
+    echo_startgray
+    arp -n
+    if arp -n |grep -q "$IPGW"
+    then
+        echo_green "Gateway ($IPGW) is present"
+    else
+        echo_red "Gateway not found"
+        return 1
+    fi
+
+    # Ping BOX
+    echo_startgray
+    if ping -c2 "$IPGW"
+    then
+        echo_green "Gateway pinged"
+    else
+        echo_red "Gateway unreachable"
+        return 1
+    fi
+
+    # Ping Google
+    echo_startgray
+    if ping -c1 "www.google.com"
+    then
+        echo_green "Google pinged"
+    else
+        echo_red "Google unreachable"
+        return 1
+    fi
+
+    return 0
+}
+
+# Find wireless interface
+IFACE=""
+for IF in $(ip -oneline link |sed -n 's/^[0-9]\+: \([^: ]\+\):.*$/\1/p')
+do
+    if [ -e "/sys/class/net/$IF/wireless" ]
+    then
+        IFACE=$IF
+        break
+    fi
+done
+if [ "x$IFACE" = "x" ]
+then
+    echo_red "No wireless interface found"
+    exit 1
+fi
+
+COUNT=0
+while true
+do
+    if test_wifi $IFACE
+    then
+        COUNT=$(($COUNT+1))
+        if [ $COUNT = 1 ]
+        then
+            echo_blue "First successful ping ^^ !"
+        else
+            echo_blue "#$COUNT successful ping"
+        fi
+    else
+        if [ $COUNT != 0 ]
+        then
+            echo_red "You are now disconnected :("
+            COUNT=0
+        fi
+    fi
+    sleep 30
+done

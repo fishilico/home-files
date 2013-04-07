@@ -1,0 +1,5 @@
+#!/bin/sh
+# Remove temporary files in subfolders
+
+exec find . \( -name '*~' -o -iname '*.bak'  -o -iname '*.tmp' \) \
+    -exec rm --interactive {} \;

@@ -1,0 +1,10 @@
+#!/bin/sh
+# This program executes the program in the command line and pauses after
+
+# Execute the command
+$*
+
+# Pause
+echo ""
+echo "--PAUSE--"
+read i
