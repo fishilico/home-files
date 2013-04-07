@@ -1,0 +1,6 @@
+if [ -f ~/.shell_aliases ]; then
+    . ~/.shell_aliases
+fi
+if [ -f ~/.shell_prompt ]; then
+    . ~/.shell_prompt
+fi

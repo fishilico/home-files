@@ -1,0 +1,97 @@
+#!/bin/sh
+# Define aliases
+
+# alias may be unavailable, for example in busybox shell
+if type alias > /dev/null 2> /dev/null ; then
+    # Be verbose!
+    alias chmod='chmod -v'
+    alias chown='chown -v'
+    alias mkdir='mkdir -v'
+    alias mount='mount -v'
+    alias umount='umount -v'
+    alias rm='rm -v'
+    # Be interactive when overwritting files
+    alias cp='cp -Iv'
+    alias mv='mv -Iv'
+
+    # Shortcuts
+    alias h='history'
+    alias s='sudo -s'
+
+    # Be human !
+    alias df='df -h'
+    alias du1='du -h --max-depth=1'
+    alias du2='du -h --max-depth=2'
+
+    # VIM aliases
+    alias :w='echo "Save is not implemented in ${SHELL##*/} :p"'
+    alias :x=':w'
+    alias :q='echo "Type exit or ^D if you want to exit ${SHELL##*/}"'
+    alias :wq='echo "Hey! Thats ${SHELL##*/} and *not* VI(M)!"'
+
+    # List files, using available ls options
+    # bCFh = escape non printable chars, columns, classify, human
+    LS_PARAMS='-bCFh'
+    if ls --help 2> /dev/null |grep -q -- --color; then
+        LS_PARAMS="$LS_PARAMS --color=always"
+
+        if ls --help 2>/dev/null |grep -q -- --time-style; then
+            LS_PARAMS="$LS_PARAMS "$'--time-style="+\e[0;35m%Y-%m-%d %H:%M\e[0m"'
+        fi
+    fi
+    alias ls="ls $LS_PARAMS"
+    alias l='ls'
+    alias la='ls -A'
+    alias ll='ls -l'
+    alias lla='ls -lsA'
+    # ZSH-specific aliases
+    if [ ! -z "$ZSH_VERSION" ] ; then
+        alias lsd='ls -ld *(/)'                 # only show directories
+        alias lad='ls -ld .*(/)'                # only show dot-directories
+        alias lsa='ls -a .*(.)'                 # only show dot-files
+        alias lsd='ls -d *(/)'                  # only show directories
+        alias lse='ls -d *(/^F)'                # only show empty directories
+        alias lsx='ls -l *(*) | head'           # only show executables
+        alias lssuid='ls -l *(s,S) | head'      # only show suid-files
+        alias lsbig='ls -lSh *(.) | head'       # display the biggest files
+        alias lssmall='ls -Sl *(.) | tail'      # display the smallest files
+        alias lsnew='ls -rtl *(.) | tail'       # display the newest files
+        alias lsold='ls -rtl *(.) | head'       # display the oldest files
+
+        # Remember where I've been
+        alias cd='pushd'
+        setopt PUSHD_SILENT
+    fi
+
+    # List processes
+    alias psa='ps -A'
+    alias pse='ps -efH'
+    alias pss='ps -aux'
+    alias psx='ps -AFH'
+
+    # Highlight grep results
+    if grep --help 2> /dev/null |grep -q -- --color; then
+        alias grep='grep --color=always'
+    fi
+
+    # Colored diff
+    if which colordiff > /dev/null 2> /dev/null; then
+        alias diff='colordiff -u'
+    else
+        alias diff='diff -u'
+    fi
+    if which most > /dev/null 2> /dev/null; then
+        alias man='man -P most'
+    fi
+fi
+
+# Use Vim
+if which vim > /dev/null 2> /dev/null; then
+    export EDITOR='/usr/bin/vim'
+fi
+
+
+# Add home in path
+if [ -d "$HOME/bin" ] && ! (echo ":$PATH:" | grep -q ":$HOME/bin:" ) ; then
+    export PATH="$HOME/bin:$PATH"
+fi

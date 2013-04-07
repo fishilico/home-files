@@ -1,0 +1,51 @@
+#!/bin/sh
+# Prompt
+# Ubuntu monochrome: '\u@\h:\w\$ '
+# Ubuntu with colors: '\[\033[1;32m\]\u@\h\[\033m\]:\[\033[1;34m\]\w\[\033[m\]\$ '
+# Arch default: '[\u@\h \W]\$ '
+# Busybox sh: $
+
+# bold red for root, yellow otherwise
+if [ `id -u` = 0 ] ; then
+    PROMPT_USER_COLOR=$'\e[1;31m'
+else
+    PROMPT_USER_COLOR=$'\e[33m'
+fi
+
+# green for local machine, pink for remote host
+if [ "x$SSH_CLIENT" = x ]; then
+    PROMPT_HOST_COLOR=$'\e[32m'
+else
+    PROMPT_HOST_COLOR=$'\e[36m'
+fi
+
+# purple for working directory
+PROMPT_WDIR_COLOR=$'\e[35m'
+
+PROMPT_GREY_COLOR=$'\e[0;37m'
+PROMPT_STOP_COLOR=$'\e[m'
+
+if [ ! -z "$BASH_VERSION" ]; then
+    # Don't forget \[...\] to compute prompt width correctly
+    PS1="\[$PROMPT_USER_COLOR\]\u\[$PROMPT_STOP_COLOR\]@"
+    PS1="$PS1\[$PROMPT_HOST_COLOR\]\h\[$PROMPT_STOP_COLOR\] "
+    PS1="$PS1\[$PROMPT_WDIR_COLOR\]\w\[$PROMPT_STOP_COLOR\]\\\$ "
+    # Set the title to user@host:dir
+    case "$TERM" in
+        xterm*|rxvt*)
+            PS1="\[\e]0;\u@\h: \w\a\]$PS1"
+            ;;
+    esac
+elif [ ! -z "$ZSH_VERSION" ]; then
+    PROMPT="%{$PROMPT_USER_COLOR%}%n%{$PROMPT_STOP_COLOR%}@"
+    PROMPT="$PROMPT%{$PROMPT_HOST_COLOR%}%m%{$PROMPT_STOP_COLOR%} "
+    PROMPT="$PROMPT%{$PROMPT_WDIR_COLOR%}%~%{$PROMPT_STOP_COLOR%}%# "
+    case "$TERM" in
+        xterm*|rxvt*)
+            PROMPT=$'%{\e]0;%n@%m: %~\a%}'"$PROMPT"
+            ;;
+    esac
+fi
+
+unset PROMPT_USER_COLOR PROMPT_HOST_COLOR PROMPT_WDIR_COLOR
+unset PROMPT_GREY_COLOR PROMPT_STOP_COLOR
