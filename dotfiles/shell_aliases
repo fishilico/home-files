@@ -11,8 +11,8 @@ if type alias > /dev/null 2> /dev/null ; then
     alias umount='umount -v'
     alias rm='rm -v'
     # Be interactive when overwritting files
-    alias cp='cp -Iv'
-    alias mv='mv -Iv'
+    alias cp='cp -iv'
+    alias mv='mv -iv'
 
     # Shortcuts
     alias h='history'
