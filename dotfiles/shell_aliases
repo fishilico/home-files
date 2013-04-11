@@ -1,5 +1,5 @@
 #!/bin/sh
-# Define aliases
+# Define aliases and exported variables for every shell
 
 # alias may be unavailable, for example in busybox shell
 if type alias > /dev/null 2> /dev/null ; then
@@ -90,8 +90,12 @@ if which vim > /dev/null 2> /dev/null; then
     export EDITOR='/usr/bin/vim'
 fi
 
-
 # Add home in path
 if [ -d "$HOME/bin" ] && ! (echo ":$PATH:" | grep -q ":$HOME/bin:" ) ; then
     export PATH="$HOME/bin:$PATH"
+fi
+
+# Python configuration
+if [ -e "$HOME/.pythonrc" ] ; then
+    export PYTHONSTARTUP="$HOME/.pythonrc"
 fi
