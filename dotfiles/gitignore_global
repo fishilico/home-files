@@ -1,0 +1,8 @@
+/nbproject/
+*~
+*.backup
+*.bak
+build.xml
+manifest.mf
+*.nja
+.*.swp

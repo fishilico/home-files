@@ -1,0 +1,15 @@
+[user]
+	name = Nicolas Iooss
+	email = nicolas.iooss@example.com
+[color]
+	branch = auto
+	diff = auto
+	interactive = auto
+	status = auto
+	ui = auto
+[core]
+	excludesfile = ~/.gitignore_global
+[merge]
+	tool = meld
+[push]
+	default = upstream
