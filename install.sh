@@ -61,5 +61,6 @@ SOURCE_DIR=`pwd -P`
 echo "Installing dotfiles in $INSTALL_DIR"
 install_rec "$SOURCE_DIR/dotfiles" "$INSTALL_DIR/."
 echo "Installing bin in $INSTALL_DIR"
+[ -d "$INSTALL_DIR/bin" ] || mkdir -v "$INSTALL_DIR/bin" || exit 1
 install_rec "$SOURCE_DIR/bin" "$INSTALL_DIR/bin/"
 exit $?
