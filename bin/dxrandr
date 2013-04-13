@@ -1,0 +1,75 @@
+#!/usr/bin/python2
+# -*- coding: utf-8 -*-
+"""Default XRandR -- Reset XRandR configuration to a known state"""
+
+# Use ARandR screenlayout python library
+# Inspired by unxrandr code (from ARandR)
+
+import optparse
+
+import screenlayout.auxiliary
+import screenlayout.xrandr
+
+p = optparse.OptionParser(description=__doc__, usage="%prog")
+p.parse_args()
+
+xrandr = screenlayout.xrandr.XRandR()
+xrandr.load_from_x()
+
+# To activate auxiliary screen, we need to known the width of the primary one.
+# Here the script is adapted for a laptop (which needs to be portable among
+# multiple auxiliary screens), so assume primary screen is the first LVDS*
+primary_width = 0
+primary_name = ''
+for name in xrandr.outputs:
+    state = xrandr.state.outputs[name]
+    config = xrandr.configuration.outputs[name]
+    if config.active and state.connected and name.upper().startswith('LVDS'):
+        primary_width = config.mode.width
+        primary_name = name
+        break
+
+has_change = False
+for name in xrandr.outputs:
+    state = xrandr.state.outputs[name]
+    config = xrandr.configuration.outputs[name]
+
+    # If output is not connected, ensure it is deactivated
+    if not state.connected:
+        if config.active and not state.connected:
+            print("Output %s is active but disconnected. Deactivate !" % name)
+            config.active = False
+            has_change = True
+        continue
+
+    # normal X position
+    pos_x = 0 if name == primary_name else primary_width
+
+    if not config.active:
+        print("Output %s is connected but not active. Activate !" % name)
+        config.active = True
+        config.position = screenlayout.auxiliary.Position((pos_x, 0))
+        config.mode = state.modes[0]
+        config.rotation = screenlayout.auxiliary.NORMAL
+        has_change = True
+
+    if name == primary_name:
+        if config.position.left != 0 or config.position.top != 0:
+            print("Output %s is primary but not top-left. Move !" % name)
+            config.position = screenlayout.auxiliary.Position((0, 0))
+            has_change = True
+    else:
+        if config.position.left == 0 and config.position.top == 0:
+            print("Output %s is not primary but is top-left. Move !" % name)
+            config.position = screenlayout.auxiliary.Position((pos_x, 0))
+            has_change = True
+
+    if config.active and hasattr(config, 'rotation') and config.rotation.angle:
+        print("Output %s is rotated. Rotate it back to normal" % name)
+        config.rotation = screenlayout.auxiliary.NORMAL
+        has_change = True
+
+if has_change:
+    print("Apply new configuration")
+    print(xrandr.save_to_shellscript_string(["%(xrandr)s"]).strip())
+    xrandr.save_to_x()
