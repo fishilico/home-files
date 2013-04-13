@@ -3,7 +3,7 @@ autodetach on
 startup_message off
 nonblock on
 defnonblock on
-vbell on
+vbell off
 defutf8 on
 defscrollback 1000
 
