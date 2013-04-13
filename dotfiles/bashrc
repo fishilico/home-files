@@ -18,9 +18,9 @@ HISTFILESIZE=2000
 # update the values of LINES and COLUMNS.
 shopt -s checkwinsize
 
-if [ -f ~/.shell_aliases ]; then
-    . ~/.shell_aliases
+if [ -f ~/.shell/aliases ]; then
+    . ~/.shell/aliases
 fi
-if [ -f ~/.shell_prompt ]; then
-    . ~/.shell_prompt
+if [ -f ~/.shell/prompt ]; then
+    . ~/.shell/prompt
 fi
