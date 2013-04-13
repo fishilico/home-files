@@ -69,6 +69,9 @@ if type alias > /dev/null 2> /dev/null ; then
     alias pss='ps -aux'
     alias psx='ps -AFH'
 
+    # Read passwords
+    alias read-pass='read -p "Password: " -s'
+
     # Highlight grep results
     if grep --help 2> /dev/null |grep -q -- --color; then
         alias grep='grep --color=always'
