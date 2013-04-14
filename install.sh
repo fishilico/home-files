@@ -6,9 +6,9 @@ INSTALL_DIR="$HOME"
 # Recursive installation
 # Second parameter if a prefix with a dot for hidden directories
 install_rec() {
-    SRC_DIR="$1"
-    DST_PREFIX="$2"
-    RETURN_VAL=0
+    local SRC_DIR="$1"
+    local DST_PREFIX="$2"
+    local RETURN_VAL=0
 
     for SRC_FILE in "$SRC_DIR"/*
     do
@@ -55,12 +55,20 @@ install_rec() {
     return $RETURN_VAL
 }
 
-
+# Find our location
 cd `dirname $0`
 SOURCE_DIR=`pwd -P`
+RETURN_VAL=0
+
+# Install home dotfiles
 echo "Installing dotfiles in $INSTALL_DIR"
-install_rec "$SOURCE_DIR/dotfiles" "$INSTALL_DIR/."
+install_rec "$SOURCE_DIR/dotfiles" "$INSTALL_DIR/." || RETURN_VAL=1
+
+# Install custom binaries
+BIN_INSTALL_DIR="$INSTALL_DIR/bin"
 echo "Installing bin in $INSTALL_DIR"
-[ -d "$INSTALL_DIR/bin" ] || mkdir -v "$INSTALL_DIR/bin" || exit 1
-install_rec "$SOURCE_DIR/bin" "$INSTALL_DIR/bin/"
-exit $?
+[ -d "$BIN_INSTALL_DIR" ] || mkdir -v "$BIN_INSTALL_DIR" || exit 1
+install_rec "$SOURCE_DIR/bin" "$BIN_INSTALL_DIR/" || RETURN_VAL=1
+unset BIN_INSTALL_DIR
+
+exit $RETURN_VAL
