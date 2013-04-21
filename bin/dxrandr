@@ -64,7 +64,13 @@ for name in xrandr.outputs:
             config.position = screenlayout.auxiliary.Position((pos_x, 0))
             has_change = True
 
-    if config.active and hasattr(config, 'rotation') and config.rotation.angle:
+    best_mode = state.modes[0]
+    if list(config.mode) < list(best_mode):
+        print("Output %s has not maximal size. Maximize !" % name)
+        config.mode = best_mode
+        has_change = True
+
+    if hasattr(config, 'rotation') and config.rotation.angle:
         print("Output %s is rotated. Rotate it back to normal" % name)
         config.rotation = screenlayout.auxiliary.NORMAL
         has_change = True
