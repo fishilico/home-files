@@ -1,6 +1,8 @@
 #!/bin/bash
 # Ping my net box at home, wifi unstable wifi interface
 
+ARP=/usr/sbin/arp
+
 function echo_red()
 {
     echo -e "\e[31;1m!! $*\e[m"
@@ -24,7 +26,7 @@ function echo_startgray()
 
 function test_wifi()
 {
-    IFACE=$1
+    local IFACE=$1
 
     # Do nothing if Wifi does not have an IP address
     if [ "x$(ip -oneline -4 addr show dev $IFACE)" != "x" ]
@@ -39,16 +41,16 @@ function test_wifi()
     fi
 
     # Default gateway
-    IPGW=$(ip -oneline -4 route show default dev wlan0 |
+    local IPGW=$(ip -oneline -4 route show default dev wlan0 |
         sed 's/^.* via \([^ ]\+\) .*$/\1/')
-    if ! (arp -n |grep -q "$IPGW")
+    if ! ($ARP -n |grep -q "$IPGW")
     then
         # Fill ARP table with a ping
         echo_startgray
     fi
     echo_startgray
-    arp -n
-    if arp -n |grep -q "$IPGW"
+    $ARP -n
+    if $ARP -n |grep -q "$IPGW"
     then
         echo_green "Gateway ($IPGW) is present"
     else
@@ -83,7 +85,7 @@ function test_wifi()
 IFACE=""
 for IF in $(ip -oneline link |sed -n 's/^[0-9]\+: \([^: ]\+\):.*$/\1/p')
 do
-    if [ -e "/sys/class/net/$IF/wireless" ]
+    if [ -e "/sys/class/net/$IF/phy80211" -o -e "/sys/class/net/$IF/wireless" ]
     then
         IFACE=$IF
         break
