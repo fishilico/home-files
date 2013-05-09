@@ -86,6 +86,12 @@ if type alias > /dev/null 2> /dev/null ; then
     if which most > /dev/null 2> /dev/null; then
         alias man='man -P most'
     fi
+
+    # X Window bell
+    if which xset > /dev/null 2> /dev/null; then
+        alias xbell-off='xset b off'
+        alias xbell-on='xset b on'
+    fi
 fi
 
 # Use Vim
