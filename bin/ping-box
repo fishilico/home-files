@@ -34,7 +34,7 @@ function test_iface()
     fi
     echo_white $(date)
 
-    local IPADDR=$(ip -oneline -4 addr show dev eth0 |
+    local IPADDR=$(ip -oneline -4 addr show dev $IFACE |
         sed 's/^.* inet \([^ ]\+\) .*$/\1/')
     echo_green "Network is UP on $IFACE ($IPADDR)"
 
