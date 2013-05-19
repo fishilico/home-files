@@ -7,7 +7,7 @@
 
 # Color rules:
 # * bold red for root, yellow otherwise
-# * green for local machine, pink for remote host
+# * green for local machine, cyan for remote host
 # * magenta/purple for working directory
 if [ `id -u` = 0 ] ; then
     BASH_PROMPT_USER='\[\e[1;31m\]\u\[\e[m\]'
@@ -22,7 +22,7 @@ if [ "x$SSH_CLIENT" = x ]; then
     ZSH_PROMPT_HOST='%F{green}%m%f'
 else
     BASH_PROMPT_HOST='\[\e[36m\]\h\[\e[m\]'
-    ZSH_PROMPT_HOST='%F{pink}%m%f'
+    ZSH_PROMPT_HOST='%F{cyan}%m%f'
 fi
 
 
