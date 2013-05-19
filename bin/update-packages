@@ -1,0 +1,79 @@
+#!/bin/sh
+# Update packages of the system
+
+# Detect which OS is running
+detect_os() {
+    # Use OS-release
+    if [ -r /etc/os-release ]
+    then
+        OS_ID=$(sed -n 's/^ID=\(.*\)$/\1/p' < /etc/os-release)
+        case "$OS_ID" in
+            arch|debian|gentoo)
+                echo "$OS_ID"
+                return
+                ;;
+            "")
+                echo >&2 "No ID found in /etc/os-release"
+                ;;
+            *)
+                echo >&2 "Unknown OS $OS_ID"
+                return
+                ;;
+        esac
+    fi
+    if [ -r "/etc/arch-release" ]
+    then
+        echo "arch"
+    elif [ -r "/etc/debian_version" ]
+    then
+        echo "debian"
+    elif [ -r "/etc/gentoo-release" ]
+    then
+        echo "gentpp"
+    else
+        # Failure
+        echo >&2 "Unable to automatically detect OS"
+    fi
+}
+
+# Use sudo if user is not root
+if [ $(id -u) = 0 ]
+then
+    SUDO=""
+else
+    SUDO="sudo"
+fi
+
+OS=$(detect_os)
+case $OS in
+    arch)
+        # ArchLinux: use Yaourt if available, pacman otherwise
+        if which yaourt > /dev/null 2> /dev/null
+        then
+            exec yaourt -Syu --devel --aur
+        else
+            exec $SUDO pacman -Syu
+        fi
+        ;;
+    debian)
+        $SUDO apt-get update
+        exec $SUDO apt-get dist-upgrade
+        ;;
+    gentoo)
+        # -t = --tree
+        # -a = --ask
+        # -N = --newuse
+        # -u = --update
+        # -D = --deep
+        exec $SUDO emerge -taNuD -with-bdeps
+        ;;
+    "")
+        exit 1
+        ;;
+    *)
+        echo >&2 "Not yet implemented for OS $OS"
+        ;;
+esac
+
+# TODO: Arch => exec yaourt -Syu --devel --aur
+# Other: nonroot => pretend
