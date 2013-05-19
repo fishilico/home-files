@@ -1,0 +1,7 @@
+# Disable bell in readline-compatible programs.
+# Do not bell on tab-completion in Bash.
+# To disable bell in console, run "setterm -blength 0".
+# To disable bell in X Window, run "xset b off".
+# Use "set bell-style audible" or "set bell-style visible" to restore bell.
+set bell-style none
+set prefer-visible-bell
