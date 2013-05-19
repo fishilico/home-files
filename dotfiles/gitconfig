@@ -1,6 +1,17 @@
 [user]
 	name = Nicolas Iooss
 	email = nicolas.iooss_git@polytechnique.org
+[alias]
+	st = status
+	co = commit
+	ck = checkout
+	br = branch
+	pu = pull
+	purr = pull --rebase
+	lg = log --format='%Cgreen%h %Cred%cr %Creset%s %Cblue%cn'
+	logg = log --graph --color --decorate
+[branch]
+	autosetupmerge = true
 [color]
 	branch = auto
 	diff = auto
