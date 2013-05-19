@@ -5,31 +5,30 @@
 # Arch default: '[\u@\h \W]\$ '
 # Busybox sh: $
 
-# bold red for root, yellow otherwise
+# Color rules:
+# * bold red for root, yellow otherwise
+# * green for local machine, pink for remote host
+# * magenta/purple for working directory
 if [ `id -u` = 0 ] ; then
-    PROMPT_USER_COLOR=$'\e[1;31m'
+    BASH_PROMPT_USER='\[\e[1;31m\]\u\[\e[m\]'
+    ZSH_PROMPT_USER='%B%F{red}%n%f%b'
 else
-    PROMPT_USER_COLOR=$'\e[33m'
+    BASH_PROMPT_USER='\[\e[33m\]\u\[\e[m\]'
+    ZSH_PROMPT_USER='%F{yellow}%n%f'
 fi
 
-# green for local machine, pink for remote host
 if [ "x$SSH_CLIENT" = x ]; then
-    PROMPT_HOST_COLOR=$'\e[32m'
+    BASH_PROMPT_HOST='\[\e[32m\]\h\[\e[m\]'
+    ZSH_PROMPT_HOST='%F{green}%m%f'
 else
-    PROMPT_HOST_COLOR=$'\e[36m'
+    BASH_PROMPT_HOST='\[\e[36m\]\h\[\e[m\]'
+    ZSH_PROMPT_HOST='%F{pink}%m%f'
 fi
 
-# purple for working directory
-PROMPT_WDIR_COLOR=$'\e[35m'
-
-PROMPT_GREY_COLOR=$'\e[0;37m'
-PROMPT_STOP_COLOR=$'\e[m'
 
 if [ ! -z "$BASH_VERSION" ]; then
     # Don't forget \[...\] to compute prompt width correctly
-    PS1="\[$PROMPT_USER_COLOR\]\u\[$PROMPT_STOP_COLOR\]@"
-    PS1="$PS1\[$PROMPT_HOST_COLOR\]\h\[$PROMPT_STOP_COLOR\] "
-    PS1="$PS1\[$PROMPT_WDIR_COLOR\]\w\[$PROMPT_STOP_COLOR\]\\\$ "
+    PS1="$BASH_PROMPT_USER@$BASH_PROMPT_HOST \[\e[35m\]\w\[\e[m\]\\\$ "
     # Set the title to user@host:dir
     case "$TERM" in
         xterm*|rxvt*)
@@ -37,9 +36,11 @@ if [ ! -z "$BASH_VERSION" ]; then
             ;;
     esac
 elif [ ! -z "$ZSH_VERSION" ]; then
-    PROMPT="%{$PROMPT_USER_COLOR%}%n%{$PROMPT_STOP_COLOR%}@"
-    PROMPT="$PROMPT%{$PROMPT_HOST_COLOR%}%m%{$PROMPT_STOP_COLOR%} "
-    PROMPT="$PROMPT%{$PROMPT_WDIR_COLOR%}%~%{$PROMPT_STOP_COLOR%}%# "
+    PROMPT="$ZSH_PROMPT_USER@$ZSH_PROMPT_HOST %F{magenta}%~%f%# "
+    # Display last returned value at the beginning of the prompt
+    PROMPT="%(?..%F{red}[%?]%f )$PROMPT"
+    # Right prompt with date
+    RPROMPT="%F{cyan}%D{%d/%m} %T%f"
     case "$TERM" in
         xterm*|rxvt*)
             PROMPT=$'%{\e]0;%n@%m: %~\a%}'"$PROMPT"
@@ -47,5 +48,5 @@ elif [ ! -z "$ZSH_VERSION" ]; then
     esac
 fi
 
-unset PROMPT_USER_COLOR PROMPT_HOST_COLOR PROMPT_WDIR_COLOR
-unset PROMPT_GREY_COLOR PROMPT_STOP_COLOR
+unset BASH_PROMPT_USER ZSH_PROMPT_USER
+unset BASH_PROMPT_HOST ZSH_PROMPT_HOST
