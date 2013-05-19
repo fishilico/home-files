@@ -4,3 +4,34 @@ fi
 if [ -f ~/.shell/prompt ]; then
     . ~/.shell/prompt
 fi
+if [ -f ~/.shell/zshbindings ]; then
+    . ~/.shell/zshbindings
+fi
+if [ -f ~/.shell/zshcompletion ]; then
+    . ~/.shell/zshcompletion
+fi
+
+# Keep 10000 lines of history within the shell and save it to ~/.zsh_history:
+HISTSIZE=10000
+SAVEHIST=10000
+HISTFILE=$HOME/.zsh_history
+setopt appendhistory autocd beep extendedglob nomatch notify
+setopt INC_APPEND_HISTORY # append each session history to common one
+setopt SHARE_HISTORY # share history between all sessions
+setopt HIST_IGNORE_ALL_DUPS # remove dups
+setopt HIST_SAVE_NO_DUPS # don't save duplicate entries
+setopt HIST_FIND_NO_DUPS # don't show dups when scrolling history
+setopt HIST_REDUCE_BLANKS # remove useless space in stored commands
+setopt HIST_IGNORE_SPACE # don't store lines beginning with space
+
+# Use Vi key binding
+bindkey -v
+
+# Protection against rm *
+setopt NORM_STAR_SILENT
+
+# Show time for lengthy programs
+export REPORTTIME='10'
+
+# chdir if typed name is a dir name, e.g ".."
+setopt AUTO_CD

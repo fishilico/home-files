@@ -1,0 +1,69 @@
+#!/bin/zsh
+# ZSH completion configuration
+
+# Ask for correction of command names
+setopt CORRECT
+# don't correct other words than command (ie. don't think every argument is a filename)
+setopt NOCORRECT_ALL
+
+# Watch connections
+watch=(notme)
+
+
+# Use modern completion system
+setopt AUTO_LIST # list automatically when multiple choices
+unsetopt MENU_COMPLETE # don't put the first answer
+setopt AUTO_MENU # use tab to navigate between possible completions
+# setopt COMPLETE_ALIASES # allow to define different completion for aliases than for the original command
+setopt AUTO_REMOVE_SLASH # remove trailing slash of completed name if not needed
+setopt COMPLETE_IN_WORD # allow to complete first part of a written name  : cd friz, cursor on i, <tab>  => cd frankiz
+setopt ALWAYS_TO_END # After completion, go to the end of what was completed
+setopt LIST_TYPES # Print * for executables, / for directories, @ for links, ...
+setopt LIST_PACKED # vary column widthes to spare space
+setopt LIST_ROWS_FIRST # put adjacent possibilities in same lines instead of columns
+setopt NO_LIST_BEEP # don't beep when showing a lost of choices
+
+# General info
+zstyle ':completion:*' _all_matches _list _oldlist _menu _expand _complete _match _ignored _correct _approximate _prefix
+zstyle ':completion:*' auto-description 'specify: %d'
+zstyle ':completion:*' completer _expand _complete _ignored _correct _approximate _prefix
+#zstyle ':completion:*' completer _expand _complete _correct _approximate # completer without _history
+zstyle ':completion:*' expand prefix suffix
+zstyle ':completion:*' format 'Completing %d'
+zstyle ':completion:*' group-name '' # group by type of data
+zstyle ':completion:*' ignore-parents parent pwd ..
+zstyle ':completion:*' insert-unambiguous true
+zstyle ':completion:*' list-prompt %SAt %p: Hit TAB for more, or the character to insert%s
+zstyle ':completion:*' list-suffixes true.
+zstyle ':completion:*' max-errors 2 # don't try to correct when more than 2 errors
+zstyle ':completion:*' menu select=1 # navigate between options if at least 5
+#zstyle ':completion:*' menu select=long
+zstyle ':completion:*' original false
+zstyle ':completion:*' preserve-prefix '//[^/]##/'
+zstyle ':completion:*' select-prompt %SScrolling active: current selection at %p%s
+zstyle ':completion:*' use-compctl false
+zstyle ':completion:*' verbose true
+
+zstyle ':completion:*:descriptions' format '%d :' # print in what we are looking for
+zstyle ':completion:*:-command-' group-order builtins functions commands # modified order of completion for command completion
+zstyle ':completion::complete:*' use-cache 1
+
+# Do not show temp files in completions
+zstyle ':completion:*:files' ignored-patterns '*?.o' '*?~' '*?.dvi' '*?.aux' '*?.swp'
+
+# Put color everywhere, using LS_COLORS
+eval "$(dircolors -b)"
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
+
+# Allow completion for a_b to ami_bak, and idem with a.b and a-b, case-insensitive matching
+zstyle ':completion:*' matcher-list 'm:{[:lower:]}={[:upper:]}' 'm:{[:lower:][:upper:]}={[:upper:][:lower:]}' 'r:|[._-]=* r:|=*'
+
+# "kill" completion, show processes in red
+zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
+zstyle ':completion:*:*:kill:*' menu yes select
+#zstyle ':completion:*:kill:*' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
+function _pslist() {reply=(`ps -u $USER -o pid,user,nice,pcpu,pmem,cputime,tname,start_time,args`)}
+compctl -K _pslist kill
+
+autoload -Uz compinit
+compinit
