@@ -35,7 +35,7 @@ zstyle ':completion:*' ignore-parents parent pwd ..
 zstyle ':completion:*' insert-unambiguous true
 zstyle ':completion:*' list-prompt %SAt %p: Hit TAB for more, or the character to insert%s
 zstyle ':completion:*' list-suffixes true.
-zstyle ':completion:*' max-errors 2 # don't try to correct when more than 2 errors
+zstyle ':completion:*' max-errors 1 # don't try to correct when more than 1 error
 zstyle ':completion:*' menu select=1 # navigate between options if at least 5
 #zstyle ':completion:*' menu select=long
 zstyle ':completion:*' original false
@@ -64,6 +64,11 @@ zstyle ':completion:*:*:kill:*' menu yes select
 #zstyle ':completion:*:kill:*' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
 function _pslist() {reply=(`ps -u $USER -o pid,user,nice,pcpu,pmem,cputime,tname,start_time,args`)}
 compctl -K _pslist kill
+
+# Complete SSH hosts with .ssh/config
+[ -r ~/.ssh/config ] && _ssh_config=($(cat ~/.ssh/config | sed -ne 's/Host[=\t ]//p')) || _ssh_config=()
+zstyle ':completion:*:hosts' hosts $_ssh_config
+unset _ssh_config
 
 autoload -Uz compinit
 compinit
