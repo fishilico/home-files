@@ -24,9 +24,6 @@ setopt HIST_FIND_NO_DUPS # don't show dups when scrolling history
 setopt HIST_REDUCE_BLANKS # remove useless space in stored commands
 setopt HIST_IGNORE_SPACE # don't store lines beginning with space
 
-# Use Vi key binding
-bindkey -v
-
 # Protection against rm *
 setopt NORM_STAR_SILENT
 
@@ -35,9 +32,3 @@ export REPORTTIME='10'
 
 # chdir if typed name is a dir name, e.g ".."
 setopt AUTO_CD
-
-# Configure edit-command-line
-autoload edit-command-line
-zle -N edit-command-line
-bindkey '^Xe' edit-command-line
-bindkey '^X^E' edit-command-line

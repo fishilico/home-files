@@ -1,4 +1,8 @@
 #!/bin/zsh
+# Use Vi key binding
+bindkey -v
+
+# Redefine a lot of keys
 bindkey "^@" set-mark-command
 bindkey "^A" beginning-of-line
 bindkey "^B" backward-char
@@ -40,7 +44,7 @@ bindkey "^XG" list-expand
 bindkey "^Xa" _expand_alias
 bindkey "^Xc" _correct_word
 bindkey "^Xd" _list_expansions
-bindkey "^Xe" _expand_word
+#bindkey "^Xe" _expand_word
 bindkey "^Xg" list-expand
 bindkey "^Xh" _complete_help
 bindkey "^Xm" _most_recent_file
@@ -224,3 +228,9 @@ bindkey "\M-}"-"\M-~" self-insert
 bindkey "\M-^?" backward-kill-word
 bindkey "^[[1;5C" emacs-forward-word
 bindkey "^[[1;5D" emacs-backward-word
+
+# Configure edit-command-line
+autoload edit-command-line
+zle -N edit-command-line
+bindkey '^Xe' edit-command-line
+bindkey '^X^E' edit-command-line
