@@ -22,11 +22,18 @@ function echo_startgray()
     echo -ne "\e[37m"
 }
 
-function test_iface()
+function test_network()
 {
-    local IFACE=$1
+    # Find default route interface
+    local IFACE=$(ip -oneline -4 route show default |
+        sed -ne 's/^.*dev \([^ ]\+\) .*$/\1/p')
+    if [ -z "$IFACE" ]
+    then
+        echo -ne "\r!! No default route, network is unreachable"
+        return 1
+    fi
 
-    # Do nothing if Wifi does not have an IP address
+    # Do nothing if interface does not have an IP address
     if [ -z "$(ip -oneline -4 addr show dev $IFACE)" ]
     then
         echo -ne "\r!! No IP address for $IFACE"
@@ -35,13 +42,13 @@ function test_iface()
     echo_white $(date)
 
     local IPADDR=$(ip -oneline -4 addr show dev $IFACE |
-        sed 's/^.* inet \([^ ]\+\) .*$/\1/')
+        sed -ne 's/^.* inet \([^ ]\+\) .*$/\1/p' |xargs echo)
     echo_green "Network is UP on $IFACE ($IPADDR)"
 
     # Default gateway
     local IPGW=$(ip -oneline -4 route show default dev $IFACE |
-        sed 's/^.* via \([^ ]\+\) .*$/\1/')
-    if [ -z "$(ip neigh show $IPGW dev $IFACE)" ]
+        sed -ne 's/^.* via \([^ ]\+\) .*$/\1/p')
+    if [ -n "$IPGW" -a -z "$(ip neigh show $IPGW dev $IFACE)" ]
     then
         # Fill ARP table with a ping
         echo_startgray
@@ -77,27 +84,10 @@ function test_iface()
     return 0
 }
 
-# Find wireless interface, or wired interface if no wireless was found
-IFACE=""
-for IF in $(ip -oneline link |sed -n 's/^[0-9]\+: \([^: ]\+\):.*$/\1/p')
-do
-    [ "$IF" = "lo" ] && continue
-    IFACE=$IF
-    if [ -e "/sys/class/net/$IF/phy80211" -o -e "/sys/class/net/$IF/wireless" ]
-    then
-        break
-    fi
-done
-if [ "x$IFACE" = "x" ]
-then
-    echo_red "No network interface found"
-    exit 1
-fi
-
 COUNT=0
 while true
 do
-    if test_iface $IFACE
+    if test_network
     then
         COUNT=$(($COUNT+1))
         if [ $COUNT = 1 ]
