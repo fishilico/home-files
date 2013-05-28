@@ -1,15 +1,43 @@
 [user]
 	name = Nicolas Iooss
 	email = nicolas.iooss_git@polytechnique.org
+[github]
+	user = fishilico
 [alias]
 	st = status
 	co = commit
+	com = commit -m
 	ck = checkout
 	br = branch
 	pu = pull
 	purr = pull --rebase
+
+	sup = !git submodule sync && git submodule update --init
+	sp = ![[ -z $(git status --porcelain -uno) ]] && git pull || git stash && git pull && git stash pop
+	spp = ![[ -z $(git status --porcelain -uno) ]] && git pull || git stash && git pull && git push && git stash pop
+	pp = !git pull && git push
+	ppu = !git pp && git submodule sync && git submodule update --init
+
+	ls = "!git status -suno"
+	ls-modified = "!git status --porcelain -uno | awk 'match($1, /M/) {print $2}'"
+	ls-added = "!git status --porcelain -uno | awk 'match($1, /A/) {print $2}'"
+	ls-deleted = "!git status --porcelain -uno | awk 'match($1, /D/) {print $2}'"
+	ls-renamed = "!git status --porcelain -uno | awk 'match($1, /R/) {print $2}'"
+	ls-copied = "!git status --porcelain -uno | awk 'match($1, /C/) {print $2}'"
+	ls-updated = "!git status --porcelain -uno | awk 'match($1, /U/) {print $2}'"
+	ls-staged = "!git status --porcelain -uno | grep -P '^[MA]' | awk '{ print $2 }'"
+	ls-untracked = "!git status --porcelain -uall | awk '$1 == \"??\" {print $2}'"
+
+
 	lg = log --format='%Cgreen%h %Cred%cr %Creset%s %Cblue%cn'
 	logg = log --graph --color --decorate
+	lol = log --graph --decorate --pretty=oneline --abbrev-commit
+	lola = log --graph --decorate --pretty=oneline --abbrev-commit --all
+	peeps = !git log --pretty=format:%aN | sort | uniq -c | sort -rn
+	graph = log --pretty=format:\"%h %ad | %s%d [%an]\" --graph --date=short
+	whatis = show -s --pretty='tformat:%h (%s, %ad)' --date=short
+	whois = "!sh -c 'git log -i --pretty=\"format:%an <%ae>\" --author=\"$1\" | sort -u' -"
+
 [branch]
 	autosetupmerge = true
 [color]
@@ -21,6 +49,6 @@
 [core]
 	excludesfile = ~/.gitignore_global
 [merge]
-	tool = meld
+	tool = vimdiff
 [push]
 	default = upstream
