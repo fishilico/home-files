@@ -70,9 +70,6 @@ if type alias > /dev/null 2> /dev/null ; then
     alias pss='ps -aux'
     alias psx='ps -AFH'
 
-    # Read passwords
-    alias read-pass='read -p "Password: " -s'
-
     # Shortcut to common screen options
     alias scx='screen -x'
     alias scrd='screen -RD'
@@ -114,6 +111,11 @@ cl() {
     cd "$1" && shift && ls $*
 }
 
+# Read passwords. Zsh uses "?prompt" option to display a prompt and other
+# shells (Bash, Ash, ...) use -p option, so use echo to be compatible.
+read_pass() {
+    echo >&2 -n 'Password: ' && read -s $* && echo ''
+}
 
 # Use Vim
 if which vim > /dev/null 2> /dev/null; then
