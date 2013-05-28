@@ -73,6 +73,11 @@ if type alias > /dev/null 2> /dev/null ; then
     # Read passwords
     alias read-pass='read -p "Password: " -s'
 
+    # Shortcut to common screen options
+    alias scx='screen -x'
+    alias scrd='screen -RD'
+    alias scls='screen -ls'
+
     # Clear screen with ESC + c
     alias cls='echo -n $"\033c"'
 
