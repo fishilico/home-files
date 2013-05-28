@@ -73,6 +73,9 @@ if type alias > /dev/null 2> /dev/null ; then
     # Read passwords
     alias read-pass='read -p "Password: " -s'
 
+    # Clear screen with ESC + c
+    alias cls='echo -n $"\033c"'
+
     # Highlight grep results
     if grep --help 2> /dev/null |grep -q -- --color; then
         alias grep='grep --color=always'

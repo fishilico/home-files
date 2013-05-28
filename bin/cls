@@ -1,4 +1,0 @@
-#!/bin/sh
-# Clear screen, removing old lines (more intrusive than "tput clear")
-
-echo -ne "\ec"
