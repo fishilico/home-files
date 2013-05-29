@@ -25,7 +25,7 @@ for name in xrandr.outputs:
     state = xrandr.state.outputs[name]
     config = xrandr.configuration.outputs[name]
     if config.active and state.connected and name.upper().startswith('LVDS'):
-        primary_width = config.mode.width
+        primary_width = state.modes[0].width
         primary_name = name
         break
 
@@ -59,8 +59,8 @@ for name in xrandr.outputs:
             config.position = screenlayout.auxiliary.Position((0, 0))
             has_change = True
     else:
-        if config.position.left == 0 and config.position.top == 0:
-            print("Output %s is not primary but is top-left. Move !" % name)
+        if config.position.left != pos_x and config.position.top == 0:
+            print("Output %s is not primary. Move !" % name)
             config.position = screenlayout.auxiliary.Position((pos_x, 0))
             has_change = True
 
