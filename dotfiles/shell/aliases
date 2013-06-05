@@ -87,6 +87,16 @@ if type alias > /dev/null 2> /dev/null ; then
         alias grep='grep --color=always'
     fi
 
+    # Line-buffered grep, useful when selecting output of tail -F
+    # Don't use colored output for lgrep
+    if grep --help 2> /dev/null |grep -q -- --line-buffered; then
+        if [ -x /bin/grep ] ; then
+            alias lgrep='/bin/grep --line-buffered'
+        else
+            alias lgrep='grep --line-buffered'
+        fi
+    fi
+
     # Colored diff
     if which colordiff > /dev/null 2> /dev/null; then
         alias diff='colordiff -u'
