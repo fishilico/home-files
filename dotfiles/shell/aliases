@@ -17,7 +17,11 @@ if type alias > /dev/null 2> /dev/null ; then
 
     # Shortcuts
     alias h='history'
-    alias s='sudo -s'
+    if [ -x /usr/bin/sudo ] ; then
+        alias s='/usr/bin/sudo -s'
+    else
+        alias s='sudo -s'
+    fi
 
     # Be human !
     alias df='df -h'
