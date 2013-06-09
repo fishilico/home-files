@@ -107,6 +107,12 @@ if type alias > /dev/null 2> /dev/null ; then
         alias man='man -P most'
     fi
 
+    # Use rsync instead of scp
+    if which rsync > /dev/null 2> /dev/null; then
+        # Options: archive, verbose, compress, partial&progress
+        alias scp='rsync -avzP'
+    fi
+
     # X Window bell
     if which xset > /dev/null 2> /dev/null; then
         alias xbell-off='xset b off'
