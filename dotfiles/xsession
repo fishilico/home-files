@@ -1,0 +1,14 @@
+#!/bin/sh
+# Xsession startup script
+
+# Configure the screen resolution
+if [ -x "$HOME/bin/dxrandr" ]
+then
+    "$HOME/bin/dxrandr"
+fi
+
+# Disable X beep
+if which xset > /dev/null 2> /dev/null
+then
+    xset b off
+fi
