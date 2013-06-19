@@ -137,6 +137,20 @@ read_pass() {
     echo >&2 -n 'Password: ' && read -s $* && echo ''
 }
 
+# Log tail, to have colors when ccze is available
+if which ccze > /dev/null 2> /dev/null; then
+    ltail() {
+        tail $* |ccze -A
+    }
+elif type alias > /dev/null 2> /dev/null ; then
+    alias ltail=tail
+else
+    ltail() {
+        tail $*
+    }
+fi
+
+
 # Use Vim
 if which vim > /dev/null 2> /dev/null; then
     export EDITOR='/usr/bin/vim'
