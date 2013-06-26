@@ -52,6 +52,8 @@ channels = (
   { name = "#br-securite"; chatnet = "RezoSup"; autojoin = "yes"; },
   { name = "#epyx"; chatnet = "RezoSup"; autojoin = "yes"; },
   { name = "#binetrobot"; chatnet = "RezoSup"; autojoin = "yes"; },
+  { name = "#xtelecom"; chatnet = "RezoSup"; autojoin = "yes"; },
+  { name = "#Rezel"; chatnet = "RezoSup"; autojoin = "yes"; },
   { name = "#ragal"; chatnet = "RezoSup"; autojoin = "yes"; },
   { name = "#ccx"; chatnet = "RezoSup"; autojoin = "yes"; },
   { name = "#br-ensta"; chatnet = "RezoSup"; autojoin = "yes"; },
@@ -557,7 +559,7 @@ windows = {
       {
         type = "CHANNEL";
         chat_type = "IRC";
-        name = "#ragal";
+        name = "#xtelecom";
         tag = "RezoSup";
       }
     );
@@ -567,7 +569,7 @@ windows = {
       {
         type = "CHANNEL";
         chat_type = "IRC";
-        name = "#ccx";
+        name = "#Rezel";
         tag = "RezoSup";
       }
     );
@@ -577,7 +579,7 @@ windows = {
       {
         type = "CHANNEL";
         chat_type = "IRC";
-        name = "#br-ensta";
+        name = "#ragal";
         tag = "RezoSup";
       }
     );
@@ -587,7 +589,7 @@ windows = {
       {
         type = "CHANNEL";
         chat_type = "IRC";
-        name = "#bll";
+        name = "#ccx";
         tag = "RezoSup";
       }
     );
@@ -597,12 +599,32 @@ windows = {
       {
         type = "CHANNEL";
         chat_type = "IRC";
+        name = "#br-ensta";
+        tag = "RezoSup";
+      }
+    );
+  };
+  21 = {
+    items = (
+      {
+        type = "CHANNEL";
+        chat_type = "IRC";
+        name = "#bll";
+        tag = "RezoSup";
+      }
+    );
+  };
+  22 = {
+    items = (
+      {
+        type = "CHANNEL";
+        chat_type = "IRC";
         name = "#poly.org";
         tag = "FreeNode";
       }
     );
   };
-  21 = {
+  23 = {
     items = (
       {
         type = "CHANNEL";
@@ -612,7 +634,7 @@ windows = {
       }
     );
   };
-  22 = {
+  24 = {
     items = (
       {
         type = "CHANNEL";
@@ -632,7 +654,7 @@ windows = {
       }
     );
   };
-  24 = {
+  26 = {
     items = (
       {
         type = "CHANNEL";
@@ -642,7 +664,7 @@ windows = {
       }
     );
   };
-  25 = {
+  27 = {
     items = (
       {
         type = "CHANNEL";
@@ -652,7 +674,7 @@ windows = {
       }
     );
   };
-  26 = {
+  28 = {
     items = (
       {
         type = "CHANNEL";
