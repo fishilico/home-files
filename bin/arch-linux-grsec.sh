@@ -11,6 +11,10 @@
 #     gpasswd proc-trusted -a dbus
 #     gpasswd proc-trusted -a polkitd
 #
+# NTPd needs to read /proc/net/if_inet6 to work in IPv6
+# (see http://support.ntp.org/bin/view/Support/KnownOsIssues#Section_9.2.4.2.5.1.)
+#     gpasswd proc-trusted -a ntp
+#
 # To grant an user the right to execute its own executables, he must belong to
 # group "tpe-trusted". Also, to do administrative actions without being root,
 # being member of group "adm" is a good idea.
