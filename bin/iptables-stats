@@ -1,0 +1,22 @@
+#!/bin/sh
+# View iptables statistics from --list output
+# Filter out unmatched lines to have a more compact output
+
+ipt_stats() {
+    PREFIX=$1
+    IPT=$2
+    $IPT --list --numeric --verbose |grep -Ev '^\s*0\s*0' |\
+        sed "s/^\(Chain \)/${PREFIX} \1/"
+}
+
+if ! which iptables > /dev/null 2> /dev/null; then
+    echo >&2 "Unable to find iptables."
+    exit 1
+fi
+ipt_stats IPv4 iptables || exit $?
+
+# Run ip6tables if available
+if which ip6tables > /dev/null 2> /dev/null; then
+    echo ""
+    ipt_stats IPv6 ip6tables || exit $?
+fi
