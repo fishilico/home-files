@@ -150,6 +150,9 @@ else
     }
 fi
 
+# Prevent Erase in Line (EL) to Right (\33[K) in the colored output of grep.
+# Please read grep man page for further information.
+export GREP_COLORS='ne'
 
 # Use Vim
 if which vim > /dev/null 2> /dev/null; then
