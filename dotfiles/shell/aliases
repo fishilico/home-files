@@ -161,7 +161,10 @@ fi
 
 # Use less
 if which less > /dev/null 2> /dev/null; then
+    # Force -R = --RAW-CONTROL-CHARS to have colors in less
+    export LESS='-R'
     export PAGER='less -R'
+    # -R = --quit-if-one-screen, -X = --no-init
     export GIT_PAGER='less -RFX'
 fi
 
