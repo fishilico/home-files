@@ -25,13 +25,26 @@ elif [ -f /etc/bash_completion ]; then
     . /etc/bash_completion
 fi
 
-# Common configuration
-if [ -f ~/.shell/aliases ]; then
-    . ~/.shell/aliases
+# Common configuration, find best configuration dir
+SHELL_CONFIG_DIR=""
+# Try $0 if the file has been directly source'd
+if [ "$(basename $0)" = ".bashrc" -a -d "$(dirname $0)/.shell" ] ; then
+    SHELL_CONFIG_DIR="$(dirname $0)/.shell"
+elif [ "$(basename $0)" = "bashrc" -a -d "$(dirname $0)/shell" ] ; then
+    SHELL_CONFIG_DIR="$(dirname $0)/.shell"
+elif [ -n "$SUDO_USER" ] ; then
+    SUDO_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+    SHELL_CONFIG_DIR="$SUDO_HOME/.shell"
+    unset SUDO_HOME
 fi
-if [ -f ~/.shell/environment ]; then
-    . ~/.shell/environment
+# Fallback to home directory
+if [ -z "$SHELL_CONFIG_DIR" -o ! -d "$SHELL_CONFIG_DIR" ] ; then
+    SHELL_CONFIG_DIR="$HOME/.shell"
 fi
-if [ -f ~/.shell/prompt ]; then
-    . ~/.shell/prompt
-fi
+# Source configuration files
+for FILE in aliases environment prompt ; do
+    if [ -f "$SHELL_CONFIG_DIR/$FILE" ]; then
+        . "$SHELL_CONFIG_DIR/$FILE"
+    fi
+done
+unset SHELL_CONFIG_DIR FILE
