@@ -1,6 +1,9 @@
 if [ -f ~/.shell/aliases ]; then
     . ~/.shell/aliases
 fi
+if [ -f ~/.shell/environment ]; then
+    . ~/.shell/environment
+fi
 if [ -f ~/.shell/prompt ]; then
     . ~/.shell/prompt
 fi

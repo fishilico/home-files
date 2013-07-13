@@ -1,0 +1,33 @@
+#!/bin/sh
+# Define environment variables to customize the command line interface
+
+# Prevent Erase in Line (EL) to Right (\33[K) in the colored output of grep.
+# Please read grep man page for further information.
+export GREP_COLORS='ne'
+
+# Use Vim
+if which vim > /dev/null 2> /dev/null; then
+    export EDITOR='/usr/bin/vim'
+fi
+
+# Use less
+if which less > /dev/null 2> /dev/null; then
+    # Force -R = --RAW-CONTROL-CHARS to have colors in less
+    export LESS='-R'
+    export PAGER='less -R'
+    # -R = --quit-if-one-screen, -X = --no-init
+    export GIT_PAGER='less -RFX'
+fi
+
+# Add home in path
+if [ -d "$HOME/bin" ] && ! (echo ":$PATH:" | grep -q ":$HOME/bin:" ) ; then
+    export PATH="$HOME/bin:$PATH"
+fi
+
+# Python configuration
+if [ -e "$HOME/.pythonrc" ] ; then
+    export PYTHONSTARTUP="$HOME/.pythonrc"
+fi
+
+# make less more friendly for non-text input files, see lesspipe(1)
+! [ -x /usr/bin/lesspipe ] || eval "$(SHELL=/bin/sh lesspipe)"
