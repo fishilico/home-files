@@ -35,8 +35,13 @@ if type alias > /dev/null 2> /dev/null ; then
     alias :wq='echo "Hey! Thats ${SHELL##*/} and *not* VI(M)!"'
 
     # List files, using available ls options
-    # bCFh = escape non printable chars, columns, classify, human
-    LS_PARAMS='-bCFh'
+    # CFh = columns, classify, human
+    LS_PARAMS='-CFh'
+    # Option: escape non printable chars (not in busybox ash)
+    if ls --help 2> /dev/null |grep -q -- --escape; then
+        LS_PARAMS="$LS_PARAMS --escape"
+    fi
+    # Option: use colors
     if ls --help 2> /dev/null |grep -q -- --color; then
         LS_PARAMS="$LS_PARAMS --color=always"
 
