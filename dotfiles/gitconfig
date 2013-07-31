@@ -4,19 +4,24 @@
 [github]
 	user = fishilico
 [alias]
-	st = status
-	co = commit
-	com = commit -m
+	st = status -bs
+	ci = commit
+	cim = commit -m
 	ck = checkout
 	br = branch
 	pu = pull
 	purr = pull --rebase
+
+	df = diff
+	dc = diff --cached
 
 	sup = !git submodule sync && git submodule update --init
 	sp = ![[ -z $(git status --porcelain -uno) ]] && git pull || git stash && git pull && git stash pop
 	spp = ![[ -z $(git status --porcelain -uno) ]] && git pull || git stash && git pull && git push && git stash pop
 	pp = !git pull && git push
 	ppu = !git pp && git submodule sync && git submodule update --init
+
+	fixup = !sh -c 'git commit --fixup=$1 && git rebase -i --autosquash "$1^"' -
 
 	ls = "!git status -suno"
 	ls-modified = "!git status --porcelain -uno | awk 'match($1, /M/) {print $2}'"
@@ -27,10 +32,11 @@
 	ls-updated = "!git status --porcelain -uno | awk 'match($1, /U/) {print $2}'"
 	ls-staged = "!git status --porcelain -uno | grep -P '^[MA]' | awk '{ print $2 }'"
 	ls-untracked = "!git status --porcelain -uall | awk '$1 == \"??\" {print $2}'"
-
+	ign = ls-files --ignored --others --exclude-standard
 
 	lg = log --format='%Cgreen%h %Cred%cr %Creset%s %Cblue%cn'
 	logg = log --graph --color --decorate
+	lo = log --graph --decorate --pretty=oneline --abbrev-commit -n 10
 	lol = log --graph --decorate --pretty=oneline --abbrev-commit
 	lola = log --graph --decorate --pretty=oneline --abbrev-commit --all
 	peeps = !git log --pretty=format:%aN | sort | uniq -c | sort -rn
@@ -51,4 +57,4 @@
 [merge]
 	tool = vimdiff
 [push]
-	default = upstream
+	default = simple
