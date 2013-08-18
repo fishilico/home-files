@@ -85,7 +85,7 @@ if type alias > /dev/null 2> /dev/null ; then
     alias scls='screen -ls'
 
     # Clear screen with ESC + c
-    alias cls='echo -n $"\033c"'
+    alias cls='printf "\033c"'
 
     # Highlight grep results
     if grep --help 2> /dev/null |grep -q -- --color; then
