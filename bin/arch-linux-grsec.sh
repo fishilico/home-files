@@ -86,17 +86,21 @@ do
     fi
 done
 
+# Configure make variables
+MENUCONFIG=${MENUCONFIG:-0}
+MAKEFLAGS=${MAKEFLAGS:--j3}
+export MENUCONFIG MAKEFLAGS
 
 # From now, every line must succeed
 set -e
 set -x
-MENUCONFIG=2 MAKEFLAGS='-j3' makepkg
+makepkg
 yaourt -U linux-grsec*.pkg.tar.xz
+set +x
 
 # Remove Old things
 cd ..
 ! [ -e OLD-linux-grsec ] || rm -rf OLD-linux-grsec
 ! [ -e "OLD-$ARCHIVE" ] || rm -rf "OLD-$ARCHIVE"
-set +x
 
 echo "You may now save $TEMP_DIR/linux-grsec/src/linux-*/.config and remove $TEMP_DIR"
