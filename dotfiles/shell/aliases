@@ -112,6 +112,11 @@ if type alias > /dev/null 2> /dev/null ; then
         alias man='man -P most'
     fi
 
+    # Colored dmesg
+    if which dmesg > /dev/null 2> /dev/null && dmesg --help 2> /dev/null |grep -q -- --color; then
+        alias dmesg='dmesg --color'
+    fi
+
     # Use rsync instead of scp
     if which rsync > /dev/null 2> /dev/null; then
         # Options: archive, verbose, compress, partial&progress
