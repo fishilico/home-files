@@ -13,7 +13,7 @@ set ruler " Show the cursor position all the time
 
 set viminfo='20,\"500 " Keep a .viminfo file.
 set incsearch " To move the search while typing
-set laststatus=2
+set laststatus=1
 set cmdheight=2
 
 " Indentation configuration
@@ -28,7 +28,7 @@ set suffixes=~,.aux,.bak,.bbl,.brf,.blg,.cb,.dvi,.idx,.ilg,.info,.log,.lo,.o,.ou
 
 " Configure completion
 set wildmenu
-set wildmode=longest:full
+set wildmode=longest:full,full
 set wildignore=*.swp,*.bak,*.o,*.pyc,*.pyo,*/.git/*
 
 if has('gui_running')
@@ -36,6 +36,9 @@ if has('gui_running')
   map <S-Insert> <MiddleMouse>
   map! <S-Insert> <MiddleMouse>
 endif
+
+" Enable mouse
+set mouse=a
 
 " Don't eval modelines by default. See Gentoo bugs #14088 and #73715.
 set modelines=0
