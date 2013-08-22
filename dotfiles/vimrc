@@ -1,0 +1,145 @@
+scriptencoding utf-8
+" ^^ Please leave the above line at the start of the file.
+
+" This file is mostly based on Gentoo's /etc/vim/vimrc and ArchLinux's
+" /usr/share/vim/vimfiles/archlinux.vim files, with other slight customizations
+
+" General settings
+set nocompatible " Use Vim defaults instead of 100% vi compatibility
+set backspace=2 " Allow backspacing over everything in insert mode (same as indent,eol,start)
+set autoindent " Always set auto-indenting on
+set history=50 " keep 50 lines of command history
+set ruler " Show the cursor position all the time
+
+set viminfo='20,\"500 " Keep a .viminfo file.
+set incsearch " To move the search while typing
+set laststatus=2
+set cmdheight=2
+
+" Indentation configuration
+set expandtab " Always use space, no tabs
+set shiftwidth=4
+set softtabstop=4
+set tabstop=4
+
+" Suffixes that get lower priority when doing tab completion for filenames.
+" These are files we are not likely to want to edit or read.
+set suffixes=~,.aux,.bak,.bbl,.brf,.blg,.cb,.dvi,.idx,.ilg,.info,.log,.lo,.o,.out,.swp,.out,.toc
+
+" Configure completion
+set wildmenu
+set wildmode=longest:full
+set wildignore=*.swp,*.bak,*.o,*.pyc,*.pyo,*/.git/*
+
+if has('gui_running')
+  " Make shift-insert work like in Xterm
+  map <S-Insert> <MiddleMouse>
+  map! <S-Insert> <MiddleMouse>
+endif
+
+" Don't eval modelines by default. See Gentoo bugs #14088 and #73715.
+set modelines=0
+set nomodeline
+
+" Show line numbers
+set number
+
+" When displaying line numbers, don't use an annoyingly wide number column. This
+" doesn't enable line numbers -- :set number will do that. The value given is a
+" minimum width to use for the number column, not a fixed size.
+if v:version >= 700
+  set numberwidth=3
+endif
+
+" Always check for UTF-8 when trying to determine encodings.
+if &fileencodings !~? "utf-8"
+  " If we have to add this, the default encoding is not Unicode.
+  " We use this fact later to revert to the default encoding in plaintext/empty
+  " files.
+  let g:added_fenc_utf8 = 1
+  set fileencodings+=utf-8
+endif
+
+" Make sure we have a sane fallback for encoding detection
+if &fileencodings !~? "default"
+  set fileencodings+=default
+endif
+
+" Autocommand group from Gentoo's /etc/vim/vimrc
+if has("autocmd")
+augroup gentoo
+  au!
+  " If we previously detected that the default encoding is not UTF-8
+  " (g:added_fenc_utf8), assume that a file with only ASCII characters (or no
+  " characters at all) isn't a Unicode file, but is in the default encoding.
+  " Except of course if a byte-order mark is in effect.
+  autocmd BufReadPost *
+        \ if exists("g:added_fenc_utf8") && &fileencoding == "utf-8" && 
+        \    ! &bomb && search('[\x80-\xFF]','nw') == 0 && &modifiable |
+        \       set fileencoding= |
+        \ endif
+augroup END
+endif
+
+" Switch syntax highlighting on, when the terminal has colors
+" Also switch on highlighting the last used search pattern.
+if &t_Co > 2 || has("gui_running")
+  syntax on
+  set hlsearch
+
+  " Show matching brackets
+  set showmatch
+
+  " Show column 80 in color
+  "set colorcolumn=80
+
+  " Show tabs with dots
+  set list listchars=tab:..
+
+  " Highlight extra whitespaces
+  highlight ExtraWhitespace ctermbg=red guibg=red
+  let g:m_extra_whitespace = matchadd('ExtraWhitespace', '\s\+$')
+endif
+
+" Terminal fixes
+if &term ==? "xterm"
+  set t_Sb=^[4%dm
+  set t_Sf=^[3%dm
+  set ttymouse=xterm2
+endif
+
+if &term ==? "gnome" && has("eval")
+  " Set useful keys that vim doesn't discover via termcap but are in the
+  " builtin xterm termcap. See Gentoo bug #122562. We use exec to avoid having
+  " to include raw escapes in the file.
+  exec "set <C-Left>=\eO5D"
+  exec "set <C-Right>=\eO5C"
+endif
+
+" Fix &shell, see Gentoo bug #101665.
+if "" == &shell
+  if executable("/bin/bash")
+    set shell=/bin/bash
+  elseif executable("/bin/zsh")
+    set shell=/bin/zsh
+  elseif executable("/bin/sh")
+    set shell=/bin/sh
+  endif
+endif
+
+" Default /bin/sh is bash, not ksh, so syntax highlighting for .sh files should
+" default to bash. See :help sh-syntax and Gentoo bug #101819.
+if has("eval")
+  let is_bash=1
+endif
+
+" Don't beep
+"set visualbell
+"set noerrorbells
+
+" map keys to tabs
+nmap <C-t> :tabnew<CR>
+imap <C-t> <ESC>:tabnew<CR>i
+map <C-t> :tabnew<CR>:E<CR>
+
+" vim: set fenc=utf-8 tw=80 sw=2 sts=2 et foldmethod=marker :
