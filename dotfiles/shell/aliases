@@ -17,10 +17,14 @@ if type alias > /dev/null 2> /dev/null ; then
 
     # Shortcuts
     alias h='history'
+    # Always use /usr/bin/sudo if available to prevent PATH hijacking
+    # sadm alias is for SELinux
     if [ -x /usr/bin/sudo ] ; then
         alias s='/usr/bin/sudo -s'
+        alias sadm='/usr/bin/sudo -r sysadm_r -t sysadm_t -s'
     else
         alias s='sudo -s'
+        alias sadm='sudo -r sysadm_r -t sysadm_t -s'
     fi
 
     # Be human !
