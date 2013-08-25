@@ -159,3 +159,16 @@ else
         tail $*
     }
 fi
+
+# Convert timestamps from Epoch to dates
+epoch2date() {
+    local TS
+    if [ $# -ge 1 ] ; then
+        while [ $# -ge 1 ] ; do
+            date --date=@$1
+            shift
+        done
+    else
+        echo >&2 "Usage: $0 timestamp [...]"
+    fi
+}
