@@ -17,6 +17,13 @@ if [ -r "$REAL_HOME/.email" ] ; then
     export EMAIL=$(cat "$REAL_HOME/.email")
 fi
 
+# Ensure that all bin and sbin folders are in PATH, if they are not symlinks
+for DIR in /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ; do
+    if [ ! -L "$DIR" -a -d "$DIR" ] && ! (echo ":$PATH:" | grep -q ":$DIR:" ) ; then
+        export PATH="$DIR:$PATH"
+    fi
+done
+
 # Add home in path
 HOMEBIN="$REAL_HOME/bin"
 if [ -d "$HOMEBIN" ] && ! (echo ":$PATH:" | grep -q ":$HOMEBIN:" ) ; then
