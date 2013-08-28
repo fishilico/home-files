@@ -49,10 +49,14 @@ fi
 if which less > /dev/null 2> /dev/null ; then
     # Force -R = --RAW-CONTROL-CHARS to have colors in less
     export LESS='-R'
+    export LESSCOLOR='yes'
     export PAGER='less -R'
     # -R = --quit-if-one-screen, -X = --no-init
     export GIT_PAGER='less -RFX'
 fi
 
 # Make less more friendly for non-text input files, see lesspipe(1)
-! [ -x /usr/bin/lesspipe ] || eval "$(SHELL=/bin/sh lesspipe)"
+if [ -x /usr/bin/lesspipe ] ; then
+    export LESSOPEN="| /usr/bin/lesspipe %s"
+    export LESSCLOSE="/usr/bin/lesspipe %s %s"
+fi
