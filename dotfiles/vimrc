@@ -70,8 +70,10 @@ endif
 
 " Autocommand group from Gentoo's /etc/vim/vimrc
 if has("autocmd")
-augroup gentoo
-  au!
+augroup usercommands
+  " Clean up all previously loaded commands
+  autocmd!
+
   " If we previously detected that the default encoding is not UTF-8
   " (g:added_fenc_utf8), assume that a file with only ASCII characters (or no
   " characters at all) isn't a Unicode file, but is in the default encoding.
@@ -81,6 +83,13 @@ augroup gentoo
         \    ! &bomb && search('[\x80-\xFF]','nw') == 0 && &modifiable |
         \       set fileencoding= |
         \ endif
+
+  " Force noet on some files
+  autocmd BufRead */Makefile* set noexpandtab
+  autocmd BufRead *.mk set noexpandtab
+  autocmd BufRead *.fc set noexpandtab
+  autocmd BufRead *.if set noexpandtab
+  autocmd BufRead *.te set noexpandtab
 augroup END
 endif
 
@@ -96,8 +105,8 @@ if &t_Co > 2 || has("gui_running")
   " Show column 80 in color
   "set colorcolumn=80
 
-  " Show tabs with dots
-  set list listchars=tab:..
+  " Show tabs with \u25ba and dots
+  set list listchars=tab:►.
 
   " Highlight extra whitespaces
   highlight ExtraWhitespace ctermbg=red guibg=red
