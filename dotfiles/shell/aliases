@@ -157,6 +157,12 @@ read_pass() {
     echo >&2 -n 'Password: ' && read -s $* && echo ''
 }
 
+# Generate random passwords from /dev/random
+# see also: openssl rand -base64 16
+gen_pass() {
+    head -c12 /dev/random |base64
+}
+
 # Log tail, to have colors when ccze is available
 if which ccze > /dev/null 2> /dev/null; then
     ltail() {
