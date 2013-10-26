@@ -1,5 +1,5 @@
-Why is there no XDG automatic installation?
-===========================================
+XDG configuration
+=================
 
 Applications store their settings in ``$XDG_CONFIG_HOME`` directory (often
 ``$HOME/.config``). This directory contains really many settings.
