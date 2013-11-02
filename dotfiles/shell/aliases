@@ -128,8 +128,14 @@ if type alias > /dev/null 2> /dev/null ; then
     # Colored diff
     if which colordiff > /dev/null 2> /dev/null; then
         alias diff='colordiff -u'
+        # Change svn diff.
+        # You may instead put "diff-cmd = colordiff" in ~/.subversion/config
+        # Use -x "-u" to show 3 lines of unified context
+        # and -x "-u -w" to ignore all white space changes.
+        alias svn-diff='svn diff --diff-cmd colordiff'
     else
         alias diff='diff -u'
+        alias svn-diff='svn diff'
     fi
     if which most > /dev/null 2> /dev/null; then
         alias man='man -P most'
