@@ -207,3 +207,9 @@ epoch2date() {
         echo >&2 "Usage: $0 timestamp [...]"
     fi
 }
+
+# Retrieve HTTPS certificate of a website
+get_https_cert() {
+    openssl s_client -servername "$1" -connect "$1:443" < /dev/null \
+         -showcerts | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'
+}
