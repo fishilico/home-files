@@ -81,6 +81,9 @@ if type alias > /dev/null 2> /dev/null ; then
         setopt PUSHD_SILENT
     fi
 
+    # Get file attributes, not restricted to "^user\\."
+    alias getextattr='getfattr -m - -d'
+
     # List processes
     alias psa='ps -A'
     alias pse='ps -efH'
@@ -94,7 +97,7 @@ if type alias > /dev/null 2> /dev/null ; then
     alias scrd='screen -RD'
     alias scls='screen -ls'
 
-    # Clear screen with ESC + c
+    # Clear screen with ESC + c. Ctrl+L may also work.
     alias cls='printf "\033c"'
 
     # Highlight grep results
@@ -111,6 +114,16 @@ if type alias > /dev/null 2> /dev/null ; then
             alias lgrep='grep --line-buffered'
         fi
     fi
+
+    # OpenSSL shortcuts
+    # View a certificate request (add -verify to check it)
+    alias openssl-csr='openssl req -noout -text -in'
+    # View a x509 certificate
+    alias openssl-crt='openssl x509 -noout -text -in'
+    # View a PKCS#12 file (.pfx or .p12)
+    alias openssl-p12='openssl pkcs12 -info -in'
+    # Make a SSL connection to IP:port
+    alias openssl-connect='openssl s_client -connect'
 
     # Colored diff
     if which colordiff > /dev/null 2> /dev/null; then
