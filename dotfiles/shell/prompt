@@ -9,7 +9,7 @@
 # * bold red for root, yellow otherwise
 # * green for local machine, cyan for remote host
 # * magenta/purple for working directory
-if [ `id -u` = 0 ] ; then
+if [ "$(id -u)" -eq 0 ] ; then
     BASH_PROMPT_USER='\[\e[1;31m\]\u\[\e[m\]'
     ZSH_PROMPT_USER='%B%F{red}%n%f%b'
 else
@@ -17,7 +17,7 @@ else
     ZSH_PROMPT_USER='%F{yellow}%n%f'
 fi
 
-if [ "x$SSH_CLIENT" = x ]; then
+if [ -z "$SSH_CLIENT" ]; then
     BASH_PROMPT_HOST='\[\e[32m\]\h\[\e[m\]'
     ZSH_PROMPT_HOST='%F{green}%m%f'
 else
@@ -26,7 +26,7 @@ else
 fi
 
 
-if [ ! -z "$BASH_VERSION" ]; then
+if [ -n "$BASH_VERSION" ]; then
     # Don't forget \[...\] to compute prompt width correctly
     PS1="$BASH_PROMPT_USER@$BASH_PROMPT_HOST \[\e[35m\]\w\[\e[m\]\\\$ "
     # Set the title to user@host:dir
@@ -35,7 +35,7 @@ if [ ! -z "$BASH_VERSION" ]; then
             PS1="\[\e]0;\u@\h: \w\a\]$PS1"
             ;;
     esac
-elif [ ! -z "$ZSH_VERSION" ]; then
+elif [ -n "$ZSH_VERSION" ]; then
     PROMPT="$ZSH_PROMPT_USER@$ZSH_PROMPT_HOST %F{magenta}%~%f%# "
     # Display last returned value at the beginning of the prompt
     PROMPT="%(?..%F{red}[%?]%f )$PROMPT"
@@ -46,6 +46,12 @@ elif [ ! -z "$ZSH_VERSION" ]; then
             PROMPT=$'%{\e]0;%n@%m: %~\a%}'"$PROMPT"
             ;;
     esac
+elif [ "$(id -u)" -eq 0 ] ; then
+    # Root prompt for ash, dash...
+    PS1=$(hostname -s)'# '
+else
+    # User prompt for ash, dash...
+    PS1=$(id -nu)'@'$(hostname -s)'$ '
 fi
 
 unset BASH_PROMPT_USER ZSH_PROMPT_USER

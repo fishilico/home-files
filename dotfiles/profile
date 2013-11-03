@@ -1,6 +1,7 @@
 # ~/.profile: executed by the command interpreter for login shells.
 # This file is not read by bash(1), if ~/.bash_profile or ~/.bash_login
 # exists.
+# This file is read by dash(1) when invoked as a login shell (-l option).
 # see /usr/share/doc/bash/examples/startup-files for examples.
 # the files are located in the bash-doc package.
 
@@ -14,9 +15,37 @@ if [ -n "$BASH_VERSION" ]; then
     if [ -f "$HOME/.bashrc" ]; then
         . "$HOME/.bashrc"
     fi
+elif [ -n "$ZSH_VERSION" ]; then
+    # include .zshrc if it exists
+    if [ -f "$HOME/.zrc" ]; then
+        . "$HOME/.zrc"
+    fi
+else
+    # not bash nor zsh, maybe ash or dash?
+    # find best configuration dir and include every configuration files
+    SHELL_CONFIG_DIR=""
+    # Try $0 if the file has been directly source'd
+    if [ "$(basename -- $0)" = ".profile" -a -d "$(dirname -- $0)/.shell" ] ; then
+        SHELL_CONFIG_DIR="$(dirname -- $0)/.shell"
+    elif [ "$(basename -- $0)" = "profile" -a -d "$(dirname -- $0)/shell" ] ; then
+        SHELL_CONFIG_DIR="$(dirname -- $0)/shell"
+    elif [ -n "$SUDO_USER" ] ; then
+        SUDO_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+        SHELL_CONFIG_DIR="$SUDO_HOME/.shell"
+        unset SUDO_HOME
+    else
+        SHELL_CONFIG_DIR="$HOME/.shell"
+    fi
+
+    for FILE in aliases environment prompt ; do
+        if [ -f "$SHELL_CONFIG_DIR/$FILE" ]; then
+            . "$SHELL_CONFIG_DIR/$FILE"
+        fi
+    done
+    unset SHELL_CONFIG_DIR FILE
 fi
 
 # Disallow messages from others when running root
-#if [ `id -u` = 0 ]; then
+#if [ "$(id -u)" -eq 0 ]; then
 #    mesg n
 #fi

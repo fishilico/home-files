@@ -23,6 +23,7 @@ for DIR in /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ; do
         export PATH="$DIR:$PATH"
     fi
 done
+unset DIR
 
 # Add home in path
 HOMEBIN="$REAL_HOME/bin"
@@ -42,7 +43,7 @@ export GREP_COLORS='ne'
 
 # Use Vim
 if which vim > /dev/null 2> /dev/null ; then
-    export EDITOR='/usr/bin/vim'
+    export EDITOR=$(which vim)
 fi
 
 # Use less

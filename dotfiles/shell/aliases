@@ -1,7 +1,7 @@
 #!/bin/sh
 # Define aliases and exported variables for every shell
 
-# alias may be unavailable, for example in busybox shell
+# alias may be unavailable, for example in busybox shell (ash)
 if type alias > /dev/null 2> /dev/null ; then
     # Be verbose!
     alias chmod='chmod -v'
@@ -50,7 +50,7 @@ if type alias > /dev/null 2> /dev/null ; then
         LS_PARAMS="$LS_PARAMS --color=always"
 
         if ls --help 2>/dev/null |grep -q -- --time-style; then
-            LS_PARAMS="$LS_PARAMS "$'--time-style="+\e[0;35m%Y-%m-%d %H:%M\e[0m"'
+            LS_PARAMS="$LS_PARAMS --time-style="$(printf '"+\033[0;35m%%Y-%%m-%%d %%H:%%M\033[0m"')
         fi
     fi
     alias ls="ls $LS_PARAMS"
@@ -172,6 +172,7 @@ cl() {
 
 # Read passwords. Zsh uses "?prompt" option to display a prompt and other
 # shells (Bash, Ash, ...) use -p option, so use echo to be compatible.
+# Dash fails with "read: Illegal option -s" as this is not POSIX-compliant.
 read_pass() {
     echo >&2 -n 'Password: ' && read -s $* && echo ''
 }
@@ -197,14 +198,13 @@ fi
 
 # Convert timestamps from Epoch to dates
 epoch2date() {
-    local TS
     if [ $# -ge 1 ] ; then
         while [ $# -ge 1 ] ; do
             date --date=@$1
             shift
         done
     else
-        echo >&2 "Usage: $0 timestamp [...]"
+        echo >&2 "Usage: epoch2date timestamp [...]"
     fi
 }
 
