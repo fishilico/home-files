@@ -17,8 +17,14 @@ import sys
 
 OPENSSL_CMD = 'openssl'
 
+# Verbosity levels
+VERBLVL_QUIET = -1
+VERBLVL_DEFAULT = 0
+VERBLVL_VERBOSE = 1
+VERBLVL_DEBUG = 2
 
-def get_notafter(filename):
+
+def get_notafter(filename, verbose):
     """Get the notAfter field in the specified file"""
     cmdline = [OPENSSL_CMD, 'x509', '-noout', '-dates', '-in', filename]
     # Guess wether it is PEM or DER by reading the first byte
@@ -28,6 +34,8 @@ def get_notafter(filename):
             cmdline += ['-inform', 'PEM']
         elif beginning == b'0':
             cmdline += ['-inform', 'DER']
+    if verbose >= VERBLVL_DEBUG:
+        print("[ ] running: {}".format(' '.join(cmdline)))
     output = subprocess.check_output(cmdline)
     output = output.decode('utf8', errors='ignore')
     for line in output.split('\n'):
@@ -36,17 +44,19 @@ def get_notafter(filename):
     raise Exception("No notAfter field found in {}".format(filename))
 
 
-def check_certificate(filename, verbose=False):
+def check_certificate(filename, verbose=None):
     """Check the validity of the specified certificate"""
-    notafter = datetime.datetime.fromtimestamp(get_notafter(filename))
+    verbose = verbose or VERBLVL_DEFAULT
+    notafter = datetime.datetime.fromtimestamp(get_notafter(filename, verbose))
     now = datetime.datetime.now()
-    if verbose:
+    if verbose >= VERBLVL_VERBOSE:
         print("[ ] {}: not after {}".format(filename, notafter))
     if now < notafter:
         diff = notafter - now
         if diff.days > 2:
             diff = "{} days".format(diff.days)
-        print("[+] {} will expire in {}".format(filename, diff))
+        if verbose >= VERBLVL_DEFAULT:
+            print("[+] {} will expire in {}".format(filename, diff))
         return True
     else:
         print("[-] {} has expired since {}".format(filename, notafter))
@@ -59,8 +69,14 @@ def main(argv=None):
     parser = optparse.OptionParser(
         usage="usage: %prog [options] CERTFILES")
     parser.add_option(
-        '-v', '--verbose', action='store_true', dest='verbose',
-        help="enable verbose mode", default=False)
+        '-q', '--quiet', action='store_const', const=VERBLVL_QUIET,
+        dest='verbose', help="only show expired certificates")
+    parser.add_option(
+        '-v', '--verbose', action='store_const', const=VERBLVL_VERBOSE,
+        dest='verbose', help="enable verbose mode")
+    parser.add_option(
+        '-d', '--debug', action='store_const', const=VERBLVL_DEBUG,
+        dest='verbose', help="enable debug mode, which implies -v")
 
     opts, files = parser.parse_args(argv)
 
