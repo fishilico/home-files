@@ -20,8 +20,14 @@ OPENSSL_CMD = 'openssl'
 
 def get_notafter(filename):
     """Get the notAfter field in the specified file"""
-    # Certificate request are special
     cmdline = [OPENSSL_CMD, 'x509', '-noout', '-dates', '-in', filename]
+    # Guess wether it is PEM or DER by reading the first byte
+    with open(filename, 'rb') as certfile:
+        beginning = certfile.read(1)
+        if beginning == b'-':
+            cmdline += ['-inform', 'PEM']
+        elif beginning == b'0':
+            cmdline += ['-inform', 'DER']
     output = subprocess.check_output(cmdline)
     output = output.decode('utf8', errors='ignore')
     for line in output.split('\n'):
