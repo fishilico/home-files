@@ -157,6 +157,22 @@ if type alias > /dev/null 2> /dev/null ; then
         alias xbell-off='xset b off'
         alias xbell-on='xset b on'
     fi
+
+    # DNSSEC validation with drill (from ldns package) or dig
+    if which drill > /dev/null 2> /dev/null; then
+        if [ -r '/etc/trusted-key.key' ] ; then
+            alias dnssec_check='drill -TD -k /etc/trusted-key.key'
+        else
+            alias dnssec_check='drill -TD'
+        fi
+    elif which dig > /dev/null 2> /dev/null; then
+        if [ -r '/etc/trusted-key.key' ] ; then
+            # +multiline can be used to view DNS key id
+            alias dnssec_check='dig +sigchase +topdown +trusted-key=/etc/trusted-key.key'
+        else
+            alias dnssec_check='dig +sigchase +topdown'
+        fi
+    fi
 fi
 
 # Some functions
