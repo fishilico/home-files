@@ -106,7 +106,7 @@ mac_to_ip6ll() {
     fi
 
     # Set the universal bit in the second hexdigit
-    SECOND=$(echo $SECOND | tr '014589cdCD' '2367abAB')
+    SECOND=$(echo $SECOND | tr '014589cdCD' '2367abefEF')
     if [ $# -ge 2 ]
     then
         ip6_to_ip6ll "fe80::$FIRST$SECOND$TAIL" $2
