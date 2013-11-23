@@ -165,4 +165,15 @@ then
     exit 1
 fi
 shift
+
+# Let's try ndisc6 before ping6
+if which ndisc6 2> /dev/null > /dev/null
+then
+    echo -n 'NDISC6 '
+    if ! ndisc6 $(echo $DEST | tr '%' ' ')
+    then
+        echo >&2 "ndisc6 failed!"
+        exit 1
+    fi
+fi
 exec ping6 $OPTIONS $DEST $*
