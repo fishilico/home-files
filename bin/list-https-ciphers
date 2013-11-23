@@ -1,0 +1,39 @@
+#!/bin/sh
+# List the TLS ciphers that an HTTPS server use
+
+if [ $# -ne 1 ]
+then
+    echo >&2 "Usage: $0 www.domain.tld[:PORT]"
+    exit 1
+fi
+
+DOMAIN="$1"
+PORT=443
+
+if echo $1 | grep -q ':'
+then
+    PORT="${DOMAIN##*:}"
+    DOMAIN="${DOMAIN%:*}"
+fi
+
+SERVER="$DOMAIN:$PORT"
+CIPHER_COUNT=$(openssl ciphers 'ALL:eNULL' | tr ':' ' ' | wc -w)
+
+echo "Testing $SERVER with $CIPHER_COUNT ciphers from "$(openssl version)
+for CIPHER in $(openssl ciphers 'ALL:eNULL' | tr ':' ' ')
+do
+    OUTPUT=$(openssl s_client -cipher "$CIPHER" -servername "$DOMAIN" -connect "$SERVER" < /dev/null 2>&1)
+    if [ $? -eq 0 ]
+    then
+        echo "[+] $CIPHER OK"
+    elif echo $OUTPUT | grep -q ':error:'
+    then
+        echo "[-] $CIPHER NO ("$(echo $OUTPUT | cut -d':' -f6)")"
+    else
+        # Unknown state
+        echo "[!] $CIPHER UNK ($OUTPUT)"
+    fi
+
+    # Be nice, don't launch a DOS ;)
+    sleep 1
+done
