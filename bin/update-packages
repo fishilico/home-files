@@ -48,7 +48,7 @@ OS=$(detect_os)
 case $OS in
     arch)
         # ArchLinux: use Yaourt if available, pacman otherwise
-        if which yaourt > /dev/null 2> /dev/null
+        if which yaourt > /dev/null 2>&1
         then
             exec yaourt -Syu --devel --aur
         else

@@ -9,14 +9,14 @@ ipt_stats() {
         sed "s/^\(Chain \)/${PREFIX} \1/"
 }
 
-if ! which iptables > /dev/null 2> /dev/null; then
+if ! which iptables > /dev/null 2>&1; then
     echo >&2 "Unable to find iptables."
     exit 1
 fi
 ipt_stats IPv4 iptables || exit $?
 
 # Run ip6tables if available
-if which ip6tables > /dev/null 2> /dev/null; then
+if which ip6tables > /dev/null 2>&1; then
     echo ""
     ipt_stats IPv6 ip6tables || exit $?
 fi

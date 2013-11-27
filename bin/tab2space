@@ -3,7 +3,7 @@
 
 TAB=$'\t'
 
-for file in $*
+for file in "$@"
 do
     # Replace tab by 4 spaces
     if grep -q "$TAB" < "$file"

@@ -50,13 +50,13 @@ param_to_ip6ll() {
 # compute an IPv6 link-local address
 ip4_to_ip6ll() {
     local IFACE MAC OUT
-    if which ip 2>/dev/null > /dev/null
+    if which ip > /dev/null 2>&1
     then
         # Use ip command
         OUT=$(ip neigh show $1)
         MAC=$(echo $OUT | sed -n 's/.*lladdr \([0-9a-fA-F:]\{17\}\).*/\1/p')
         IFACE=$(echo $OUT | sed -n 's/.*dev \([^ ]\+\).*/\1/p')
-    elif which arp 2>/dev/null > /dev/null
+    elif which arp > /dev/null 2>&1
     then
         # Use arp command
         OUT=$(arp -n $1 | sed '1d')
@@ -135,7 +135,7 @@ ip6_to_ip6ll() {
     echo $1
 }
 
-# Extract options as $OPTIONS $TARGET $*
+# Extract options as $OPTIONS $TARGET "$@"
 OPTIONS=""
 while getopts ":aAbBdc:Dfhi:I:l:Lm:M:nN:Op:qQ:rRs:S:t:T:UvVw:W:" OPT
 do
@@ -167,7 +167,7 @@ fi
 shift
 
 # Let's try ndisc6 before ping6
-if which ndisc6 2> /dev/null > /dev/null
+if which ndisc6 > /dev/null 2>&1
 then
     echo -n 'NDISC6 '
     if ! ndisc6 $(echo $DEST | tr '%' ' ')
@@ -176,4 +176,4 @@ then
         exit 1
     fi
 fi
-exec ping6 $OPTIONS $DEST $*
+exec ping6 $OPTIONS $DEST "$@"

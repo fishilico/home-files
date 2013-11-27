@@ -2,7 +2,7 @@
 # Define aliases and exported variables for every shell
 
 # alias may be unavailable, for example in busybox shell (ash)
-if type alias > /dev/null 2> /dev/null ; then
+if type alias > /dev/null 2>&1 ; then
     # Be verbose!
     alias chmod='chmod -v'
     alias chown='chown -v'
@@ -49,7 +49,7 @@ if type alias > /dev/null 2> /dev/null ; then
     if ls --help 2> /dev/null |grep -q -- --color; then
         LS_PARAMS="$LS_PARAMS --color=always"
 
-        if ls --help 2>/dev/null |grep -q -- --time-style; then
+        if ls --help 2> /dev/null |grep -q -- --time-style; then
             LS_PARAMS="$LS_PARAMS --time-style="$(printf '"+\033[0;35m%%Y-%%m-%%d %%H:%%M\033[0m"')
         fi
     fi
@@ -64,7 +64,7 @@ if type alias > /dev/null 2> /dev/null ; then
     alias llz='ls -lZ'
 
     # ZSH-specific aliases
-    if [ ! -z "$ZSH_VERSION" ] ; then
+    if [ -n "$ZSH_VERSION" ] ; then
         alias lsd='ls -ld *(/)'                 # only show directories
         alias lad='ls -ld .*(/)'                # only show dot-directories
         alias lsa='ls -a .*(.)'                 # only show dot-files
@@ -127,7 +127,7 @@ if type alias > /dev/null 2> /dev/null ; then
     alias openssl-connect='openssl s_client -connect'
 
     # Colored diff
-    if which colordiff > /dev/null 2> /dev/null; then
+    if which colordiff > /dev/null 2>&1; then
         alias diff='colordiff -u'
         # Change svn diff.
         # You may instead put "diff-cmd = colordiff" in ~/.subversion/config
@@ -138,29 +138,29 @@ if type alias > /dev/null 2> /dev/null ; then
         alias diff='diff -u'
         alias svn-diff='svn diff'
     fi
-    if which most > /dev/null 2> /dev/null; then
+    if which most > /dev/null 2>&1; then
         alias man='man -P most'
     fi
 
     # Colored dmesg
-    if which dmesg > /dev/null 2> /dev/null && dmesg --help 2> /dev/null |grep -q -- --color; then
+    if dmesg --help 2> /dev/null |grep -q -- --color; then
         alias dmesg='dmesg --color'
     fi
 
     # Use rsync instead of scp
-    if which rsync > /dev/null 2> /dev/null; then
+    if which rsync > /dev/null 2>&1; then
         # Options: archive, verbose, compress, partial&progress
         alias scp='rsync -avzP'
     fi
 
     # X Window bell
-    if which xset > /dev/null 2> /dev/null; then
+    if which xset > /dev/null 2>&1; then
         alias xbell-off='xset b off'
         alias xbell-on='xset b on'
     fi
 
     # DNSSEC validation with drill (from ldns package) or dig
-    if which drill > /dev/null 2> /dev/null; then
+    if which drill > /dev/null 2>&1; then
         if [ -r '/etc/trusted-key.key' ] ; then
             alias dnssec_check='drill -TD -k /etc/trusted-key.key'
         elif [ -r '/var/lib/unbound/root.key' ] ; then
@@ -168,7 +168,7 @@ if type alias > /dev/null 2> /dev/null ; then
         else
             alias dnssec_check='drill -TD'
         fi
-    elif which dig > /dev/null 2> /dev/null; then
+    elif which dig > /dev/null 2>&1; then
         if [ -r '/etc/trusted-key.key' ] ; then
             # +multiline can be used to view DNS key id
             alias dnssec_check='dig +sigchase +topdown +trusted-key=/etc/trusted-key.key'
@@ -188,14 +188,14 @@ mcd() {
 
 # cd && ls
 cl() {
-    cd "$1" && shift && ls $*
+    cd "$1" && shift && ls "$@"
 }
 
 # Read passwords. Zsh uses "?prompt" option to display a prompt and other
 # shells (Bash, Ash, ...) use -p option, so use echo to be compatible.
 # Dash fails with "read: Illegal option -s" as this is not POSIX-compliant.
 read_pass() {
-    echo >&2 -n 'Password: ' && read -s $* && echo ''
+    echo >&2 -n 'Password: ' && read -s "$@" && echo ''
 }
 
 # Generate random passwords from /dev/random
@@ -205,15 +205,15 @@ gen_pass() {
 }
 
 # Log tail, to have colors when ccze is available
-if which ccze > /dev/null 2> /dev/null; then
+if which ccze > /dev/null 2>&1; then
     ltail() {
-        tail $* |ccze -A
+        tail "$@" |ccze -A
     }
-elif type alias > /dev/null 2> /dev/null ; then
+elif type alias > /dev/null 2>&1 ; then
     alias ltail=tail
 else
     ltail() {
-        tail $*
+        tail "$@"
     }
 fi
 
@@ -221,7 +221,7 @@ fi
 epoch2date() {
     if [ $# -ge 1 ] ; then
         while [ $# -ge 1 ] ; do
-            date --date=@$1
+            date "--date=@$1"
             shift
         done
     else
