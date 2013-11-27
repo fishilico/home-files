@@ -93,7 +93,7 @@ ip6glob_to_ip6ll() {
 
 # Convert a MAC address to an IPv6 link-local address
 mac_to_ip6ll() {
-    local FIRST H2 SECOND TAIL
+    local FIRST H2 SECOND TAIL IP6
     FIRST=$(echo $1 | sed -n 's/^\([0-9a-fA-F]\).:.*/\1/p')
     SECOND=$(echo $1 | sed -n 's/^.\([0-9a-fA-F]\):.*/\1/p')
     H2='\([0-9a-fA-F]\{2\}\)'
@@ -107,11 +107,12 @@ mac_to_ip6ll() {
 
     # Set the universal bit in the second hexdigit
     SECOND=$(echo $SECOND | tr '014589cdCD' '2367abefEF')
+    IP6=$(echo "fe80::$FIRST$SECOND$TAIL" | tr '[[:upper:]]' '[[:lower:]]')
     if [ $# -ge 2 ]
     then
-        ip6_to_ip6ll "fe80::$FIRST$SECOND$TAIL" $2
+        ip6_to_ip6ll "$IP6" "$2"
     else
-        ip6_to_ip6ll "fe80::$FIRST$SECOND$TAIL"
+        ip6_to_ip6ll "$IP6"
     fi
 }
 
