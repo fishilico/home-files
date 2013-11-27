@@ -15,12 +15,7 @@ if [ -n "$BASH_VERSION" ]; then
     if [ -f "$HOME/.bashrc" ]; then
         . "$HOME/.bashrc"
     fi
-elif [ -n "$ZSH_VERSION" ]; then
-    # include .zshrc if it exists
-    if [ -f "$HOME/.zrc" ]; then
-        . "$HOME/.zrc"
-    fi
-else
+elif [ -z "$ZSH_VERSION" ]; then
     # not bash nor zsh, maybe ash or dash?
     # find best configuration dir and include every configuration files
     SHELL_CONFIG_DIR=""
