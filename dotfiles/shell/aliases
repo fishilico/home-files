@@ -58,6 +58,11 @@ if type alias > /dev/null 2> /dev/null ; then
     alias la='ls -A'
     alias ll='ls -l'
     alias lla='ls -lsA'
+
+    # SELinux aliases
+    alias lsz='ls -Z'
+    alias llz='ls -lZ'
+
     # ZSH-specific aliases
     if [ ! -z "$ZSH_VERSION" ] ; then
         alias lsd='ls -ld *(/)'                 # only show directories
@@ -71,10 +76,6 @@ if type alias > /dev/null 2> /dev/null ; then
         alias lssmall='ls -Sl *(.) | tail'      # display the smallest files
         alias lsnew='ls -rtl *(.) | tail'       # display the newest files
         alias lsold='ls -rtl *(.) | head'       # display the oldest files
-
-        # SELinux aliases
-        alias lsz='ls -Z'
-        alias llz='ls -lZ'
 
         # Remember where I've been
         alias cd='pushd'
