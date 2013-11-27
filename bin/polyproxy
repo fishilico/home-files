@@ -7,7 +7,20 @@ export http_proxy="http://kuzh.polytechnique.fr:8080/"
 export https_proxy="http://kuzh.polytechnique.fr:8080/"
 export ftp_proxy="http://kuzh.polytechnique.fr:8080/"
 export no_proxy="eleves.polytechnique.fr"
-if type alias > /dev/null 2>&1
+
+# Use socat, connect (Debian) or connect-procy (Ubuntu) for ssh
+export SSH_PROXYCOMMAND=""
+if which socat > /dev/null 2>&1
 then
-    alias sshExt='ssh -o ProxyCommand="socat - PROXY:kuzh.polytechnique.fr:%h:%p,proxyport=8080"'
+    SSH_PROXYCOMMAND='socat - PROXY:kuzh.polytechnique.fr:%h:%p,proxyport=8080'
+elif which connect > /dev/null 2>&1
+then
+    SSH_PROXYCOMMAND='connect -H kuzh.polytechnique.fr:8080 %h %p'
+elif which connect-proxy > /dev/null 2>&1
+then
+    SSH_PROXYCOMMAND='connect-proxy -H kuzh.polytechnique.fr:8080 %h %p'
+fi
+if type alias > /dev/null 2>&1 && [ -n "$SSH_PROXYCOMMAND" ]
+then
+    alias sshExt="ssh -o ProxyCommand='$SSH_PROXYCOMMAND'"
 fi
