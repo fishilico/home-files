@@ -42,7 +42,7 @@ if [ -z "$SHELL_CONFIG_DIR" -o ! -d "$SHELL_CONFIG_DIR" ] ; then
     SHELL_CONFIG_DIR="$HOME/.shell"
 fi
 # Source configuration files
-for FILE in aliases environment prompt ; do
+for FILE in aliases environment prompt 'local' ; do
     if [ -f "$SHELL_CONFIG_DIR/$FILE" ]; then
         . "$SHELL_CONFIG_DIR/$FILE"
     fi

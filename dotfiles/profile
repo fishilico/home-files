@@ -37,7 +37,7 @@ else
         SHELL_CONFIG_DIR="$HOME/.shell"
     fi
 
-    for FILE in aliases environment prompt ; do
+    for FILE in aliases environment prompt 'local' ; do
         if [ -f "$SHELL_CONFIG_DIR/$FILE" ]; then
             . "$SHELL_CONFIG_DIR/$FILE"
         fi
