@@ -1,0 +1,8 @@
+[Desktop Entry]
+Encoding=UTF-8
+Exec=sh -c ~/bin/dxrandr
+Name=Default XRandR
+Comment=Reset XRandR configuration
+Terminal=false
+Type=Application
+StartupNotify=false

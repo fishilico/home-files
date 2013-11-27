@@ -1,0 +1,8 @@
+[Desktop Entry]
+Encoding=UTF-8
+Exec=/usr/bin/xset b off
+Name=Disable X bell
+Comment=Use xset to turn off the bell in X
+Terminal=false
+Type=Application
+StartupNotify=false
