@@ -41,17 +41,18 @@ def color_index2term(index):
 
     # Use several escape sequences so that 16-colors appears correctly on
     # non-256color terms
+    escape_index = None
     if index < 8:
-        escape = "\033[{}m".format(30 + index)
+        escape_index = 30 + index
     elif index < 16:
-        escape = "\033[{}m".format(90 - 8 + index)
-    else:
-        escape = "\033[38;5;{}m".format(index)
+        escape_index = 90 - 8 + index
 
-    if BLACK_ON_WHITE and r < 10 and g < 10 and b < 10:
-        escape += "\033[107m"
-    return escape + "{:3d}: {:02x}/{:02x}/{:02x}\033[m".format(
-        index, r, g, b)
+    return "\033[{}{}m{:3d}:{} {:02x}/{:02x}/{:02x}\033[m".format(
+        "107;" if BLACK_ON_WHITE and r < 10 and g < 10 and b < 10 else "",
+        "38;5;{}".format(index) if escape_index is None else escape_index,
+        index,
+        "" if escape_index is None else  "[{}]".format(escape_index),
+        r, g, b)
 
 
 # Display the table
