@@ -2,13 +2,19 @@
 # View iptables statistics from --list output
 # Filter out unmatched lines to have a more compact output
 
+# Default options
+IPT_NUMERIC=' --numeric'
+SHORT_OUTPUT='false'
+RUN_IP4='true'
+RUN_IP6='true'
+
 # Run iptables or ip6tables, filtering out non matched rules
 run_ipt_nomatch() {
     if [ $# -ge 2 ]
     then
-        $1 --numeric --verbose --list "$2" | grep -Ev '^\s*0\s*0'
+        $1 --verbose --list "$2" | grep -Ev '^\s*0\s*0'
     else
-        $1 --numeric --verbose --list | grep -Ev '^\s*0\s*0'
+        $1 --verbose --list | grep -Ev '^\s*0\s*0'
     fi
 }
 
@@ -19,7 +25,7 @@ ipt_stats() {
     CURRENT_CHAIN=""
 
     # Get active chains, which contains at least one active rule
-    for LINE in $(run_ipt_nomatch "$IPT" | tr ' ' '_')
+    for LINE in $(run_ipt_nomatch "$IPT --numeric" | tr ' ' '_')
     do
         if echo "$LINE" | grep -qE '^Chain_'
         then
@@ -33,24 +39,76 @@ ipt_stats() {
         then
             # We have a line which is not empty, show current chain
             # Replace "Chain ..." header line with "IPv4/6 Chain"
-            run_ipt_nomatch "$IPT" "$CURRENT_CHAIN" | \
-                sed "s/^\(Chain \)/${PREFIX} \1/"
-            echo ""
+            run_ipt_nomatch "$IPT$IPT_NUMERIC" "$CURRENT_CHAIN" | \
+                sed "s/^\(Chain \)/${PREFIX} \1/" | \
+                if "$SHORT_OUTPUT"
+                then
+                    # Remove second header line
+                    sed '2{/^ *[^0-9]/d}'
+                else
+                    # Add a blank line at the end
+                    cat
+                    echo ""
+                fi
             CURRENT_CHAIN=""
         fi
     done
     return
 }
 
-if ! which iptables > /dev/null 2>&1
-then
-    echo >&2 "Unable to find iptables."
-    exit 1
-fi
-ipt_stats IPv4 iptables || exit $?
+while getopts ":dhs46" OPT
+do
+    case "$OPT" in
+        h)
+            echo "Usage: $0 [OPTION]"
+            echo "Display some iptables statistics"
+            echo ""
+            echo "Options:"
+            echo "  -d       use DNS, don't use --numeric option in iptables"
+            echo "  -h       display this help and exit"
+            echo "  -s       make the output as short as possible"
+            echo "  -4       only run iptables"
+            echo "  -6       only run ip6tables"
+            exit
+            ;;
+        d)
+            IPT_NUMERIC=""
+            ;;
+        s)
+            SHORT_OUTPUT='true'
+            ;;
+        4)
+            RUN_IP4='true'
+            RUN_IP6='false'
+            ;;
+        6)
+            RUN_IP6='true'
+            RUN_IP4='false'
+            ;;
+        \?)
+            echo >&2 "$0: invalid option -- '$OPTARG'"
+            echo >&2 "Try '$0 --help' for more information."
+            exit 1
+            ;;
+    esac
+done
 
-# Run ip6tables if available
-if which ip6tables > /dev/null 2>&1
+if "$RUN_IP4"
 then
+    if ! which iptables > /dev/null 2>&1
+    then
+        echo >&2 "Unable to find iptables."
+        exit 1
+    fi
+    ipt_stats IPv4 iptables || exit $?
+fi
+
+if "$RUN_IP6"
+then
+    if ! which ip6tables > /dev/null 2>&1
+    then
+        echo >&2 "Unable to find ip6tables."
+        exit 1
+    fi
     ipt_stats IPv6 ip6tables || exit $?
 fi
