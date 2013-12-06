@@ -6,29 +6,37 @@
 # Busybox sh: $
 
 # Color rules:
-# * bold red for root, yellow otherwise
+# * local root: bold red hostname
+# * remote root: bold red hostname with @
+# * local user: yellow user @ green hostname
+# * remote user: yellow user @ cyan hostname
 # * green for local machine, cyan for remote host
 # * magenta/purple for working directory
 if [ "$(id -u)" -eq 0 ] ; then
-    BASH_PROMPT_USER='\[\e[1;31m\]\u\[\e[m\]'
-    ZSH_PROMPT_USER='%B%F{red}%n%f%b'
+    if [ -z "$SSH_CLIENT" ]; then
+        BASH_PROMPT='\[\e[1;31m\]\h\[\e[m\]'
+        ZSH_PROMPT='%B%F{red}%m%f%b'
+    else
+        BASH_PROMPT='\[\e[1;31m\]@\h\[\e[m\]'
+        ZSH_PROMPT='%B%F{red}@%m%f%b'
+    fi
 else
-    BASH_PROMPT_USER='\[\e[33m\]\u\[\e[m\]'
-    ZSH_PROMPT_USER='%F{yellow}%n%f'
-fi
+    BASH_PROMPT='\[\e[33m\]\u\[\e[m\]@'
+    ZSH_PROMPT='%F{yellow}%n%f@'
 
-if [ -z "$SSH_CLIENT" ]; then
-    BASH_PROMPT_HOST='\[\e[32m\]\h\[\e[m\]'
-    ZSH_PROMPT_HOST='%F{green}%m%f'
-else
-    BASH_PROMPT_HOST='\[\e[36m\]\h\[\e[m\]'
-    ZSH_PROMPT_HOST='%F{cyan}%m%f'
+    if [ -z "$SSH_CLIENT" ]; then
+        BASH_PROMPT="$BASH_PROMPT"'\[\e[32m\]\h\[\e[m\]'
+        ZSH_PROMPT="$ZSH_PROMPT"'%F{green}%m%f'
+    else
+        BASH_PROMPT="$BASH_PROMPT"'\[\e[36m\]\h\[\e[m\]'
+        ZSH_PROMPT="$ZSH_PROMPT"'%F{cyan}%m%f'
+    fi
 fi
 
 
 if [ -n "$BASH_VERSION" ]; then
     # Don't forget \[...\] to compute prompt width correctly
-    PS1="$BASH_PROMPT_USER@$BASH_PROMPT_HOST \[\e[35m\]\w\[\e[m\]\\\$ "
+    PS1="$BASH_PROMPT \[\e[35m\]\w\[\e[m\]\\\$ "
     # Set the title to user@host:dir
     case "$TERM" in
         xterm*|rxvt*)
@@ -36,7 +44,7 @@ if [ -n "$BASH_VERSION" ]; then
             ;;
     esac
 elif [ -n "$ZSH_VERSION" ]; then
-    PROMPT="$ZSH_PROMPT_USER@$ZSH_PROMPT_HOST %F{magenta}%~%f%# "
+    PROMPT="$ZSH_PROMPT %F{magenta}%~%f%# "
     # Display last returned value at the beginning of the prompt
     PROMPT="%(?..%F{red}[%?]%f )$PROMPT"
     # Right prompt with date
@@ -54,5 +62,4 @@ else
     PS1=$(id -nu)'@'$(hostname -s)'$ '
 fi
 
-unset BASH_PROMPT_USER ZSH_PROMPT_USER
-unset BASH_PROMPT_HOST ZSH_PROMPT_HOST
+unset BASH_PROMPT ZSH_PROMPT
