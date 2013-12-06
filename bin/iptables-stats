@@ -2,21 +2,55 @@
 # View iptables statistics from --list output
 # Filter out unmatched lines to have a more compact output
 
-ipt_stats() {
-    PREFIX=$1
-    IPT=$2
-    $IPT --list --numeric --verbose |grep -Ev '^\s*0\s*0' |\
-        sed "s/^\(Chain \)/${PREFIX} \1/"
+# Run iptables or ip6tables, filtering out non matched rules
+run_ipt_nomatch() {
+    if [ $# -ge 2 ]
+    then
+        $1 --numeric --verbose --list "$2" | grep -Ev '^\s*0\s*0'
+    else
+        $1 --numeric --verbose --list | grep -Ev '^\s*0\s*0'
+    fi
 }
 
-if ! which iptables > /dev/null 2>&1; then
+ipt_stats() {
+    local CURRENT_CHAIN IPT LINE PREFIX
+    PREFIX=$1
+    IPT=$2
+    CURRENT_CHAIN=""
+
+    # Get active chains, which contains at least one active rule
+    for LINE in $(run_ipt_nomatch "$IPT" | tr ' ' '_')
+    do
+        if echo "$LINE" | grep -qE '^Chain_'
+        then
+            CURRENT_CHAIN=$(echo "$LINE" | sed -n 's/^Chain_\(.*\)_(.*/\1/p')
+            if [ -z "$CURRENT_CHAIN" ]
+            then
+                echo >&2 "Unable to parse chain header line: $LINE"
+                return 1
+            fi
+        elif [ -n "$CURRENT_CHAIN" ] && echo "$LINE" | grep -qE '^_*[0-9]'
+        then
+            # We have a line which is not empty, show current chain
+            # Replace "Chain ..." header line with "IPv4/6 Chain"
+            run_ipt_nomatch "$IPT" "$CURRENT_CHAIN" | \
+                sed "s/^\(Chain \)/${PREFIX} \1/"
+            echo ""
+            CURRENT_CHAIN=""
+        fi
+    done
+    return
+}
+
+if ! which iptables > /dev/null 2>&1
+then
     echo >&2 "Unable to find iptables."
     exit 1
 fi
 ipt_stats IPv4 iptables || exit $?
 
 # Run ip6tables if available
-if which ip6tables > /dev/null 2>&1; then
-    echo ""
+if which ip6tables > /dev/null 2>&1
+then
     ipt_stats IPv6 ip6tables || exit $?
 fi
