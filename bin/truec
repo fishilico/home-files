@@ -1,0 +1,67 @@
+#!/bin/sh
+# Truecrypt helper
+# Mount an encrypted file which is specified as a parameter or in /etc/fstab as:
+#   #{truecrypt}/path/to/file
+
+
+# Ensure that loop module is loaded
+if [ ! -d /sys/module/loop ]
+then
+    echo "Loading loop module..."
+    sudo modprobe loop || exit $?
+fi
+
+
+truec_file() {
+    local C CRYPT_FILE
+    CRYPT_FILE="$1"
+
+    if ! truecrypt --text --list "$CRYPT_FILE" 2> /dev/null
+    then
+        echo "Mounting $CRYPT_FILE"
+        truecrypt --mount "$CRYPT_FILE" || exit $?
+    else
+        echo -n "Do you want to dismount $CRYPT_FILE ? [yN] "
+        while read C
+        do
+            case "$C" in
+              [yY])
+                echo "Dismounting $CRYPT_FILE"
+                truecrypt --text --dismount "$CRYPT_FILE" || exit $?
+                break
+                ;;
+              ""|[nN])
+                break
+                ;;
+            esac
+        done
+    fi
+
+    # Open directory if it is mounted
+    TC_MOUNTINFO=$(truecrypt --text --list "$CRYPT_FILE" 2> /dev/null)
+    if which xdg-open > /dev/null 2>&1 && [ -n "$TC_MOUNTINFO" ]
+    then
+        TC_MOUNTPOINT="${TC_MOUNTINFO##* }"
+        echo "Opening $TC_MOUNTPOINT"
+        xdg-open "$TC_MOUNTPOINT"
+    fi
+}
+
+if [ $# -ge 1 ]
+then
+    # Process each file on the command line
+    for FILE
+    do
+        truec_file "$FILE"
+    done
+else
+    # Process each file in /etc/fstab
+    OLD_IFS="$IFS"
+    IFS='
+'
+    for FILE in $(sed -n 's/^\s*#\s*{truecrypt}\s*\(.*\)$/\1/p' < /etc/fstab)
+    do
+        [ -z "$FILE" ] || truec_file "$FILE"
+    done
+    IFS="$OLD_IFS"
+fi
