@@ -68,8 +68,16 @@ ip4_to_ip6ll() {
     fi
     if [ -z "$MAC" ]
     then
-        echo >&2 "No MAC address found for $1"
-        return 1
+        # The cache may be empty ; send a ping to fill it
+        if [ "$#" -ge 2 ] && [ "$2" = "noresolv" ]
+        then
+            echo >&2 "No MAC address found for $1"
+            return 1
+        fi
+        echo >&2 "Ping $1 to fill ARP cache"
+        ping >&2 -i1 -c1 $1
+        ip4_to_ip6ll "$1" noresolv
+        return $?
     fi
     echo >&2 "MAC address $MAC on interface $IFACE"
     mac_to_ip6ll $MAC $IFACE
