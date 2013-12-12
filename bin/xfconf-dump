@@ -1,0 +1,15 @@
+#!/bin/sh
+# Dump xfconf configuration
+
+IS_FIRST=true
+for CHANNEL in $(xfconf-query --list |grep -iv '^Channels:' |sort)
+do
+    if $IS_FIRST
+    then
+        IS_FIRST=false
+    else
+        echo ""
+    fi
+    echo "[$CHANNEL]"
+    xfconf-query --channel "$CHANNEL" --list --verbose
+done
