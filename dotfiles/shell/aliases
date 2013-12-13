@@ -187,6 +187,9 @@ if type alias > /dev/null 2>&1 ; then
     elif which mailq > /dev/null 2>&1; then
         alias mailq-hold='mailq |lgrep -E "^[0-9A-F]*!"'
     fi
+
+    # gitk with all branches
+    alias gitka='gitk --all'
 fi
 
 # Some functions
