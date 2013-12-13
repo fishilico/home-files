@@ -109,7 +109,9 @@ if type alias > /dev/null 2>&1 ; then
     # Line-buffered grep, useful when selecting output of tail -F
     # Don't use colored output for lgrep
     if grep --help 2> /dev/null |grep -q -- --line-buffered; then
-        if [ -x /bin/grep ] ; then
+        if [ -x /usr/bin/grep ] ; then
+            alias lgrep='/usr/bin/grep --line-buffered'
+        elif [ -x /bin/grep ] ; then
             alias lgrep='/bin/grep --line-buffered'
         else
             alias lgrep='grep --line-buffered'
