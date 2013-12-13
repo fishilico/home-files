@@ -180,6 +180,13 @@ if type alias > /dev/null 2>&1 ; then
             alias dnssec_check='dig +sigchase +topdown'
         fi
     fi
+
+    # View mails in hold queue
+    if which postqueue > /dev/null 2>&1; then
+        alias mailq-hold='postqueue -p |lgrep -E "^[0-9A-F]*!"'
+    elif which mailq > /dev/null 2>&1; then
+        alias mailq-hold='mailq |lgrep -E "^[0-9A-F]*!"'
+    fi
 fi
 
 # Some functions
