@@ -246,3 +246,15 @@ get_https_cert() {
     openssl s_client -servername "$1" -connect "$1:443" < /dev/null \
          -showcerts | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'
 }
+
+# Combine postcat with less
+postless() {
+    local OUTPUT
+    OUTPUT="$(postcat "$@")"
+    # Use less only if postcat succeded
+    if [ "$?" -eq 0 ] ; then
+        echo "$OUTPUT" |less
+    else
+        echo "$OUTPUT"
+    fi
+}
