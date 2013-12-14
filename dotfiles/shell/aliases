@@ -101,9 +101,16 @@ if type alias > /dev/null 2>&1 ; then
     # Clear screen with ESC + c. Ctrl+L may also work.
     alias cls='printf "\033c"'
 
-    # Highlight grep results
+    # Options for grep: highlight results and exclude backup files
+    GREP_PARAMS=''
     if grep --help 2> /dev/null |grep -q -- --color; then
-        alias grep='grep --color=always'
+        GREP_PARAMS="$GREP_PARAMS --color=always"
+    fi
+    if grep --help 2> /dev/null |grep -q -- --exclude; then
+        GREP_PARAMS="$GREP_PARAMS --exclude='*~'"
+    fi
+    if [ -n "$GREP_PARAMS" ] ; then
+        alias grep="grep$GREP_PARAMS"
     fi
 
     # Line-buffered grep, useful when selecting output of tail -F
