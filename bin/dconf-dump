@@ -1,0 +1,37 @@
+#!/bin/sh
+# Dump dconf configuration
+# This script uses "dconf dump /" and sorts its output
+
+dump_dconf_dir() {
+    # Read an entry in subdirectories and keys
+    local ENTRIES ITEM SUBDIRS SUBKEYS
+    echo >&2 "Dumping $1"
+    ENTRIES="$(dconf list $1)"
+    SUBDIRS="$(echo "$ENTRIES" |grep '/$' |sort)"
+    SUBKEYS="$(echo "$ENTRIES" |grep '[^/]$' |sort)"
+    if [ -n "$SUBKEYS" ]
+    then
+        # Read all keys
+        echo ""
+        echo "$1" |sed 's,/\(.*\)/,[\1],'
+        for ITEM in $SUBKEYS
+        do
+            echo "$ITEM=$(dconf read "$1$ITEM")"
+        done
+    fi
+    if [ -n "$SUBDIRS" ]
+    then
+        # Recurse over subdirectories
+        for ITEM in $SUBDIRS
+        do
+            dump_dconf_dir "$1$ITEM"
+        done
+    fi
+}
+
+# Use for loops with lines
+OLD_IFS="$IFS"
+IFS='
+'
+dump_dconf_dir / |sed '1{/^$/d}'
+IFS="$OLD_IFS"
