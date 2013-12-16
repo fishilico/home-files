@@ -2,7 +2,7 @@
 # Dump xfconf configuration
 
 IS_FIRST=true
-for CHANNEL in $(xfconf-query --list |grep -iv '^Channels:' |sort)
+for CHANNEL in $(xfconf-query --list |sed '1{/^.*:/d}' |sort)
 do
     if $IS_FIRST
     then
@@ -11,5 +11,5 @@ do
         echo ""
     fi
     echo "[$CHANNEL]"
-    xfconf-query --channel "$CHANNEL" --list --verbose
+    xfconf-query --channel "$CHANNEL" --list --verbose |sort
 done
