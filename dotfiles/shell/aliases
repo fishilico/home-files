@@ -244,7 +244,17 @@ epoch2date() {
             shift
         done
     else
-        echo >&2 "Usage: epoch2date timestamp [...]"
+        echo >&2 "Usage: epoch2date TIMESTAMP [...]"
+    fi
+}
+epoch2utc() {
+    if [ $# -ge 1 ] ; then
+        while [ $# -ge 1 ] ; do
+            date -u "--date=@$1"
+            shift
+        done
+    else
+        echo >&2 "Usage: epoch2utc TIMESTAMP [...]"
     fi
 }
 
