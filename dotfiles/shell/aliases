@@ -197,6 +197,25 @@ if type alias > /dev/null 2>&1 ; then
 
     # gitk with all branches
     alias gitka='gitk --all'
+
+    # hexdump + ascii output, with xxd, od or hexdump
+    if which xxd > /dev/null 2>&1; then
+        alias hexa='xxd'
+        alias hexa32='xxd -c32'
+    elif which od > /dev/null 2>&1; then
+        alias hexa='od -tx1z'
+        alias hexa32='od -tx1z -w32'
+    elif which hexdump > /dev/null 2>&1; then
+        # hexdump command from bsdmainutils package
+        # slightly different from "hexdump -C"
+        _HEXDUMP_PART1='"%07.7_ax: " 16/1 "%02x ""  "'
+        _HEXDUMP_PART2='16/1 "%_p""\n"'
+        alias hexa="hexdump -e '$_HEXDUMP_PART1' -e '$_HEXDUMP_PART2'"
+        _HEXDUMP_PART1='"%07.7_ax: " 32/1 "%02x ""  "'
+        _HEXDUMP_PART2='32/1 "%_p""\n"'
+        alias hexa32="hexdump -e '$_HEXDUMP_PART1' -e '$_HEXDUMP_PART2'"
+        unset _HEXDUMP_PART1 _HEXDUMP_PART2
+    fi
 fi
 
 # Some functions
