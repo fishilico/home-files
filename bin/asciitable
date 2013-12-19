@@ -1,0 +1,93 @@
+#!/bin/sh
+# Print ASCII table, more exactly the current charset
+# More information about ASCII can be found in ascii(7) man page.
+
+# Use alternate character set
+# Note: tput -Txterm smacs = \e(0 and tput -Txterm rmacs = \e(B
+USE_ACS=false
+USE_LATIN1=false
+
+print_ascii() {
+    local C L NUM
+    # Print header
+    printf '   '
+    for C in $(seq 0 15)
+    do
+        printf ' %X' "$C"
+    done
+    printf '\n  -'
+    for C in $(seq 0 15)
+    do
+        printf '%s' '--'
+    done
+
+    # Print each line
+    for L in $(seq 0 16 255)
+    do
+        printf '\n%02X:' "$L"
+        for C in $(seq 0 15)
+        do
+            # Convert ($L + $C) to octal
+            if [ "$L" -lt 32 ]
+            then
+                NUM=$(($L + $C + 64))
+                printf '^'
+            else
+                NUM=$(($L + $C))
+                printf ' '
+            fi
+            # Use "printf %b" to execute the backslashed sequence in dash
+            # zsh printf built-in function doesn't understand %b
+            if [ -n "$ZSH_VERSION" ]
+            then
+                printf "\\$(($NUM/64*100 + $NUM%64/8*10 + $NUM%8))"
+            else
+                printf '%b' "\\$(($NUM/64*100 + $NUM%64/8*10 + $NUM%8))"
+            fi
+        done
+    done
+    printf '\n'
+}
+
+while getopts ":ahl" OPT
+do
+    case "$OPT" in
+        h)
+            echo "Usage: $0 [OPTION]"
+            echo "Print ASCII table"
+            echo ""
+            echo "Options:"
+            echo "  -a       print alternate character set (tput smacs)"
+            echo "  -h       display this help and exit"
+            echo "  -l       display latin-1 table in an utf-8 terminal"
+            exit
+            ;;
+        a)
+            USE_ACS=true
+            ;;
+        l)
+            USE_LATIN1=true
+            ;;
+        \?)
+            echo >&2 "$0: invalid option '$OPTARG'"
+            echo >&2 "Try '$0 --help' for more information."
+            exit 1
+            ;;
+    esac
+done
+
+if "$USE_ACS" && ! tput smacs
+then
+    echo >&2 "Unable to begin alternate character set"
+    exit 1
+fi
+if "$USE_LATIN1"
+then
+    print_ascii |iconv -f iso-8859-1 -t utf-8
+else
+    print_ascii
+fi
+if "$USE_ACS"
+then
+    tput rmacs
+fi
