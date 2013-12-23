@@ -1,0 +1,20 @@
+#!/bin/sh
+# Set the title of the current terminal
+
+case "$TERM" in
+    xterm*|rxvt*)
+        # xterm uses \e]0;title\a or \e]2;title\a
+        printf '%b%s%b' '\033]0;' "$*" '\007'
+        ;;
+    screen*)
+        # screen uses \ektitle\e\\
+        printf '%b%s%b' '\033k' "$*" '\033\\'
+        ;;
+    '')
+        echo >&2 "Error: \$TERM is not set"
+        exit 1
+        ;;
+    *)
+        echo >&2 "Unsupported terminal: $TERM"
+        exit 1
+esac
