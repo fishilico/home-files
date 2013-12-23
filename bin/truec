@@ -56,12 +56,9 @@ then
     done
 else
     # Process each file in /etc/fstab
-    OLD_IFS="$IFS"
-    IFS='
-'
-    for FILE in $(sed -n 's/^\s*#\s*{truecrypt}\s*\(.*\)$/\1/p' < /etc/fstab)
+    sed -n 's/^\s*#\s*{truecrypt}\s*\(.*\)$/\1/p' < /etc/fstab | \
+    while IFS= read -r FILE
     do
         [ -z "$FILE" ] || truec_file "$FILE"
     done
-    IFS="$OLD_IFS"
 fi
