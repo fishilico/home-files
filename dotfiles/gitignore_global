@@ -4,5 +4,8 @@
 *.bak
 build.xml
 manifest.mf
+*.mo
 *.nja
-.*.swp
+*.o
+*.py[co]
+.*.sw[op]
