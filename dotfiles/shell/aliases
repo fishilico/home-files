@@ -147,6 +147,11 @@ if type alias > /dev/null 2>&1 ; then
         alias diff='diff -u'
         alias svn-diff='svn diff'
     fi
+
+    # Diff for patches: all text, new file, show C function, unified context
+    alias diff-patch='diff -aNpu'
+
+    # Use most to display man pages using colors
     if which most > /dev/null 2>&1; then
         alias man='man -P most'
     fi
