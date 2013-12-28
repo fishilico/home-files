@@ -37,6 +37,11 @@ if [ -r "$REAL_HOME/.pythonrc" ] ; then
     export PYTHONSTARTUP="$REAL_HOME/.pythonrc"
 fi
 
+# Debian quilt configuration
+if [ -r "$REAL_HOME/.quiltrc-dpkg" ] && type alias > /dev/null 2>&1 ; then
+    alias dquilt="quilt --quiltrc=$REAL_HOME/.quiltrc-dpkg"
+fi
+
 # Prevent Erase in Line (EL) to Right (\33[K) in the colored output of grep.
 # Please read grep man page for further information.
 export GREP_COLORS='ne'
