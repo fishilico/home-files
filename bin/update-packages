@@ -29,20 +29,12 @@ detect_os() {
         echo "debian"
     elif [ -r "/etc/gentoo-release" ]
     then
-        echo "gentpp"
+        echo "gentoo"
     else
         # Failure
         echo >&2 "Unable to automatically detect OS"
     fi
 }
-
-# Use sudo if user is not root
-if [ $(id -u) = 0 ]
-then
-    SUDO=""
-else
-    SUDO="sudo"
-fi
 
 OS=$(detect_os)
 case $OS in
@@ -51,13 +43,24 @@ case $OS in
         if which yaourt > /dev/null 2>&1
         then
             exec yaourt -Syu --devel --aur
+        elif [ "$(id -u)" = 0 ]
+        then
+            exec pacman -Syu
         else
-            exec $SUDO pacman -Syu
+            # Only print the targets
+            exec pacman -Syup
         fi
         ;;
     debian)
-        $SUDO apt-get update
-        exec $SUDO apt-get dist-upgrade
+        if [ "$(id -u)" = 0 ]
+        then
+            apt-get update
+            exec apt-get dist-upgrade
+        else
+            # Perform a simulation of events that would occur
+            apt-get -s update
+            exec apt-get -s dist-upgrade
+        fi
         ;;
     gentoo)
         # -t = --tree
@@ -65,7 +68,13 @@ case $OS in
         # -N = --newuse
         # -u = --update
         # -D = --deep
-        exec $SUDO emerge -taNuD -with-bdeps
+        # -p = --pretend
+        if [ "$(id -u)" = 0 ]
+        then
+            exec emerge -taNuD --with-bdeps=y
+        else
+            exec emerge -taNuDp --with-bdeps=y
+        fi
         ;;
     "")
         exit 1
@@ -74,6 +83,3 @@ case $OS in
         echo >&2 "Not yet implemented for OS $OS"
         ;;
 esac
-
-# TODO: Arch => exec yaourt -Syu --devel --aur
-# Other: nonroot => pretend
