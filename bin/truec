@@ -22,7 +22,7 @@ truec_file() {
         truecrypt --mount "$CRYPT_FILE" || exit $?
     else
         echo -n "Do you want to dismount $CRYPT_FILE ? [yN] "
-        while read C
+        while read C < /dev/tty
         do
             case "$C" in
               [yY])
