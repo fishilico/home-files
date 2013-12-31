@@ -39,6 +39,20 @@ MYUSER = os.environ.get('USER', 'root')
 DEFAULT_SENDER = '{}@{}'.format(MYUSER, MYHOST)
 
 
+# Python2 compatibility: ConnectionRefusedError doesn't exist
+try:
+    ConnectionRefusedError
+except NameError:
+    class ConnectionRefusedError(Exception):
+        pass
+
+# Import errno if available
+try:
+    from errno import ECONNREFUSED
+except ImportError:
+    ECONNREFUSED = 111
+
+
 def connect_tcp(host, port):
     """Open a TCP socket to given host:port and return a file object"""
     # Get address information
@@ -55,6 +69,13 @@ def connect_tcp(host, port):
                 "Failed to connect to {} port {}: connection refused"
                 .format(sockaddr[0], sockaddr[1]))
             continue
+        except socket.error as exc:
+            if exc.errno == ECONNREFUSED:
+                logger.warning(
+                    "Failed to connect to {} port {}: connection refused"
+                    .format(sockaddr[0], sockaddr[1]))
+                continue
+            raise
         else:
             logger.info(
                 "Connected to {} port {}".format(sockaddr[0], sockaddr[1]))
