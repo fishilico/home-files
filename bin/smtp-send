@@ -144,7 +144,8 @@ def main(argv=None):
                         break
                     ssend(sfile, buffer)
         else:
-            logger.debug("Reading data from standard input. End with '.'.")
+            logger.debug("Reading data from standard input")
+            logger.debug("Please write: headers, blank line, body, ^D (EOF)")
             for line in sys.stdin:
                 if line.rstrip('\r\n') == '.':
                     break
