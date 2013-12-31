@@ -1,0 +1,155 @@
+#!/usr/bin/env python
+# -*- coding:UTF-8 -*-
+# Copyright (c) 2013 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Send a mail to a SMTP server
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+import argparse
+import logging
+import os
+import socket
+import sys
+
+
+logger = logging.getLogger(__name__)
+
+
+MYHOST = socket.gethostname()
+MYUSER = os.environ.get('USER', 'root')
+DEFAULT_SENDER = '@'.join((MYUSER, MYHOST))
+
+
+def connect_tcp(host, port):
+    """Open a TCP socket to given host:port and return a file object"""
+    # Get address information
+    addressinfos = socket.getaddrinfo(
+        host, port,
+        socket.AF_UNSPEC, socket.SOCK_STREAM, socket.IPPROTO_TCP)
+    for family, socktype, proto, canonname, sockaddr in addressinfos:
+        # Open a TCP socket
+        sock = socket.socket(family, socktype)
+        try:
+            sock.connect(sockaddr)
+        except ConnectionRefusedError:
+            logger.warning(
+                "Failed to connect to {} port {}: connection refused"
+                .format(sockaddr[0], sockaddr[1]))
+            continue
+        else:
+            logger.info(
+                "Connected to {} port {}".format(sockaddr[0], sockaddr[1]))
+            try:
+                return sock.makefile('rwb')
+            finally:
+                sock.close()
+    logger.fatal("Unable to connect to {} port {}".format(host, port))
+    return
+
+
+def ssend(sockfile, message):
+    """Send data to the socket and log what is sent"""
+    logger.info("[-->] Send: {}".format(message.strip()))
+    if not isinstance(message, bytes):
+        message = message.encode('utf-8')
+    sockfile.write(message)
+    sockfile.flush()
+
+
+def srecvline(sockfile):
+    """Receive a line from the socket and log it"""
+    message = sockfile.readline()
+    message = message.decode('iso-8859-1', errors='ignore')
+    logger.info("[<--] Rcv: {}".format(message.strip()))
+    return message
+
+
+def main(argv=None):
+    """Program entry point"""
+    parser = argparse.ArgumentParser(description="Send mail to a SMTP server")
+    parser.add_argument('-s', '--server', default='localhost',
+                        help="SMTP server to contact [localhost]")
+    parser.add_argument('-p', '--port', type=int, default=25,
+                        help="SMTP port [25]")
+    parser.add_argument('-H', '--hostname', default=MYHOST,
+                        help="hostname in HELO message [{}]".format(MYHOST))
+    parser.add_argument('-f', '--mail-from', default=DEFAULT_SENDER,
+                        help="envelope sender [@]".format(DEFAULT_SENDER))
+    parser.add_argument('-m', '--message', metavar='MSGFILE',
+                        help="message to send (use std input if not given)")
+    parser.add_argument('recipients', metavar='RCPT', nargs='+',
+                        help="envelope recipients")
+    args = parser.parse_args(argv)
+
+    sfile = connect_tcp(args.server, args.port)
+    if sfile is None:
+        return 1
+
+    try:
+        ssend(sfile, 'HELO {}\n'.format(args.hostname))
+        line = srecvline(sfile)
+        if line[0] != '2':
+            logger.fatal("Failed handshake: {}".format(line))
+
+        ssend(sfile, 'MAIL FROM:<{}>\n'.format(args.mail_from))
+        line = srecvline(sfile)
+        if line[0] != '2':
+            logger.fatal("Rejected sender: {}".format(line))
+
+        for recipient in args.recipients:
+            ssend(sfile, 'RCPT TO:<{}>\n'.format(recipient))
+            line = srecvline(sfile)
+            if line[0] != '2':
+                logger.fatal("Rejected recipient: {}".format(line))
+
+        ssend(sfile, 'DATA\n')
+        line = srecvline(sfile)
+        if line[0] != '2':
+            logger.fatal("Rejected data begin: {}".format(line))
+
+        # Read file if given
+        if args.message is not None:
+            with open(args.message, 'rb') as fmsg:
+                while True:
+                    buffer = fmsg.read(4096)
+                    if not buffer:
+                        break
+                    ssend(sfile, buffer)
+        else:
+            logger.debug("Reading data from standard input. End with '.'.")
+            for line in sys.stdin:
+                if line.rstrip('\r\n') == '.':
+                    break
+                ssend(sfile, line.rstrip() + '\n')
+
+        ssend(sfile, '\n.\n')
+        ssend(sfile, 'QUIT\n')
+    finally:
+        sfile.close()
+    return 0
+
+
+if __name__ == '__main__':
+    logging.basicConfig(
+        format='[%(levelname)s] %(message)s',
+        level=logging.DEBUG)
+    sys.exit(main())
