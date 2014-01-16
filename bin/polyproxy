@@ -1,12 +1,18 @@
 #!/bin/sh
 # Polytechnique proxy configuration
 # Use this file with "source"
+# Student config:
+#     DNS 129.104.201.53, 129.104.201.51
+#     proxy 129.104.247.2 (kuzh.polytechnique.fr)
+# Non-student config:
+#     DNS 129.104.30.41, 129.104.7.41
+#     proxy 129.104.38.5 (garvleiz.polytechnique.fr)
 
 export all_proxy="http://kuzh.polytechnique.fr:8080/"
 export http_proxy="http://kuzh.polytechnique.fr:8080/"
 export https_proxy="http://kuzh.polytechnique.fr:8080/"
 export ftp_proxy="http://kuzh.polytechnique.fr:8080/"
-export no_proxy="eleves.polytechnique.fr"
+export no_proxy='.polytechnique.fr,.eleves.polytechnique.fr'
 
 # Use socat, connect (Debian) or connect-procy (Ubuntu) for ssh
 export SSH_PROXYCOMMAND=""
@@ -22,5 +28,35 @@ then
 fi
 if type alias > /dev/null 2>&1 && [ -n "$SSH_PROXYCOMMAND" ]
 then
+    alias scpExt="scp -o ProxyCommand='$SSH_PROXYCOMMAND'"
     alias sshExt="ssh -o ProxyCommand='$SSH_PROXYCOMMAND'"
+
+    # Chromium with proxy autoconfiguration
+    alias chromium-xpac='chromium --proxy-pac-url="http://config.eleves.polytechnique.fr/proxy.pac"'
+    alias chromium-xpro="chromium --proxy-server=$http_proxy"
 fi
+
+# Non-proxied addresses (useful when configuring routes):
+#     129.104.30.0/24 (DMZ)
+#     129.104.38.10/32 (helixium.polytechnique.fr video streaming)
+#     129.104.192.0/18 (=/255.255.192.0)
+
+# Add all routes by specifing a gateway
+xroutes_add_via() {
+    ip -4 route add 129.104.30.0/24 via $1
+    ip -4 route add 129.104.38.10/32 via $1
+    ip -4 route add 129.104.192.0/18 via $1
+    echo "Added routes to X via $1"
+}
+# Add all routes with current gateway
+xroutes_add() {
+    local GW
+    GW=$(ip -4 route get 129.104.255.255 |sed -n '1s/^.*via\s\+\([0-9.]\+\).*$/\1/p')
+    xroutes_add_via "$GW"
+}
+xroutes_del() {
+    ip -4 route del 129.104.30.0/24
+    ip -4 route del 129.104.38.10/32
+    ip -4 route del 129.104.192.0/18
+    echo "Deleted routes to X"
+}
