@@ -4,6 +4,11 @@
 import argparse
 import socket
 
+# socket.IPPROTO_SCTP is not defined in Python 2
+if 'IPPROTO_SCTP' not in socket.__all__:
+    socket.IPPROTO_SCTP = 132
+    socket.__all__ += 'IPPROTO_SCTP'
+
 
 def address_family(value):
     """Convert a string to an address family"""
@@ -45,93 +50,98 @@ def proto_family(value):
     raise argparse.ArgumentTypeError("%r is not a protocol family" % value)
 
 
-# Retrieve socket AF_, SOCK_ and SOL_ constants
-known_af = {} # pylint: disable-msg=C0103
-known_sock = {} # pylint: disable-msg=C0103
-known_proto = {} # pylint: disable-msg=C0103
-for constant in socket.__all__:
-    if constant.startswith('AF_'):
-        known_af[getattr(socket, constant)] = constant[3:].lower()
-    if constant.startswith('SOCK_'):
-        known_sock[getattr(socket, constant)] = constant[5:].lower()
-    if constant.startswith('IPPROTO_'):
-        known_proto[getattr(socket, constant)] = constant[8:].lower()
-
-# socket.IPPROTO_SCTP is not defined in Python 2
-IPPROTO_SCTP = 132
-known_proto[IPPROTO_SCTP] = 'sctp'
+def retrieve_known_constants():
+    """Retrieve socket AF_, SOCK_ and SOL_ constants"""
+    known_af = {}
+    known_sock = {}
+    known_proto = {}
+    for constant in socket.__all__:
+        if constant.startswith('AF_'):
+            known_af[getattr(socket, constant)] = constant[3:].lower()
+        if constant.startswith('SOCK_'):
+            known_sock[getattr(socket, constant)] = constant[5:].lower()
+        if constant.startswith('IPPROTO_'):
+            known_proto[getattr(socket, constant)] = constant[8:].lower()
+    return known_af, known_sock, known_proto
 
 
-# Parse command line
-parser = argparse.ArgumentParser( # pylint: disable-msg=C0103
-    description="Resolve domain names and print "
-    "(host, address, family, type, proto)")
-parser.add_argument('hosts', metavar='HOST', nargs='+',
-                    help='hostname')
-parser.add_argument('--port', action='store',
-                    type=int, default=None,
-                    help="port number (default 0)")
+def main(argv=None):
+    """Parse arguments and run getaddrinfo on hostnames"""
+    # pylint: disable=R0914
+    parser = argparse.ArgumentParser(
+        description="Resolve domain names and print "
+        "(host, address, family, type, proto)")
+    parser.add_argument('hosts', metavar='HOST', nargs='+',
+                        help='hostname')
+    parser.add_argument('--port', action='store',
+                        type=int, default=None,
+                        help="port number (default 0)")
 
-parser.add_argument('-f', '--family', action='store',
-                    type=address_family, default=socket.AF_UNSPEC,
-                    help="address family, like AF_INET and AF_INET6")
-parser.add_argument('-4', '--ipv4', action='store_const',
-                    dest='family', const=socket.AF_INET,
-                    help="use IPv4 address family (AF_INET)")
-parser.add_argument('-6', '--ipv6', action='store_const',
-                    dest='family', const=socket.AF_INET6,
-                    help="use IPv6 address family (AF_INET6)")
+    parser.add_argument('-f', '--family', action='store',
+                        type=address_family, default=socket.AF_UNSPEC,
+                        help="address family like AF_INET and AF_INET6")
+    parser.add_argument('-4', '--ipv4', action='store_const',
+                        dest='family', const=socket.AF_INET,
+                        help="use IPv4 address family (AF_INET)")
+    parser.add_argument('-6', '--ipv6', action='store_const',
+                        dest='family', const=socket.AF_INET6,
+                        help="use IPv6 address family (AF_INET6)")
 
-parser.add_argument('-s', '--socktype', action='store',
-                    type=socket_type, default=0,
-                    help="socket type, like SOCK_STREAM or SOCK_DGRAM")
-parser.add_argument('--stream', action='store_const',
-                    dest='socktype', const=socket.SOCK_STREAM,
-                    help="STREAM socket type")
-parser.add_argument('--dgram', action='store_const',
-                    dest='socktype', const=socket.SOCK_DGRAM,
-                    help="DGRAM socket type")
-parser.add_argument('--seq', action='store_const',
-                    dest='socktype', const=socket.SOCK_SEQPACKET,
-                    help="SEQPACKET socket type")
-parser.add_argument('-r', '--raw', action='store_const',
-                    dest='socktype', const=socket.SOCK_RAW,
-                    help="RAW socket type")
+    parser.add_argument('-s', '--socktype', action='store',
+                        type=socket_type, default=0,
+                        help="socket type like SOCK_STREAM or SOCK_DGRAM")
+    parser.add_argument('--stream', action='store_const',
+                        dest='socktype', const=socket.SOCK_STREAM,
+                        help="STREAM socket type")
+    parser.add_argument('--dgram', action='store_const',
+                        dest='socktype', const=socket.SOCK_DGRAM,
+                        help="DGRAM socket type")
+    parser.add_argument('--seq', action='store_const',
+                        dest='socktype', const=socket.SOCK_SEQPACKET,
+                        help="SEQPACKET socket type")
+    parser.add_argument('-r', '--raw', action='store_const',
+                        dest='socktype', const=socket.SOCK_RAW,
+                        help="RAW socket type")
 
-parser.add_argument('-p', '--proto', action='store',
-                    type=proto_family, default=0,
-                    help="protocol family, like IPPROTO_TCP or IPPROTO_UDP")
-parser.add_argument('-t', '--tcp', action='store_const',
-                    dest='proto', const=socket.IPPROTO_TCP,
-                    help="TCP family")
-parser.add_argument('-u', '--udp', action='store_const',
-                    dest='proto', const=socket.IPPROTO_UDP,
-                    help="UDP family")
-parser.add_argument('--sctp', action='store_const',
-                    dest='proto', const=IPPROTO_SCTP,
-                    help="SCTP family")
-args = parser.parse_args() # pylint: disable-msg=C0103
+    parser.add_argument('-p', '--proto', action='store',
+                        type=proto_family, default=0,
+                        help="protocol family like IPPROTO_TCP or IPPROTO_UDP")
+    parser.add_argument('-t', '--tcp', action='store_const',
+                        dest='proto', const=socket.IPPROTO_TCP,
+                        help="TCP family")
+    parser.add_argument('-u', '--udp', action='store_const',
+                        dest='proto', const=socket.IPPROTO_UDP,
+                        help="UDP family")
+    parser.add_argument('--sctp', action='store_const',
+                        dest='proto', const=socket.IPPROTO_SCTP,
+                        help="SCTP family")
+    args = parser.parse_args(argv)
 
-# List hosts
-for host in args.hosts:
-    addressinfos = socket.getaddrinfo(host, args.port,
-                                      args.family, args.socktype,
-                                      args.proto, socket.AI_CANONNAME)
-    for family, socktype, proto, canonname, sockaddr in addressinfos:
-        if canonname and canonname != host.strip('.'):
-            print("CNAME " + host + " = " + canonname)
-        (address, port) = sockaddr[:2]
-        if family == socket.AF_INET6:
-            flow_info, scope_id = sockaddr[2:]
-            if scope_id:
-                address += " scope " + str(scope_id)
-            if flow_info:
-                address += " flow " + str(flow_info)
+    known_af, known_sock, known_proto = retrieve_known_constants()
 
-        line = host + " " + address
-        if port:
-            line += " port " + str(port)
-        line += " " + known_af.get(family, "family-" + str(family))
-        line += " " + known_sock.get(socktype, "socktype-" + str(socktype))
-        line += " " + known_proto.get(proto, "proto-" + str(proto))
-        print(line)
+    for host in args.hosts:
+        addressinfos = socket.getaddrinfo(host, args.port,
+                                          args.family, args.socktype,
+                                          args.proto, socket.AI_CANONNAME)
+        for family, socktype, proto, canonname, sockaddr in addressinfos:
+            if canonname and canonname != host.strip('.'):
+                print("CNAME " + host + " = " + canonname)
+            (address, port) = sockaddr[:2]
+            if family == socket.AF_INET6:
+                flow_info, scope_id = sockaddr[2:]
+                if scope_id:
+                    address += " scope " + str(scope_id)
+                if flow_info:
+                    address += " flow " + str(flow_info)
+
+            line = host + " " + address
+            if port:
+                line += " port " + str(port)
+            line += " " + known_af.get(family, "family-" + str(family))
+            line += " " + known_sock.get(socktype, "socktype-" + str(socktype))
+            line += " " + known_proto.get(proto, "proto-" + str(proto))
+            print(line)
+
+
+if __name__ == '__main__':
+    main()
