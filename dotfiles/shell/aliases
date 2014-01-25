@@ -85,6 +85,9 @@ if type alias > /dev/null 2>&1 ; then
     # Get file attributes, not restricted to "^user\\."
     alias getextattr='getfattr -m - -d'
 
+    # Run restorecon on system folders
+    alias restorecon-sys='restorecon -R / -e /home -e /media -e /mnt'
+
     # List processes
     alias psa='ps -A'
     alias pse='ps -efH'
