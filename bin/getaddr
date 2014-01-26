@@ -79,44 +79,47 @@ def main(argv=None):
                         type=int, default=None,
                         help="port number (default 0)")
 
-    parser.add_argument('-f', '--family', action='store',
-                        type=address_family, default=socket.AF_UNSPEC,
-                        help="address family like AF_INET and AF_INET6")
-    parser.add_argument('-4', '--ipv4', action='store_const',
-                        dest='family', const=socket.AF_INET,
-                        help="use IPv4 address family (AF_INET)")
-    parser.add_argument('-6', '--ipv6', action='store_const',
-                        dest='family', const=socket.AF_INET6,
-                        help="use IPv6 address family (AF_INET6)")
+    group = parser.add_argument_group('address family')
+    group.add_argument('-f', '--family', action='store',
+                       type=address_family, default=socket.AF_UNSPEC,
+                       help="address family like AF_INET and AF_INET6")
+    group.add_argument('-4', '--ipv4', action='store_const',
+                       dest='family', const=socket.AF_INET,
+                       help="use IPv4 address family (AF_INET)")
+    group.add_argument('-6', '--ipv6', action='store_const',
+                       dest='family', const=socket.AF_INET6,
+                       help="use IPv6 address family (AF_INET6)")
 
-    parser.add_argument('-s', '--socktype', action='store',
-                        type=socket_type, default=0,
-                        help="socket type like SOCK_STREAM or SOCK_DGRAM")
-    parser.add_argument('--stream', action='store_const',
-                        dest='socktype', const=socket.SOCK_STREAM,
-                        help="STREAM socket type")
-    parser.add_argument('--dgram', action='store_const',
-                        dest='socktype', const=socket.SOCK_DGRAM,
-                        help="DGRAM socket type")
-    parser.add_argument('--seq', action='store_const',
-                        dest='socktype', const=socket.SOCK_SEQPACKET,
-                        help="SEQPACKET socket type")
-    parser.add_argument('-r', '--raw', action='store_const',
-                        dest='socktype', const=socket.SOCK_RAW,
-                        help="RAW socket type")
+    group = parser.add_argument_group('socket type')
+    group.add_argument('-s', '--socktype', action='store',
+                       type=socket_type, default=0,
+                       help="socket type like SOCK_STREAM or SOCK_DGRAM")
+    group.add_argument('--stream', action='store_const',
+                       dest='socktype', const=socket.SOCK_STREAM,
+                       help="STREAM socket type")
+    group.add_argument('--dgram', action='store_const',
+                       dest='socktype', const=socket.SOCK_DGRAM,
+                       help="DGRAM socket type")
+    group.add_argument('--seq', action='store_const',
+                       dest='socktype', const=socket.SOCK_SEQPACKET,
+                       help="SEQPACKET socket type")
+    group.add_argument('-r', '--raw', action='store_const',
+                       dest='socktype', const=socket.SOCK_RAW,
+                       help="RAW socket type")
 
-    parser.add_argument('-p', '--proto', action='store',
-                        type=proto_family, default=0,
-                        help="protocol family like IPPROTO_TCP or IPPROTO_UDP")
-    parser.add_argument('-t', '--tcp', action='store_const',
-                        dest='proto', const=socket.IPPROTO_TCP,
-                        help="TCP family")
-    parser.add_argument('-u', '--udp', action='store_const',
-                        dest='proto', const=socket.IPPROTO_UDP,
-                        help="UDP family")
-    parser.add_argument('--sctp', action='store_const',
-                        dest='proto', const=socket.IPPROTO_SCTP,
-                        help="SCTP family")
+    group = parser.add_argument_group('protocol family')
+    group.add_argument('-p', '--proto', action='store',
+                       type=proto_family, default=0,
+                       help="protocol family like IPPROTO_TCP or IPPROTO_UDP")
+    group.add_argument('-t', '--tcp', action='store_const',
+                       dest='proto', const=socket.IPPROTO_TCP,
+                       help="TCP family")
+    group.add_argument('-u', '--udp', action='store_const',
+                       dest='proto', const=socket.IPPROTO_UDP,
+                       help="UDP family")
+    group.add_argument('--sctp', action='store_const',
+                       dest='proto', const=socket.IPPROTO_SCTP,
+                       help="SCTP family")
     args = parser.parse_args(argv)
 
     known_af, known_sock, known_proto = retrieve_known_constants()
