@@ -1,0 +1,120 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2014 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Display the memory mapping of some processes
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+
+import argparse
+import os
+import sys
+
+
+def human_size(size):
+    """Convert a size to a human format"""
+    if size < 1024:
+        return '{}B'.format(size)
+    elif size < 1024 ** 2:
+        return '{:5g}K'.format(round(float(size) / 1024, 2))
+    elif size < 1024 ** 3:
+        return '{:5g}M'.format(round(float(size) / (1024 ** 2), 2))
+    else:
+        return '{:5g}G'.format(round(float(size) / (1024 ** 3), 2))
+
+
+def _display_pmaps_line(addr1, addr2, perms, path):
+    """Display a line of a process mapping"""
+    size = int(addr2, 16) - int(addr1, 16)
+    print('{:>16s}-{:>16s} ({}, {}){}'.format(
+        addr1, addr2,
+        human_size(size), perms,
+        ': ' + path if path is not None else ''))
+
+
+def display_proc_maps(pid, do_group):
+    """Display the memory mapping of a processus"""
+    if pid < 0:
+        sys.stderr.write("Invalid PID: {}\n".format(pid))
+        return False
+    if not pid:
+        pid = 'self'
+    try:
+        with open('/proc/{}/maps'.format(pid), 'r') as fmaps:
+            print("Memory mapping of process {}:".format(pid))
+            p_addr1, p_addr2 = None, None
+            p_perms, p_path = None, None
+            for line in fmaps:
+                sline = line.split()
+                addr1, addr2 = sline[0].split('-')
+                perms = sline[1]
+                path = sline[5] if len(sline) >= 6 else None
+                if path is None and sline[3:] != ['00:00', '0']:
+                    path = '[dev {} ino {}]'.format(sline[3], sline[4])
+
+                if not do_group:
+                    # Just display the line without any smart logic
+                    _display_pmaps_line(addr1, addr2, perms, path)
+                elif (p_addr1 is not None and p_addr2 == addr1
+                      and p_path == path):
+                    # Group continuous lines
+                    p_addr2 = addr2
+                    p_perms = ''.join(p1 if p1 == p2 else '*'
+                                      for p1, p2 in zip(perms, p_perms))
+                else:
+                    # Print previous item and update
+                    if p_addr1 is not None:
+                        _display_pmaps_line(p_addr1, p_addr2, p_perms, p_path)
+                    p_addr1 = addr1
+                    p_addr2 = addr2
+                    p_perms = perms
+                    p_path = path
+            # Last line
+            if p_addr1 is not None:
+                _display_pmaps_line(p_addr1, p_addr2, p_perms, p_path)
+    except IOError as exc:
+        sys.stderr.write("open(/proc/{}/maps): {}\n".format(pid, exc))
+        return False
+    return True
+
+
+def main(argv=None):
+    """Program entry point"""
+    parser = argparse.ArgumentParser(
+        description="Display the memory mapping of some processes")
+    parser.add_argument('pids', nargs='*', type=int,
+                        help="process IDs (default: parent PID)")
+    parser.add_argument('-g', '--group', action='store_true',
+                        help="group continuous maps for same file")
+    args = parser.parse_args(argv)
+
+    if not args.pids:
+        return 0 if display_proc_maps(os.getppid(), args.group) else 1
+
+    ret = True
+    for pid in args.pids:
+        ret = display_proc_maps(pid, args.group) and ret
+    return 0 if ret else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
