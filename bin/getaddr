@@ -3,6 +3,7 @@
 
 import argparse
 import socket
+import sys
 
 # socket.IPPROTO_SCTP is not defined in Python 2
 if 'IPPROTO_SCTP' not in socket.__all__:
@@ -125,9 +126,14 @@ def main(argv=None):
     known_af, known_sock, known_proto = retrieve_known_constants()
 
     for host in args.hosts:
-        addressinfos = socket.getaddrinfo(host, args.port,
-                                          args.family, args.socktype,
-                                          args.proto, socket.AI_CANONNAME)
+        try:
+            addressinfos = socket.getaddrinfo(host, args.port,
+                                              args.family, args.socktype,
+                                              args.proto, socket.AI_CANONNAME)
+        except socket.gaierror as exc:
+            sys.stderr.write("getaddrinfo error: {}\n".format(exc))
+            sys.exit(1)
+
         has_reversed_host = False
         for family, socktype, proto, canonname, sockaddr in addressinfos:
             if canonname and canonname != host.strip('.'):
