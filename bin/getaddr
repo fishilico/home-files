@@ -7,7 +7,7 @@ import socket
 # socket.IPPROTO_SCTP is not defined in Python 2
 if 'IPPROTO_SCTP' not in socket.__all__:
     socket.IPPROTO_SCTP = 132
-    socket.__all__ += 'IPPROTO_SCTP'
+    socket.__all__.append('IPPROTO_SCTP')
 
 
 def address_family(value):
