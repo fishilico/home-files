@@ -8,32 +8,48 @@
 #     DNS 129.104.30.41, 129.104.7.41
 #     proxy 129.104.38.5 (garvleiz.polytechnique.fr)
 
-export all_proxy="http://kuzh.polytechnique.fr:8080/"
-export http_proxy="http://kuzh.polytechnique.fr:8080/"
-export https_proxy="http://kuzh.polytechnique.fr:8080/"
-export ftp_proxy="http://kuzh.polytechnique.fr:8080/"
+export HTTP_PROXY_HOST="${HTTP_PROXY_HOST:-129.104.247.2}"
+export HTTP_PROXY_PORT="${HTTP_PROXY_PORT:-8080}"
+export HTTP_PROXY_PAC="${HTTP_PROXY_PAC:-http://config.eleves.polytechnique.fr/proxy.pac}"
+
+export all_proxy="http://$HTTP_PROXY_HOST:$HTTP_PROXY_PORT/"
+export http_proxy="http://$HTTP_PROXY_HOST:$HTTP_PROXY_PORT/"
+export https_proxy="http://$HTTP_PROXY_HOST:$HTTP_PROXY_PORT/"
+export ftp_proxy="http://$HTTP_PROXY_HOST:$HTTP_PROXY_PORT/"
 export no_proxy='.polytechnique.fr,.eleves.polytechnique.fr'
+
+export RSYNC_PROXY="$HTTP_PROXY_HOST:$HTTP_PROXY_PORT"
 
 # Use socat, connect (Debian) or connect-procy (Ubuntu) for ssh
 export SSH_PROXYCOMMAND=""
 if which socat > /dev/null 2>&1
 then
-    SSH_PROXYCOMMAND='socat - PROXY:kuzh.polytechnique.fr:%h:%p,proxyport=8080'
+    SSH_PROXYCOMMAND="socat - PROXY:$HTTP_PROXY_HOST:%h:%p,proxyport=$HTTP_PROXY_PORT"
 elif which connect > /dev/null 2>&1
 then
-    SSH_PROXYCOMMAND='connect -H kuzh.polytechnique.fr:8080 %h %p'
+    SSH_PROXYCOMMAND='connect -H $HTTP_PROXY_HOST:$HTTP_PROXY_PORT %h %p'
 elif which connect-proxy > /dev/null 2>&1
 then
-    SSH_PROXYCOMMAND='connect-proxy -H kuzh.polytechnique.fr:8080 %h %p'
+    SSH_PROXYCOMMAND='connect-proxy -H $HTTP_PROXY_HOST:$HTTP_PROXY_PORT %h %p'
 fi
 if type alias > /dev/null 2>&1 && [ -n "$SSH_PROXYCOMMAND" ]
 then
-    alias scpExt="scp -o ProxyCommand='$SSH_PROXYCOMMAND'"
     alias sshExt="ssh -o ProxyCommand='$SSH_PROXYCOMMAND'"
 
+    # rsync over ssh doesn't use $RSYNC_PROXY
+    alias rsyncSshExt="rsync -e \"ssh -o ProxyCommand='$SSH_PROXYCOMMAND'\""
+
+    # If scp is an alias to rsync, give parameters to rsync
+    if alias scp 2> /dev/null | grep -q 'rsync'
+    then
+        alias scpExt="scp -e \"ssh -o ProxyCommand='$SSH_PROXYCOMMAND'\""
+    else
+        alias scpExt="scp -o ProxyCommand='$SSH_PROXYCOMMAND'"
+    fi
+
     # Chromium with proxy autoconfiguration
-    alias chromium-xpac='chromium --proxy-pac-url="http://config.eleves.polytechnique.fr/proxy.pac"'
-    alias chromium-xpro="chromium --proxy-server=$http_proxy"
+    alias chromium-xpac="chromium --proxy-pac-url=$HTTP_PROXY_PAC"
+    alias chromium-xpro="chromium --proxy-server=$HTTP_PROXY_HOST:$HTTP_PROXY_PORT"
 fi
 
 # Non-proxied addresses (useful when configuring routes):
