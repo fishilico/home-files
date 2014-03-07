@@ -1,0 +1,8 @@
+[Desktop Entry]
+Encoding=UTF-8
+Exec=numlockx
+Name=NumLockX
+Comment=Turns NumLock on in X
+Terminal=false
+Type=Application
+StartupNotify=false
