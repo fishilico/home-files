@@ -302,3 +302,14 @@ postless() {
         echo "$OUTPUT"
     fi
 }
+
+# Reverse hex string and dump it
+if which xxd > /dev/null 2>&1; then
+    revhex() {
+        if [ "$#" -eq 0 -o "$1" = "-" ] ; then
+            xxd -p -r
+        else
+            echo -n "$@" | xxd -p -r
+        fi | xxd
+    }
+fi
