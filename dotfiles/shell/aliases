@@ -3,9 +3,7 @@
 
 # alias may be unavailable, for example in busybox shell (ash)
 if type alias > /dev/null 2>&1 ; then
-    # Be verbose!
-    alias chmod='chmod -v'
-    alias chown='chown -v'
+    # Be verbose! (note: long options may be unavailable)
     alias mkdir='mkdir -v'
     alias mount='mount -v'
     alias umount='umount -v'
@@ -14,6 +12,17 @@ if type alias > /dev/null 2>&1 ; then
     # Be interactive when overwritting files
     alias cp='cp -iv'
     alias mv='mv -iv'
+    # Only show changes, if available
+    if chmod --help 2>&1 |grep -q '^\s*-c'; then
+        alias chmod='chmod -c'
+    else
+        alias chmod='chmod -v'
+    fi
+    if chown --help 2>&1 |grep -q '^\s*-c'; then
+        alias chown='chown -c'
+    else
+        alias chown='chown -v'
+    fi
 
     # Shortcuts
     alias h='history'
@@ -42,14 +51,14 @@ if type alias > /dev/null 2>&1 ; then
     # CFh = columns, classify, human
     LS_PARAMS='-CFh'
     # Option: escape non printable chars (not in busybox ash)
-    if ls --help 2> /dev/null |grep -q -- --escape; then
+    if ls --help 2>&1 |grep -q -- --escape; then
         LS_PARAMS="$LS_PARAMS --escape"
     fi
     # Option: use colors
-    if ls --help 2> /dev/null |grep -q -- --color; then
+    if ls --help 2>&1 |grep -q -- --color; then
         LS_PARAMS="$LS_PARAMS --color=always"
 
-        if ls --help 2> /dev/null |grep -q -- --time-style; then
+        if ls --help 2>&1 |grep -q -- --time-style; then
             LS_PARAMS="$LS_PARAMS --time-style="$(printf '"+\033[0;35m%%Y-%%m-%%d %%H:%%M\033[0m"')
         fi
     fi
