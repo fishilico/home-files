@@ -322,3 +322,11 @@ if which xxd > /dev/null 2>&1; then
         fi | xxd
     }
 fi
+
+# Sort domain names by their subdomains
+dnssort() {
+    # Reverse dot-separated components
+    sed '/\n/!G;s/\([^.]*\)\.\(.*\n\)/&\2.\1/;//D;s/\n//' | \
+        sort "$@" | \
+        sed '/\n/!G;s/\([^.]*\)\.\(.*\n\)/&\2.\1/;//D;s/\n//'
+}
