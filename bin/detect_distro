@@ -40,3 +40,14 @@ elif [ -r /etc/SuSE-release ]
 then
     echo "suse"
 fi
+
+# Use issue as a last resort
+if [ -r /etc/issue ]
+then
+    ISSUE=$(sed -n '1s/^\(\S\+\)\s.*/\1/p' /etc/issue)
+    if [ -n "$ISSUE" ]
+    then
+        echo "$ISSUE" | tr '[A-Z]' '[a-z]'
+        exit
+    fi
+fi
