@@ -1,0 +1,11 @@
+#!/bin/sh
+# Print stats about the NTP daemon on the local host
+
+ntpdc -n --showpeers localhost
+
+for CMD in kerninfo sysinfo ctlstats iostats memstats sysstats timerstats
+do
+    echo ""
+    echo "=========[ $CMD ]========="
+    ntpdc -n --command $CMD localhost
+done
