@@ -312,6 +312,11 @@ postless() {
     fi
 }
 
+# Enhance the output of "mount"
+mounttable() {
+    mount | LC_ALL=C sort -k3 | column -t
+}
+
 # Reverse hex string and dump it
 if which xxd > /dev/null 2>&1; then
     revhex() {
