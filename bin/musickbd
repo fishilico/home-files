@@ -1,0 +1,155 @@
+#!/usr/bin/env python
+# -*- coding:UTF-8 -*-
+# Copyright (c) 2013 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+"""Play music from the keyboard
+
+Some implementation notes:
+
+This program uses SoX to play a tune.
+
+A music range has 12 half-tones, from C to B.  So a note can be encoded as an
+integer: C = 0, C# = 1, ... B = 11.  The pitch level is then added, after being
+itself multiplied by 12.  For example: "A3" -> note 9 + 3*12 = 45
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+
+import subprocess
+import sys
+import termios
+import tty
+
+
+# Keyboard layouts:
+#   * 3base = C3, D3, E3...
+#   * 3flat = B3, Db3, Eb3...
+#   * 3sharp = C#3, D#3, F3...
+KDB_LAYOUT = {
+    'fr-azerty': {
+        '4flat-high': u'1234567890°+',
+        '3flat-high': u'&é"\'(-è_çà)=',
+        '4base-high': u'AZERTYUIOP¨£',
+        '3base-high': u'azertyuiop^$',
+
+        '3flat-low': u'QSDFGHJKLM%',
+        '2flat-low': u'qsdfghjklmù',
+        '3base-low': u'WXCVBN?./§',
+        '2base-low': u'wxcvbn,;:!',
+    },
+}
+DEFAULT_LAYOUT = 'fr-azerty'
+
+
+def get_keynote_map(layout_name=None):
+    """Get the key=>note mapping for the requested layout"""
+    layout_name = layout_name or DEFAULT_LAYOUT
+    keynotes = {}
+    for level, keys in KDB_LAYOUT[layout_name].items():
+        current_note = int(level[0]) * 12
+        note_shift = 0
+        if 'flat' in level:
+            note_shift -= 1
+        if 'sharp' in level:
+            note_shift += 1
+        for key in keys:
+            if key in keynotes:
+                sys.stderr.write(
+                    "Warning: key {} is mapped twice in {} layout\n".format(
+                        key, layout_name))
+            else:
+                keynotes[key] = current_note + note_shift
+                # Increase half tone for E and B
+                current_note += 1 if current_note % 12 in (4, 11) else 2
+    return keynotes
+
+
+NOTE_MAP = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'G#', 'A', 'Bb', 'B']
+assert len(NOTE_MAP) == 12
+
+
+def note2str(note):
+    """Get a string which describe the note"""
+    assert note >= 0
+    return NOTE_MAP[note % 12] + str(note // 12)
+
+
+def play_with_sox(note):
+    """Play a note (in integer format) using SoX"""
+    # Options: -q = quiet, -n = null file
+    cmdline = ['play', '-qn',
+               'synth', '1', 'pl', note2str(note), 'fade', '0', '.5']
+    # When a Popen object is deleted, the waiting is done by Python internally
+    # and the program may continue
+    subprocess.Popen(cmdline)
+
+
+def check_sox():
+    """Check that SoX is installed"""
+    try:
+        p = subprocess.Popen(['play', '--version'], stdout=subprocess.PIPE)
+        while len(p.stdout.read(4096)):
+            pass
+        return p.wait() == 0
+    except OSError:
+        return False
+
+
+def main():
+    """Read input and play music accordingly"""
+    if not check_sox():
+        sys.stderr.write("Unable to run 'play'. Is SoX installed?\n")
+        sys.exit(1)
+    note_mapping = get_keynote_map()
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    # Make sydin binary on Python 3
+    if hasattr(sys.stdin, 'detach'):
+        sys.stdin = sys.stdin.detach()
+    try:
+        tty.setraw(fd)
+        unicode_buffer = b''
+        while True:
+            ch = sys.stdin.read(1)
+            # ^C, ^D or ESC
+            if ch in [b'\x03', b'\x04', b'\x1b']:
+                break
+
+            # Decode unicode
+            unicode_buffer += ch
+            unich = unicode_buffer.decode('utf-8', errors='ignore')
+            if not len(unich):
+                continue
+            unicode_buffer = b''
+
+            # Find note
+            note = note_mapping.get(unich)
+            if note is not None:
+                sys.stdout.write(note2str(note) + '\r\n')
+                play_with_sox(note)
+                sys.stdout.flush()
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+
+if __name__ == '__main__':
+    main()
