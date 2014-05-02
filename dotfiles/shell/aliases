@@ -220,8 +220,8 @@ if type alias > /dev/null 2>&1 ; then
         alias hexa='xxd'
         alias hexa32='xxd -c32'
     elif which od > /dev/null 2>&1; then
-        alias hexa='od -tx1z'
-        alias hexa32='od -tx1z -w32'
+        alias hexa='od -tx1z -Ax'
+        alias hexa32='od -tx1z -Ax -w32'
     elif which hexdump > /dev/null 2>&1; then
         # hexdump command from bsdmainutils package
         # slightly different from "hexdump -C"
