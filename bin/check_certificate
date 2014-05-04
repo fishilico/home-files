@@ -10,6 +10,7 @@ To retrieve a certificate from an HTTPS webserver, you may use a command like:
 
 import datetime
 import optparse
+import os.path
 import ssl
 import subprocess
 import sys
@@ -63,6 +64,17 @@ def check_certificate(filename, verbose=None):
         return False
 
 
+def check_cert_dir(dirname, verbose):
+    """Check certificates in a directory"""
+    all_ok = True
+    for root, _, files in os.walk(dirname):
+        for filename in files:
+            filepath = os.path.join(root, filename)
+            if not check_certificate(filepath, verbose=verbose):
+                all_ok = False
+    return all_ok
+
+
 def main(argv=None):
     """Parse arguments and run specified actions"""
 
@@ -71,6 +83,9 @@ def main(argv=None):
     parser.add_option(
         '-q', '--quiet', action='store_const', const=VERBLVL_QUIET,
         dest='verbose', help="only show expired certificates")
+    parser.add_option(
+        '-r', '--recursive', action='store_true',
+        dest='recursive', help="walk subdirectories")
     parser.add_option(
         '-v', '--verbose', action='store_const', const=VERBLVL_VERBOSE,
         dest='verbose', help="enable verbose mode")
@@ -81,10 +96,15 @@ def main(argv=None):
     opts, files = parser.parse_args(argv)
 
     all_ok = True
-
     for filename in files:
         try:
-            if not check_certificate(filename, verbose=opts.verbose):
+            if os.path.isdir(filename):
+                if opts.recursive:
+                    if not check_cert_dir(filename, verbose=opts.verbose):
+                        all_ok = False
+                elif not opts.verbose or opts.verbose >= VERBLVL_DEFAULT:
+                    print("[ ] Ignoring directory {}".format(filename))
+            elif not check_certificate(filename, verbose=opts.verbose):
                 all_ok = False
         except subprocess.CalledProcessError as exc:
             print(exc)
