@@ -1,0 +1,16 @@
+#!/bin/sh
+# Dump nftables state
+
+for FAMILY in arp bridge inet ip ip6
+do
+    nft list tables "$FAMILY" | while IFS= read -r TABLELINE
+    do
+        if [ "${TABLELINE%% *}" != 'table' ]
+        then
+            echo >&2 "Unknown table '$TABLELINE' for family '$FAMILY'"
+            exit 1
+        fi
+        TABLENAME="${TABLELINE#* }"
+        nft list table "$FAMILY" "$TABLENAME"
+    done
+done
