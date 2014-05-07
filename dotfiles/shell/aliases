@@ -24,8 +24,6 @@ if type alias > /dev/null 2>&1 ; then
         alias chown='chown -v'
     fi
 
-    # Shortcuts
-    alias h='history'
     # Always use /usr/bin/sudo if available to prevent PATH hijacking
     # sadm alias is for SELinux
     if [ -x /usr/bin/sudo ] ; then
@@ -104,6 +102,7 @@ if type alias > /dev/null 2>&1 ; then
     alias psx='ps -AFH'
     alias psz='ps -efZ'
     alias pshz='ps -efHZ'
+    alias pstop='ps -eo pid,user,pri,ni,vsz,rsz,stat,pcpu,pmem,time,comm --sort -pcpu'
 
     # Shortcut to common screen options
     alias scx='screen -x'
@@ -112,6 +111,12 @@ if type alias > /dev/null 2>&1 ; then
 
     # Clear screen with ESC + c. Ctrl+L may also work.
     alias cls='printf "\033c"'
+
+    # Grep history without writing "h ..." lines into it
+    h() {
+        fc -l 1 -1 | sed -n "/${1:-.}/s/^ */!/p" | tail -n ${2:-15}
+    }
+    alias h=' h'
 
     # Options for grep: highlight results and exclude backup files
     GREP_PARAMS=''
