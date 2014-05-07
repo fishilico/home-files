@@ -44,22 +44,32 @@ zstyle ':completion:*' select-prompt %SScrolling active: current selection at %p
 zstyle ':completion:*' use-compctl false
 zstyle ':completion:*' verbose true
 
-zstyle ':completion:*:descriptions' format '%d :' # print in what we are looking for
+# Print completion descriptions in bold
+zstyle ':completion:*:descriptions' format '%B%d%b'
+zstyle ':completion:*:messages' format '%d'
+zstyle ':completion:*:warnings' format 'No matches for: %d'
+
 zstyle ':completion:*:-command-' group-order builtins functions commands # modified order of completion for command completion
 zstyle ':completion::complete:*' use-cache 1
 
 # Do not show temp files in completions
 zstyle ':completion:*:files' ignored-patterns '*?.o' '*?~' '*?.dvi' '*?.aux' '*?.swp'
+zstyle ':completion:*:complete:-command-::*' ignored-patterns '*\~'
 
 # Put color everywhere, using LS_COLORS
 eval "$(dircolors -b)"
-zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
+zstyle ':completion:*' list-colors ''
+zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
 
 # Allow completion for a_b to ami_bak, and idem with a.b and a-b, case-insensitive matching
 zstyle ':completion:*' matcher-list 'm:{[:lower:]}={[:upper:]}' 'm:{[:lower:][:upper:]}={[:upper:][:lower:]}' 'r:|[._-]=* r:|=*'
 
 # "kill" completion, show processes in red
+zstyle ':completion:*:*:*:*:processes*' force-list always
+zstyle ':completion:*:*:kill:*:processes' command 'ps -u "$USER"'
+zstyle ':completion:*:*:kill:*:processes' insert-ids single
 zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
+zstyle ':completion:*:processes-names' command "ps -eo cmd= | sed 's:\([^ ]*\).*:\1:;s:\(/[^ ]*/\)::;/^\[/d'"
 zstyle ':completion:*:*:kill:*' menu yes select
 #zstyle ':completion:*:kill:*' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
 function _pslist() {reply=(`ps -u $USER -o pid,user,nice,pcpu,pmem,cputime,tname,start_time,args`)}
@@ -70,5 +80,21 @@ compctl -K _pslist kill
 zstyle ':completion:*:hosts' hosts $_ssh_config
 unset _ssh_config
 
+# Man
+zstyle ':completion:*:manuals' separate-sections true
+zstyle ':completion:*:manuals.(^1*)' insert-sections true
+
 autoload -Uz compinit
 compinit
+
+# Complete some programs which don't have proper compdef
+compdef ping6=ping
+compdef _gnu_generic curl file head mv shred tail touch watch wc zsh
+
+# Complete some functions defined in "aliases" file
+compdef cl=cd
+compdef dnssort=sort
+compdef mcd=mkdir
+#compdef postless=postcat
+compdef read_pass=read
+compdef ltail=tail
