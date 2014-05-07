@@ -258,10 +258,28 @@ read_pass() {
     echo >&2 -n 'Password: ' && read -s "$@" && echo ''
 }
 
-# Generate random passwords from /dev/random
+# Generate random passwords from kernel random number generator
 # see also: openssl rand -base64 16
 gen_pass() {
-    head -c12 /dev/random |base64
+    # This consumes a lot of random bits, so uses non-blocking urandom and
+    # keeps only non-so-special symbols
+    tr -cd '0-9a-zA-Z!%&*+,\-./?@^_' < /dev/urandom | head -c"${1:-16}"
+    echo ''
+}
+gen_pass_asc() {
+    # Like gen_pass but keeps all ASCII characters.
+    tr -cd '!#$%&()*+,\-./0-9:;<=>?@A-Z[\\]^_a-z{|}' < /dev/urandom | head -c"${1:-16}"
+    echo ''
+}
+gen_pass_alnum() {
+    # This consume few random bits, so use blocking /dev/random
+    # $1 bytes produces ($1 * 4 / 3) base64-character, cut to $1 after dropping
+    # non-alphanum symbols.
+    head -c"${1:-16}" < /dev/random | base64 | tr -d '/+=' | head -c"${1:-16}"
+    echo ''
+}
+show_entropy() {
+    cat /proc/sys/kernel/random/entropy_avail
 }
 
 # Log tail, to have colors when ccze is available
