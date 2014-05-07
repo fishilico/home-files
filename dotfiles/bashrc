@@ -5,9 +5,11 @@
 # If not running interactively, don't do anything
 [ -z "$PS1" ] && return
 
-# don't put duplicate lines in the history. See bash(1) for more options
-# ... or force ignoredups and ignorespace
-HISTCONTROL=ignoredups:ignorespace
+# History file configuration
+# ignoredups: don't put duplicate lines in the history
+# ignorespace: don't put lines beginning with a space in the history
+# ignoreboth: apply both options
+HISTCONTROL=ignoreboth
 # append to the history file, don't overwrite it
 shopt -s histappend
 # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
