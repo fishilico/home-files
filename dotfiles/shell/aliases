@@ -113,10 +113,10 @@ if type alias > /dev/null 2>&1 ; then
     alias cls='printf "\033c"'
 
     # Grep history without writing "h ..." lines into it
-    h() {
+    histgrep() {
         fc -l 1 -1 | sed -n "/${1:-.}/s/^ */!/p" | tail -n ${2:-15}
     }
-    alias h=' h'
+    alias h=' histgrep'
 
     # Options for grep: highlight results and exclude backup files
     GREP_PARAMS=''
