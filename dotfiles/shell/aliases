@@ -275,7 +275,7 @@ gen_pass_alnum() {
     # This consume few random bits, so use blocking /dev/random
     # $1 bytes produces ($1 * 4 / 3) base64-character, cut to $1 after dropping
     # non-alphanum symbols.
-    head -c"${1:-16}" < /dev/random | base64 | tr -d '/+=' | head -c"${1:-16}"
+    head -c"${1:-16}" < /dev/random | base64 -w0 | tr -d '/+=' | head -c"${1:-16}"
     echo ''
 }
 show_entropy() {
