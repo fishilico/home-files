@@ -335,6 +335,11 @@ postless() {
     fi
 }
 
+# Highlight a pattern
+hl() {
+    grep -E --color=always -e '' "${@/#/-e}"
+}
+
 # Enhance the output of "mount"
 mounttable() {
     mount | LC_ALL=C sort -k3 | column -t
