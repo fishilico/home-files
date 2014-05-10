@@ -90,6 +90,9 @@ augroup usercommands
   autocmd BufRead *.fc set noexpandtab
   autocmd BufRead *.if set noexpandtab
   autocmd BufRead *.te set noexpandtab
+
+  " Wrap long git commit messages
+  autocmd FileType gitcommit set textwidth=72
 augroup END
 endif
 
