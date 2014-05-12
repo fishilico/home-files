@@ -251,6 +251,17 @@ cl() {
     cd "$1" && shift && ls "$@"
 }
 
+# Find broken symlinks
+if find --help 2> /dev/null |grep -q -- -xtype ; then
+    find_broken() {
+        find "$@" -xtype l -print
+    }
+else
+    find_broken() {
+        find "$@" -type l ! -exec test -e {} \; -print
+    }
+fi
+
 # Read passwords. Zsh uses "?prompt" option to display a prompt and other
 # shells (Bash, Ash, ...) use -p option, so use echo to be compatible.
 # Dash fails with "read: Illegal option -s" as this is not POSIX-compliant.
