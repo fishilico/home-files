@@ -2,6 +2,9 @@
 # Dump dconf configuration
 # This script uses "dconf dump /" and sorts its output
 
+# Use locale-independent sort
+export LC_ALL=C
+
 dump_dconf_dir() {
     local ENTRIES ITEM
     ENTRIES="$(dconf list "$1")"

@@ -1,6 +1,9 @@
 #!/bin/sh
 # Dump xfconf configuration
 
+# Use locale-independent sort
+export LC_ALL=C
+
 IS_FIRST=true
 for CHANNEL in $(xfconf-query --list |sed '1{/^.*:/d}' |sort)
 do
