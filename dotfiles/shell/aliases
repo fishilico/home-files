@@ -335,10 +335,27 @@ postless() {
     fi
 }
 
-# Highlight a pattern
-hl() {
-    grep -E --color=always -e '' "${@/#/-e}"
-}
+# Highlight a pattern, if grep accept colors
+if grep --help 2> /dev/null |grep -q -- --color ; then
+    if [ -n "$BASH_VERSION" -o -n "$ZSH_VERSION" ] ; then
+        # Modern shells support array substitution
+        hl() {
+            grep -E --color=always -e '' "${@/#/-e}"
+        }
+    else
+        # Same function, with a temporary file
+        hl() {
+            FILE="$(mktemp)"
+            trap '/bin/rm -f "$FILE"' EXIT HUP INT QUIT TERM
+            while [ $# -ge 1 ] ; do
+                echo "$1" >> "$FILE"
+                shift
+            done
+            grep -E --color=always -e '' -f "$FILE"
+            /bin/rm "$FILE"
+        }
+    fi
+fi
 
 # Enhance the output of "mount"
 mounttable() {
