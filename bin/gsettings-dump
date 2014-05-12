@@ -1,0 +1,7 @@
+#!/bin/sh
+# Dump gsettings configuration
+
+# Use locale-independent sort
+export LC_ALL=C
+
+gsettings list-recursively |sort -u
