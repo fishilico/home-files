@@ -12,16 +12,19 @@ install_rec() {
 
     for SRC_FILE in "$SRC_DIR"/*
     do
-        FILENAME=`basename "$SRC_FILE"`
+        FILENAME="`basename "$SRC_FILE"`"
         DST_FILE="$DST_PREFIX$FILENAME"
+        [ -n "$FILENAME" ] || continue
 
-        # Ignore temporary files
-        if [ -z "$FILENAME" ] || \
-            (echo $FILENAME |grep -q '^\.') || \
-            (echo $FILENAME |grep -q '~$')
-        then
-            continue
-        fi
+        # Ignore some patterns using built-in functions
+        IGNPAT_TEST="${FILENAME#.} ${FILENAME%\~}"
+        IGNPAT_REF="$FILENAME $FILENAME"
+        for EXT in backup bak orig pyc pyo rej swp tmp
+        do
+            IGNPAT_TEST="$IGNPAT_TEST ${FILENAME%.$EXT}"
+            IGNPAT_REF="$IGNPAT_REF $FILENAME"
+        done
+        [ "$IGNPAT_TEST" = "$IGNPAT_REF" ] || continue
 
         if [ -d $SRC_FILE ]
         then
@@ -43,7 +46,7 @@ install_rec() {
             then
                 echo >&2 "Error: file is not a symlink ($DST_FILE)"
                 RETURN_VAL=1
-            elif [ x`readlink "$DST_FILE"` != x"$SRC_FILE" ]
+            elif [ "x`readlink "$DST_FILE"`" != "x$SRC_FILE" ]
             then
                 echo >&2 "Error: wrong target for symlink ($DST_FILE)"
                 echo >&2 "  Expected: $SRC_FILE"
@@ -56,8 +59,8 @@ install_rec() {
 }
 
 # Find our location
-cd `dirname $0`
-SOURCE_DIR=`pwd -P`
+cd "`dirname $0`"
+SOURCE_DIR="`pwd -P`"
 RETURN_VAL=0
 
 # Install home dotfiles
