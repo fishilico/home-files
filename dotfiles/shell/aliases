@@ -13,12 +13,12 @@ if type alias > /dev/null 2>&1 ; then
     alias cp='cp -iv'
     alias mv='mv -iv'
     # Only show changes, if available
-    if chmod --help 2>&1 |grep -q '^\s*-c'; then
+    if chmod --help 2>&1 |grep -q '^\s*-c' ; then
         alias chmod='chmod -c'
     else
         alias chmod='chmod -v'
     fi
-    if chown --help 2>&1 |grep -q '^\s*-c'; then
+    if chown --help 2>&1 |grep -q '^\s*-c' ; then
         alias chown='chown -c'
     else
         alias chown='chown -v'
@@ -49,14 +49,14 @@ if type alias > /dev/null 2>&1 ; then
     # CFh = columns, classify, human
     LS_PARAMS='-CFh'
     # Option: escape non printable chars (not in busybox ash)
-    if ls --help 2>&1 |grep -q -- --escape; then
+    if ls --help 2>&1 |grep -q -- --escape ; then
         LS_PARAMS="$LS_PARAMS --escape"
     fi
     # Option: use colors
-    if ls --help 2>&1 |grep -q -- --color; then
+    if ls --help 2>&1 |grep -q -- --color ; then
         LS_PARAMS="$LS_PARAMS --color=always"
 
-        if ls --help 2>&1 |grep -q -- --time-style; then
+        if ls --help 2>&1 |grep -q -- --time-style ; then
             LS_PARAMS="$LS_PARAMS --time-style="$(printf '"+\033[0;35m%%Y-%%m-%%d %%H:%%M\033[0m"')
         fi
     fi
@@ -120,10 +120,10 @@ if type alias > /dev/null 2>&1 ; then
 
     # Options for grep: highlight results and exclude backup files
     GREP_PARAMS=''
-    if grep --help 2> /dev/null |grep -q -- --color; then
+    if grep --help 2> /dev/null |grep -q -- --color ; then
         GREP_PARAMS="$GREP_PARAMS --color=always"
     fi
-    if grep --help 2> /dev/null |grep -q -- --exclude; then
+    if grep --help 2> /dev/null |grep -q -- --exclude ; then
         GREP_PARAMS="$GREP_PARAMS --exclude='*~'"
     fi
     if [ -n "$GREP_PARAMS" ] ; then
@@ -132,7 +132,7 @@ if type alias > /dev/null 2>&1 ; then
 
     # Line-buffered grep, useful when selecting output of tail -F
     # Don't use colored output for lgrep
-    if grep --help 2> /dev/null |grep -q -- --line-buffered; then
+    if grep --help 2> /dev/null |grep -q -- --line-buffered ; then
         if [ -x /usr/bin/grep ] ; then
             alias lgrep='/usr/bin/grep --line-buffered'
         elif [ -x /bin/grep ] ; then
@@ -153,7 +153,7 @@ if type alias > /dev/null 2>&1 ; then
     alias openssl-connect='openssl s_client -connect'
 
     # Colored diff
-    if which colordiff > /dev/null 2>&1; then
+    if which colordiff > /dev/null 2>&1 ; then
         alias diff='colordiff -u'
         # Change svn diff.
         # You may instead put "diff-cmd = colordiff" in ~/.subversion/config
@@ -169,29 +169,29 @@ if type alias > /dev/null 2>&1 ; then
     alias diff-patch='diff -aNpu'
 
     # Use most to display man pages using colors
-    if which most > /dev/null 2>&1; then
+    if which most > /dev/null 2>&1 ; then
         alias man='man -P most'
     fi
 
     # Colored dmesg
-    if dmesg --help 2> /dev/null |grep -q -- --color; then
+    if dmesg --help 2> /dev/null |grep -q -- --color ; then
         alias dmesg='dmesg --color'
     fi
 
     # Use rsync instead of scp
-    if which rsync > /dev/null 2>&1; then
+    if which rsync > /dev/null 2>&1 ; then
         # Options: archive, verbose, compress, partial&progress
         alias scp='rsync -avzP'
     fi
 
     # X Window bell
-    if which xset > /dev/null 2>&1; then
+    if which xset > /dev/null 2>&1 ; then
         alias xbell-off='xset b off'
         alias xbell-on='xset b on'
     fi
 
     # DNSSEC validation with drill (from ldns package) or dig
-    if which drill > /dev/null 2>&1; then
+    if which drill > /dev/null 2>&1 ; then
         if [ -r '/etc/trusted-key.key' ] ; then
             alias dnssec_check='drill -TD -k /etc/trusted-key.key'
         elif [ -r '/var/lib/unbound/root.key' ] ; then
@@ -199,7 +199,7 @@ if type alias > /dev/null 2>&1 ; then
         else
             alias dnssec_check='drill -TD'
         fi
-    elif which dig > /dev/null 2>&1; then
+    elif which dig > /dev/null 2>&1 ; then
         if [ -r '/etc/trusted-key.key' ] ; then
             # +multiline can be used to view DNS key id
             alias dnssec_check='dig +sigchase +topdown +trusted-key=/etc/trusted-key.key'
@@ -211,9 +211,9 @@ if type alias > /dev/null 2>&1 ; then
     fi
 
     # View mails in hold queue
-    if which postqueue > /dev/null 2>&1; then
+    if which postqueue > /dev/null 2>&1 ; then
         alias mailq-hold='postqueue -p |lgrep -E "^[0-9A-F]*!"'
-    elif which mailq > /dev/null 2>&1; then
+    elif which mailq > /dev/null 2>&1 ; then
         alias mailq-hold='mailq |lgrep -E "^[0-9A-F]*!"'
     fi
 
@@ -221,13 +221,13 @@ if type alias > /dev/null 2>&1 ; then
     alias gitka='gitk --all'
 
     # hexdump + ascii output, with xxd, od or hexdump
-    if which xxd > /dev/null 2>&1; then
+    if which xxd > /dev/null 2>&1 ; then
         alias hexa='xxd'
         alias hexa32='xxd -c32'
-    elif which od > /dev/null 2>&1; then
+    elif which od > /dev/null 2>&1 ; then
         alias hexa='od -tx1z -Ax'
         alias hexa32='od -tx1z -Ax -w32'
-    elif which hexdump > /dev/null 2>&1; then
+    elif which hexdump > /dev/null 2>&1 ; then
         # hexdump command from bsdmainutils package
         # slightly different from "hexdump -C"
         _HEXDUMP_PART1='"%07.7_ax: " 16/1 "%02x ""  "'
@@ -283,7 +283,7 @@ show_entropy() {
 }
 
 # Log tail, to have colors when ccze is available
-if which ccze > /dev/null 2>&1; then
+if which ccze > /dev/null 2>&1 ; then
     ltail() {
         tail "$@" |ccze -A
     }
@@ -346,7 +346,7 @@ mounttable() {
 }
 
 # Reverse hex string and dump it
-if which xxd > /dev/null 2>&1; then
+if which xxd > /dev/null 2>&1 ; then
     revhex() {
         if [ "$#" -eq 0 -o "$1" = "-" ] ; then
             xxd -p -r
