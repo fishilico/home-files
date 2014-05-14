@@ -98,3 +98,11 @@ compdef mcd=mkdir
 #compdef postless=postcat
 compdef read_pass=read
 compdef ltail=tail
+
+# Reload completion
+compreload() {
+    local FCTS
+    FCTS=($(find "$fpath[@]" -name '_*' -not -name '*~' -print))
+    unfunction $FCTS:t 2> /dev/null
+    autoload -Uz $FCTS:t
+}
