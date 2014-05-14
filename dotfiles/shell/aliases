@@ -220,6 +220,11 @@ if type alias > /dev/null 2>&1 ; then
     # gitk with all branches
     alias gitka='gitk --all'
 
+    # Add a file to the playlist of the current VLC instance.
+    # This setting needs to be set in Preferences->Interface Settings:
+    # "Use only one instance when started from file manager"
+    alias vlc-append='vlc --started-from-file --playlist-enqueue'
+
     # hexdump + ascii output, with xxd, od or hexdump
     if which xxd > /dev/null 2>&1 ; then
         alias hexa='xxd'
