@@ -1,6 +1,13 @@
 #!/bin/zsh
 # ZSH completion configuration
 
+# Use custom completion files from ~/.shell/zshcompdev (may be a symlink)
+# This is made to ease development of new completion files, so prevent root
+# from using them if there are not in /root.
+if [ \( "$HOME" = '/root' -o "$UID" != 0 \) -a -d "$HOME/.shell/zshcompdev" ] ; then
+    fpath=("$HOME/.shell/zshcompdev" $fpath)
+fi
+
 # Ask for correction of command names
 setopt CORRECT
 # don't correct other words than command (ie. don't think every argument is a filename)
