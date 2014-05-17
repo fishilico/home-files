@@ -1,6 +1,16 @@
 #!/bin/sh
 # Define environment variables to customize the command line interface
 
+# Ensure that all bin and sbin folders are in PATH, if they are not symlinks
+COLON_PATH=":$PATH:"
+for DIR in /usr/local/bin /usr/local/sbin /bin /usr/bin /sbin /usr/sbin ; do
+    if [ ! -L "$DIR" -a -d "$DIR" -a "${COLON_PATH%:$DIR:*}" = "$COLON_PATH" ] ; then
+        PATH="$DIR:$PATH"
+    fi
+done
+export PATH
+unset DIR
+
 # Find real home directory
 # Try sudo user
 if [ -z "$REAL_HOME" ] && [ -n "$SUDO_USER" ] ; then
@@ -14,23 +24,16 @@ export REAL_HOME
 
 # Set email address from .email file, if available
 if [ -r "$REAL_HOME/.email" ] ; then
-    export EMAIL=$(cat "$REAL_HOME/.email")
+    read EMAIL < "$REAL_HOME/.email"
+    export EMAIL
 fi
-
-# Ensure that all bin and sbin folders are in PATH, if they are not symlinks
-for DIR in /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ; do
-    if [ ! -L "$DIR" -a -d "$DIR" ] && ! (echo ":$PATH:" | grep -q ":$DIR:" ) ; then
-        export PATH="$DIR:$PATH"
-    fi
-done
-unset DIR
 
 # Add home in path
 HOMEBIN="$REAL_HOME/bin"
-if [ -d "$HOMEBIN" ] && ! (echo ":$PATH:" | grep -q ":$HOMEBIN:" ) ; then
+if [ -d "$HOMEBIN" -a "${COLON_PATH%:$HOMEBIN:*}" = "$COLON_PATH" ] ; then
     export PATH="$HOMEBIN:$PATH"
 fi
-unset HOMEBIN
+unset COLON_PATH HOMEBIN
 
 # Python configuration
 if [ -r "$REAL_HOME/.pythonrc" ] ; then
@@ -47,12 +50,12 @@ fi
 export GREP_COLORS='ne'
 
 # Use Vim
-if which vim > /dev/null 2>&1 ; then
-    export EDITOR=$(which vim)
+if [ -x /usr/bin/vim ] || which vim > /dev/null 2>&1 ; then
+    export EDITOR=vim
 fi
 
 # Use less
-if which less > /dev/null 2>&1 ; then
+if [ -x /usr/bin/less ] || which less > /dev/null 2>&1 ; then
     # Force -R = --RAW-CONTROL-CHARS to have colors in less
     export LESS='-R'
     export LESSCOLOR='yes'
