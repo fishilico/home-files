@@ -386,16 +386,39 @@ mounttable() {
     mount | LC_ALL=C sort -k3 | column -t
 }
 
+# Print args or use standard input (mainly for internal use)
+print_args_or_stdin() {
+    if [ $# -eq 0 -o "$1" = "-" ] ; then
+        cat
+    else
+        while [ $# -ge 1 ] ; do
+            echo "$1"
+            shift
+        done
+    fi
+}
+
 # Reverse hex string and dump it
 if which xxd > /dev/null 2>&1 ; then
     revhex() {
-        if [ "$#" -eq 0 -o "$1" = "-" ] ; then
-            xxd -p -r
-        else
-            echo -n "$@" | xxd -p -r
-        fi | xxd
+        print_args_or_stdin "$@" | xxd -p -r | xxd
     }
 fi
+
+# Reverse base64 and dump with "hexa" alias
+if type alias > /dev/null 2>&1 ; then
+    base6416() {
+        print_args_or_stdin "$@" | base64 -d | hexa
+    }
+fi
+
+# Convert decimal to hexadecimal and vice-versa
+dechex() {
+    (echo 'obase=16' ; print_args_or_stdin "$@") | bc -q | tr '[A-F]' '[a-f]'
+}
+hexdec() {
+    (echo 'ibase=16' ; (print_args_or_stdin "$@" | tr '[a-f]' '[A-F]')) | bc -q
+}
 
 # Sort domain names by their subdomains
 dnssort() {
