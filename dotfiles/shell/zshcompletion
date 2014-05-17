@@ -83,7 +83,7 @@ function _pslist() {reply=(`ps -u $USER -o pid,user,nice,pcpu,pmem,cputime,tname
 compctl -K _pslist kill
 
 # Complete SSH hosts with .ssh/config
-[ -r ~/.ssh/config ] && _ssh_config=($(cat ~/.ssh/config | sed -ne 's/Host[=\t ]//p')) || _ssh_config=()
+[ -r "$HOME/.ssh/config" ] && _ssh_config=($(sed -ne 's/Host[=\t ]//p' "$HOME/.ssh/config")) || _ssh_config=()
 zstyle ':completion:*:hosts' hosts $_ssh_config
 unset _ssh_config
 
