@@ -8,7 +8,7 @@ detect_os() {
     then
         OS_ID=$(sed -n 's/^ID=\(.*\)$/\1/p' < /etc/os-release)
         case "$OS_ID" in
-            arch|debian|gentoo)
+            arch|debian|gentoo|ubuntu)
                 echo "$OS_ID"
                 return
                 ;;
@@ -51,7 +51,7 @@ case $OS in
             exec pacman -Syup
         fi
         ;;
-    debian)
+    debian|ubuntu)
         if [ "$(id -u)" = 0 ]
         then
             apt-get update
