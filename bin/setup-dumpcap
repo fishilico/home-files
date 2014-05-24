@@ -1,0 +1,31 @@
+#!/bin/sh
+# Setup dumpcap capabilities to use wireshark and tshark as non-root user
+
+# Find dumpcap
+DUMPCAP=''
+for P in /usr/bin /usr/sbin /bin /sbin ; do
+   if [ -f "$P/dumpcap" ] ; then
+       DUMPCAP="$P/dumpcap"
+       break
+    fi
+done
+
+[ -n "$DUMPCAP" ] || DUMPCAP="$(which dumpcap)"
+if [ -z "$DUMPCAP" -o ! -r "$DUMPCAP" ] ; then
+    echo >&2 "Error: dumpcap not found"
+    exit 1
+fi
+
+# Print capabilities, if any
+if getcap "$DUMPCAP" | grep cap_net ; then
+    echo "dumpcap is already configured"
+    exit
+fi
+
+# Add capabilities
+echo "Running: setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' \"$DUMPCAP\""
+if [ "$(id -u)" = 0 ] ; then
+    exec setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' "$DUMPCAP"
+else
+    exec sudo setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' "$DUMPCAP"
+fi
