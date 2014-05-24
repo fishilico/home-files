@@ -20,6 +20,7 @@
 	ppu = !git pp && git submodule sync && git submodule update --init
 
 	fixup = !sh -c 'git commit --fixup=$1 && git rebase -i --autosquash "$1^"' -
+	undo = reset --soft HEAD^
 
 	ls = "!git status -suno"
 	ls-modified = "!git status --porcelain -uno | awk 'match($1, /M/) {print $2}'"
@@ -50,6 +51,8 @@
 	whitespace = red reverse
 [core]
 	excludesfile = ~/.gitignore_global
+[help]
+	autocorrect = 1
 [merge]
 	tool = vimdiff
 [push]
