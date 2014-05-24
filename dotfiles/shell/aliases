@@ -89,6 +89,10 @@ if type alias > /dev/null 2>&1 ; then
         setopt PUSHD_SILENT
     fi
 
+    # Go to parent directory
+    alias ..='cd ..'
+    alias ...='cd ../..'
+
     # Get file attributes, not restricted to "^user\\."
     alias getextattr='getfattr -m - -d'
 
@@ -149,6 +153,9 @@ if type alias > /dev/null 2>&1 ; then
             alias lgrep='grep --line-buffered'
         fi
     fi
+
+    # Show 3 months by default with cal
+    alias cal='cal -3'
 
     # OpenSSL shortcuts
     # View a certificate request (add -verify to check it)
@@ -265,7 +272,7 @@ fi
 # Some functions
 # mkdir && cd
 mcd() {
-    mkdir "$1" && cd "$1"
+    mkdir -p "$1" && cd "$1"
 }
 
 # cd && ls
@@ -348,6 +355,10 @@ epoch2utc() {
     else
         echo >&2 "Usage: epoch2utc TIMESTAMP [...]"
     fi
+}
+# Get the number of seconds since Epoch
+date_epoch() {
+    date '+%s'
 }
 
 # Retrieve HTTPS certificate of a website
