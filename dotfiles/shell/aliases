@@ -181,6 +181,15 @@ if type alias > /dev/null 2>&1 ; then
         alias man='man -P most'
     fi
 
+    # vman = use vim as a pager
+    alias vman="man -P \"/bin/sh -c \\\"col -b -p -x | \
+        vim -R \
+            -c 'set ft=man nolist nomod nonumber' \
+            -c 'map q :q<CR>' \
+            -c 'map <SPACE> <C-D>' \
+            -c 'map b <C-U>' \
+            -\\\"\""
+
     # Colored dmesg
     if dmesg --help 2> /dev/null |grep -q -- --color ; then
         alias dmesg='dmesg --color'

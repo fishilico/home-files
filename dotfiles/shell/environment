@@ -72,3 +72,6 @@ fi
 
 # Enable GCC colors (since GCC 4.8.0)
 export GCC_COLORS=1
+
+# Set man section search order in a "developer-friendly" way
+export MANSECT='2:3:1:8:0:5:4:6:7:9:n:l'
