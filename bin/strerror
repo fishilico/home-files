@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+# -*- coding:UTF-8 -*-
+"""Print the error message matching the given error code"""
+import argparse
+import locale
+import os
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description="Convert error codes to messages")
+    parser.add_argument('errnos', metavar='ERRNO', nargs='+', type=int,
+                        help="error codes")
+    parser.add_argument('-c', '--langc', action='store_true',
+                        help="use C locale")
+    args = parser.parse_args()
+
+    # Set locale from environment variables if -c is not given
+    locale.setlocale(locale.LC_ALL, 'C' if args.langc else '')
+
+    # Enumerate all arguments
+    for n in args.errnos:
+        print(os.strerror(n))
