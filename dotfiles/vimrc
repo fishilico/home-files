@@ -68,6 +68,10 @@ if &fileencodings !~? "default"
   set fileencodings+=default
 endif
 
+" Enable :Man command and remap K (already used to run "man")
+source $VIMRUNTIME/ftplugin/man.vim
+nmap K :Man <cword><CR>
+
 " Autocommand group from Gentoo's /etc/vim/vimrc
 if has("autocmd")
 augroup usercommands
