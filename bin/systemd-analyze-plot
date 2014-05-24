@@ -3,10 +3,14 @@
 
 TEMP=$(mktemp --tmpdir systemd-analyze-plot.XXXXXXXXXX.svg)
 trap 'rm -f "$TEMP"' EXIT HUP INT QUIT TERM
-systemd-analyze plot > "$TEMP" && xdg-open "$TEMP"
+if systemd-analyze plot > "$TEMP"
+then
+    xdg-open "$TEMP"
+    echo "Press 'Enter' to quit."
+    read DUMMY 2> /dev/null
+else
+    exit $?
+fi
 
-echo "Press 'Enter' to quit."
-read DUMMY 2> /dev/null
-
+# This is not needed (because of the "trap"), but better be safe than sorry
 rm -f "$TEMP"
-exit
