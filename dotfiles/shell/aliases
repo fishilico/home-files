@@ -447,3 +447,11 @@ dnssort() {
         sort "$@" | \
         sed '/\n/!G;s/\([^.]*\)\.\(.*\n\)/&\2.\1/;//D;s/\n//'
 }
+
+# Some X-Window functions
+xwinlist() {
+    xwininfo -root -tree
+}
+xwinpid() {
+    xprop _NET_WM_PID | sed 's/.*= *//'
+}
