@@ -2,20 +2,20 @@
 	name = Nicolas Iooss
 	email = nicolas.iooss_git@polytechnique.org
 [alias]
+	amend = commit --amend
 	st = status -bs
 	ci = commit
 	cim = commit -m
 	ck = checkout
 	br = branch
-	pu = pull
 	purr = pull --rebase
 
 	df = diff
 	dc = diff --cached
 
 	sup = !git submodule sync && git submodule update --init
-	sp = ![[ -z $(git status --porcelain -uno) ]] && git pull || git stash && git pull && git stash pop
-	spp = ![[ -z $(git status --porcelain -uno) ]] && git pull || git stash && git pull && git push && git stash pop
+	sp = "![ -z \"$(git status --porcelain -uno)\" ] && git pull || (git stash && git pull && git stash pop)"
+	spp = "!if [ -z \"$(git status --porcelain -uno)\" ] ; then git pull && git push ; else git stash && git pull && git push && git stash pop ; fi"
 	pp = !git pull && git push
 	ppu = !git pp && git submodule sync && git submodule update --init
 
