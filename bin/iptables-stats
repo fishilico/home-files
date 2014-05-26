@@ -12,9 +12,9 @@ RUN_IP6='true'
 run_ipt_nomatch() {
     if [ $# -ge 2 ]
     then
-        $1 --verbose --list "$2" | grep -Ev '^\s*0\s*0'
+        $1 --verbose --list "$2" | grep -Ev '^ *0 *0'
     else
-        $1 --verbose --list | grep -Ev '^\s*0\s*0'
+        $1 --verbose --list | grep -Ev '^ *0 *0'
     fi
 }
 
