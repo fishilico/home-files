@@ -122,6 +122,9 @@ if type alias > /dev/null 2>&1 ; then
     }
     alias h=' histgrep'
 
+    # Disable history
+    alias nohist=' HISTFILE=/dev/null'
+
     # Options for grep: highlight results and exclude backup files
     # Do not use GREP_OPTIONS so that directly invoking grep does not enable
     # these options (for example with lgrep alias).
