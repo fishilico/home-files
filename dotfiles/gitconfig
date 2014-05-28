@@ -49,8 +49,13 @@
 	ui = auto
 [color "diff"]
 	whitespace = red reverse
+[color "grep"]
+	filename = 5
+	linenumber = 2
 [core]
 	excludesfile = ~/.gitignore_global
+[grep]
+	lineNumber = true
 [help]
 	autocorrect = 1
 [merge]
