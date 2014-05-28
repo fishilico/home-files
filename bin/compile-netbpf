@@ -1,0 +1,20 @@
+#!/bin/sh
+# Compile a network BPF filter
+# Examples of filters:
+# - icmp[icmptype] = icmp-echo or icmp[icmptype] = icmp-echoreply
+#   matches packets used by pingare not in the specified network
+# - ip and not net 10.0.0.0/8
+#   matches IPv4 packets which are not in the specified network
+# - tcp dst port http
+#   matches requests to HTTP server
+
+# Simulate an ethernet pcap header (built with "tcpdump -w")
+# Hexdump:
+#   00: d4c3b2a1  magic number (Little Endian)
+#   04: 02000400  version 2.4
+#   08: 00000000  timezone offset
+#   0c: 00000000  timestamp accuracy
+#   10: ffff0000  maximum length of captured packets (65536)
+#   14: 01000000  link-layer header type (ethernet)
+echo '1MOyoQIABAAAAAAAAAAAAP//AAABAAAA' |base64 -d | \
+tcpdump -r /proc/self/fd/0 -d "$@"
