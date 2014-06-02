@@ -458,3 +458,8 @@ xwinlist() {
 xwinpid() {
     xprop _NET_WM_PID | sed 's/.*= *//'
 }
+
+# Trace process executions
+strace-exec() {
+    strace -s 65536 -qq -e execve -e signal=none -f "$@" 2>&1 | grep -v ' = -1 ENOENT ([^)]*)$'
+}
