@@ -220,20 +220,20 @@ if type alias > /dev/null 2>&1 ; then
     # DNSSEC validation with drill (from ldns package) or dig
     if which drill > /dev/null 2>&1 ; then
         if [ -r '/etc/trusted-key.key' ] ; then
-            alias dnssec_check='drill -TD -k /etc/trusted-key.key'
+            alias dnssec-check='drill -TD -k /etc/trusted-key.key'
         elif [ -r '/var/lib/unbound/root.key' ] ; then
-            alias dnssec_check='drill -TD -k /var/lib/unbound/root.key'
+            alias dnssec-check='drill -TD -k /var/lib/unbound/root.key'
         else
-            alias dnssec_check='drill -TD'
+            alias dnssec-check='drill -TD'
         fi
     elif which dig > /dev/null 2>&1 ; then
         if [ -r '/etc/trusted-key.key' ] ; then
             # +multiline can be used to view DNS key id
-            alias dnssec_check='dig +sigchase +topdown +trusted-key=/etc/trusted-key.key'
+            alias dnssec-check='dig +sigchase +topdown +trusted-key=/etc/trusted-key.key'
         elif [ -r '/var/lib/unbound/root.key' ] ; then
-            alias dnssec_check='dig +sigchase +topdown +trusted-key=/var/lib/unbound/root.key'
+            alias dnssec-check='dig +sigchase +topdown +trusted-key=/var/lib/unbound/root.key'
         else
-            alias dnssec_check='dig +sigchase +topdown'
+            alias dnssec-check='dig +sigchase +topdown'
         fi
     fi
 
