@@ -460,6 +460,6 @@ xwinpid() {
 }
 
 # Trace process executions
-strace-exec() {
+strace_exec() {
     strace -s 65536 -qq -e execve -e signal=none -f "$@" 2>&1 | grep -v ' = -1 ENOENT ([^)]*)$'
 }
