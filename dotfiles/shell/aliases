@@ -270,6 +270,11 @@ if type alias > /dev/null 2>&1 ; then
         alias hexa32="hexdump -e '$_HEXDUMP_PART1' -e '$_HEXDUMP_PART2'"
         unset _HEXDUMP_PART1 _HEXDUMP_PART2
     fi
+
+    # Create a Python virtual environment with system packages
+    alias virtualenv-sys='virtualenv --system-site-packages'
+    alias virtualenv2-sys='virtualenv2 --system-site-packages'
+    alias virtualenv3-sys='virtualenv3 --system-site-packages'
 fi
 
 # Some functions
