@@ -12,14 +12,14 @@
 
 	df = diff
 	dc = diff --cached
+	dp = !git --no-pager -c color.diff=never diff
 
 	sup = !git submodule sync && git submodule update --init
-	sp = "![ -z \"$(git status --porcelain -uno)\" ] && git pull || (git stash && git pull && git stash pop)"
-	spp = "!if [ -z \"$(git status --porcelain -uno)\" ] ; then git pull && git push ; else git stash && git pull && git push && git stash pop ; fi"
-	pp = !git pull && git push
-	ppu = !git pp && git submodule sync && git submodule update --init
+	spl = "!if [ -z \"$(git status --porcelain -uno)\" ] ; then git pull ; else git stash && git pull && git stash pop ; fi"
+	spr = "!if [ -z \"$(git status --porcelain -uno)\" ] ; then git purr ; else git stash && git purr && git stash pop ; fi"
 
 	fixup = !sh -c 'git commit --fixup=$1 && git rebase -i --autosquash "$1^"' -
+	last-patch = format-patch HEAD^
 	undo = reset --soft HEAD^
 
 	ls = "!git status -suno"
