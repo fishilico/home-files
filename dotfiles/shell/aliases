@@ -377,13 +377,24 @@ get_https_cert() {
 
 # Combine postcat with less
 postless() {
-    local OUTPUT
+    local DIR OUTPUT STATUS
+    if [ $# -eq 1 -a \! -e "$1" ] ; then
+        # Find message by ID in Postfix spool
+        for DIR in /var/spool/postfix/* ; do
+            if [ -e "$DIR/$1" ] ; then
+                set "$DIR/$1"
+                break
+            fi
+        done
+    fi
     OUTPUT="$(postcat "$@")"
+    STATUS=$?
     # Use less only if postcat succeded
-    if [ "$?" -eq 0 ] ; then
+    if [ "$STATUS" -eq 0 ] ; then
         echo "$OUTPUT" |less
     else
         echo "$OUTPUT"
+        return $STATUS
     fi
 }
 
