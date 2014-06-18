@@ -35,6 +35,17 @@ if [ -d "$HOMEBIN" -a "${COLON_PATH%:$HOMEBIN:*}" = "$COLON_PATH" ] ; then
 fi
 unset COLON_PATH HOMEBIN
 
+# Fix $TERM to announce 256 colors (useful for screen, tmux, vim...).
+# For XFCE Terminal, this is a workaround for
+# https://bugzilla.gnome.org/show_bug.cgi?id=640940
+if [ "$TERM" = "xterm" ] ; then
+    case "$COLORTERM" in
+        gnome-terminal|xfce4-terminal)
+            export TERM="xterm-256color"
+            ;;
+    esac
+fi
+
 # Python configuration
 if [ -r "$REAL_HOME/.pythonrc" ] ; then
     export PYTHONSTARTUP="$REAL_HOME/.pythonrc"
