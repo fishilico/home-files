@@ -21,6 +21,16 @@
 # THE SOFTWARE.
 """Display terminal colors in a table
 
+To use a color in a shell script, use "tput".
+For example to use color 42 (#00d787):
+
+* "tput setaf 42" sets the foreground color
+* "tput setab 42" sets the background color
+
+To see the used color sequences, several ways exist:
+* "strace -s1024 -ewrite tput op" displays the issued escape sequence.
+* "infocmp xterm-color xterm-256color" compare two terminfo descriptions.
+
 @author: Nicolas Iooss
 @license: MIT
 """
