@@ -271,6 +271,11 @@ if type alias > /dev/null 2>&1 ; then
         unset _HEXDUMP_PART1 _HEXDUMP_PART2
     fi
 
+    # Python profiler
+    alias pyprof='python -m cProfile -s cumtime'
+    alias pyprof2='python2 -m cProfile -s cumtime'
+    alias pyprof3='python3 -m cProfile -s cumtime'
+
     # Create a Python virtual environment with system packages
     alias virtualenv-sys='virtualenv --system-site-packages'
     alias virtualenv2-sys='virtualenv2 --system-site-packages'
