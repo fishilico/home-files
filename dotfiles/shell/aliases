@@ -133,7 +133,7 @@ if type alias > /dev/null 2>&1 ; then
         GREP_PARAMS="$GREP_PARAMS --color=always"
     fi
     if grep --help 2> /dev/null |grep -q -- --exclude ; then
-        GREP_PARAMS="$GREP_PARAMS --exclude='*~'"
+        GREP_PARAMS="$GREP_PARAMS --exclude='*~' --exclude-dir=.git --exclude-dir=.svn"
     fi
     if [ -n "$GREP_PARAMS" ] ; then
         alias grep="grep$GREP_PARAMS"
