@@ -53,7 +53,7 @@ fi
 
 # Debian quilt configuration
 if [ -r "$REAL_HOME/.quiltrc-dpkg" ] && type alias > /dev/null 2>&1 ; then
-    alias dquilt="quilt --quiltrc=$REAL_HOME/.quiltrc-dpkg"
+    alias dquilt="quilt --quiltrc $REAL_HOME/.quiltrc-dpkg"
 fi
 
 # Prevent Erase in Line (EL) to Right (\33[K) in the colored output of grep.

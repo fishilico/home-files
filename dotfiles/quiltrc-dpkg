@@ -1,4 +1,5 @@
 # Source: http://www.debian.org/doc/manuals/maint-guide/modify.en.html
+# and https://wiki.debian.org/UsingQuilt
 d=.
 while [ ! -d "$d/debian" ] && [ "$(readlink -e $d)" != / ]
 do
@@ -11,6 +12,8 @@ then
     QUILT_PATCH_OPTS="--reject-format=unified"
     QUILT_DIFF_ARGS="-p ab --no-timestamps --no-index --color=auto"
     QUILT_REFRESH_ARGS="-p ab --no-timestamps --no-index"
+    QUILT_NO_DIFF_INDEX=1
+    QUILT_NO_DIFF_TIMESTAMPS=1
     QUILT_COLORS="diff_hdr=1;32:diff_add=1;34:diff_rem=1;31:diff_hunk=1;33:diff_ctx=35:diff_cctx=33"
     [ -d "$d/debian/patches" ] || mkdir "$d/debian/patches"
 fi
