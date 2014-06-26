@@ -1,5 +1,4 @@
 #!/bin/sh
 # Remove temporary files in subfolders
-
-exec find . \( -name '*~' -o -iname '*.bak'  -o -iname '*.tmp' \) \
-    -exec rm --interactive {} \;
+exec find "$@" \( -name '*~' -o -name '*.bak' -o -name '*.tmp' \) \
+    -exec rm -v {} \;
