@@ -12,7 +12,7 @@
 
 	df = diff
 	dc = diff --cached
-	dp = !git --no-pager -c color.diff=never diff
+	dp = !cd "${GIT_PREFIX:-.}" && git --no-pager -c color.diff=never diff
 
 	sup = !git submodule sync && git submodule update --init
 	spl = "!if [ -z \"$(git status --porcelain -uno)\" ] ; then git pull ; else git stash && git pull && git stash pop ; fi"
