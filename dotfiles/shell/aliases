@@ -205,6 +205,9 @@ if type alias > /dev/null 2>&1 ; then
         alias dmesg='dmesg --color'
     fi
 
+    # Continued dmesg, if "dmesg -w" is not avalaible
+    alias dmesg-w='watch -n 1 dmesg \| tail -n \$\(\(\$\(tput lines\)-2\)\)'
+
     # Use rsync instead of scp
     if which rsync > /dev/null 2>&1 ; then
         # Options: archive, verbose, compress, partial&progress
