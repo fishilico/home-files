@@ -313,6 +313,11 @@ else
     }
 fi
 
+# Find empty directories
+find_empty() {
+    find "$@" -type d -empty -print
+}
+
 # Read passwords. Zsh uses "?prompt" option to display a prompt and other
 # shells (Bash, Ash, ...) use -p option, so use echo to be compatible.
 # Dash fails with "read: Illegal option -s" as this is not POSIX-compliant.
