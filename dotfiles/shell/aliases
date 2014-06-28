@@ -283,6 +283,9 @@ if type alias > /dev/null 2>&1 ; then
     alias virtualenv-sys='virtualenv --system-site-packages'
     alias virtualenv2-sys='virtualenv2 --system-site-packages'
     alias virtualenv3-sys='virtualenv3 --system-site-packages'
+
+    # Open xterm in fullscreen
+    alias xterm-full='xterm -bg black -fg white -fullscreen'
 fi
 
 # Some functions
