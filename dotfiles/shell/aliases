@@ -494,6 +494,11 @@ xwinpid() {
     xprop _NET_WM_PID | sed 's/.*= *//'
 }
 
+# Use webcam with mplayer
+mplayer_webcam() {
+    mplayer tv:// -tv driver=v4l2:device=/dev/video0:width=640:height=480
+}
+
 # Trace process executions
 strace_exec() {
     strace -s 65536 -qq -e execve -e signal=none -f "$@" 2>&1 | grep -v ' = -1 ENOENT ([^)]*)$'
