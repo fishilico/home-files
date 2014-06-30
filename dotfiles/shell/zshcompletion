@@ -96,7 +96,7 @@ compinit
 
 # Complete some programs which don't have proper compdef
 compdef ping6=ping
-compdef _gnu_generic curl file head mv shred tail touch watch wc zsh
+compdef _gnu_generic curl file head mv shred touch watch wc zsh
 
 # Complete some functions defined in "aliases" file
 compdef cl=cd
@@ -104,7 +104,7 @@ compdef dnssort=sort
 compdef mcd=mkdir
 #compdef postless=postcat
 compdef read_pass=read
-compdef ltail=tail
+#compdef ltail=tail
 
 # Reload completion
 compreload() {
