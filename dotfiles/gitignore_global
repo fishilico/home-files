@@ -1,11 +1,37 @@
-/nbproject/
+# Backup of files
 *~
 *.backup
 *.bak
-build.xml
-manifest.mf
+.*.sw[op]
+
+# Binary files which has nothing to do in normal git project
+*.a
+*.apk
+*.class
+*.dex
+*.dll
+*.dylib
+*.exe
+*.ko
+*.la
+*.lo
 *.mo
-*.nja
 *.o
 *.py[co]
-.*.sw[op]
+*.so
+*.so.*
+
+# Project management system
+/.anjuta
+/CMakeCache.txt
+/CMakeFiles/
+/cmake_install.cmake
+*.nja
+/nbproject/
+
+# Automaticaly generated files
+.DS_Store
+*.egg
+*.egg-info
+Thumbs.db
+__pycache__/
