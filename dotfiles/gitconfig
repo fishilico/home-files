@@ -22,6 +22,10 @@
 	last-patch = format-patch HEAD^
 	undo = reset --soft HEAD^
 
+	bl = branch --all
+	rl = remote --verbose
+	tl = tag --list
+
 	ls = "!git status -suno"
 	ls-modified = "!git status --porcelain -uno | awk 'match($1, /M/) {print $2}'"
 	ls-added = "!git status --porcelain -uno | awk 'match($1, /A/) {print $2}'"
@@ -35,7 +39,7 @@
 
 	lg = log --format='%Cgreen%h %Cred%cr %Creset%s %Cblue%cn'
 	logg = log --graph --color --decorate
-	lo = log --graph --decorate --pretty=oneline --abbrev-commit -n 10
+	lo = log --graph --decorate --pretty=oneline --abbrev-commit --max-count 20
 	lol = log --graph --decorate --pretty=oneline --abbrev-commit
 	lola = log --graph --decorate --pretty=oneline --abbrev-commit --all
 	peeps = !git log --pretty=format:%aN | sort | uniq -c | sort -rn
