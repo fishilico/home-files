@@ -399,7 +399,10 @@ postless() {
     local DIR OUTPUT STATUS
     if [ $# -eq 1 -a \! -e "$1" ] ; then
         # Find message by ID in Postfix spool
-        for DIR in /var/spool/postfix/* ; do
+        for DIR in /var/spool/postfix/* /var/spool/postfix/*/* ; do
+            [ -d "$DIR" ] || continue
+            # Avoid the defer folder which contains text files
+            [ "${DIR%/*}" != "/var/spool/postfix/defer" ] || continue
             if [ -e "$DIR/$1" ] ; then
                 set "$DIR/$1"
                 break
