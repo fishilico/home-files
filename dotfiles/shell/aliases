@@ -280,6 +280,14 @@ if type alias > /dev/null 2>&1 ; then
         unset _HEXDUMP_PART1 _HEXDUMP_PART2
     fi
 
+    # Some shortcuts related to C and ASM
+    # Transform C code to LLVM intermediate representation
+    alias c2llvm='clang -S -O0 -emit-llvm -o /dev/stdout'
+    # Disassemble binary objects
+    alias disx86_16='objdump -D -b binary -mi8086'
+    alias disx86_32='objdump -D -b binary -mi386'
+    alias disx86_64='objdump -D -b binary -mi386:x86-64'
+
     # Python profiler
     alias pyprof='python -m cProfile -s cumtime'
     alias pyprof2='python2 -m cProfile -s cumtime'
