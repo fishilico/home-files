@@ -18,7 +18,7 @@ $VERSION = "3.2";
 # the Xterm title.
 
 # The $vars are normal Irssi vars (docs/special_vars.txt).
-# $.var does some magic, adds a space at the begining and brackets around 
+# $.var does some magic, adds a space at the begining and brackets around
 # the item but only if it produces output.
 
 # Here is some examples:

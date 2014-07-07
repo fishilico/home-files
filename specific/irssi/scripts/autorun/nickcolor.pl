@@ -1,10 +1,10 @@
 use strict;
 use Irssi 20020101.0250 ();
-use vars qw($VERSION %IRSSI); 
+use vars qw($VERSION %IRSSI);
 $VERSION = "1";
 %IRSSI = (
     authors     => "Timo Sirainen, Ian Peters",
-    contact	=> "tss\@iki.fi", 
+    contact	=> "tss\@iki.fi",
     name        => "Nick Color",
     description => "assign a different color for each nick",
     license	=> "Public Domain",
