@@ -4,6 +4,7 @@
 echo "uname: machine $(uname -m), kernel $(uname -s), OS $(uname -o)"
 
 if [ -x /usr/bin/dpkg ] || which dpkg > /dev/null 2>&1 ; then
+    # "dpkg-architecture -qDEB_HOST_ARCH" calls "dpkg --print-architecture"
     echo "dpkg architecture: $(dpkg --print-architecture)"
 fi
 
