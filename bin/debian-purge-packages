@@ -1,0 +1,24 @@
+#!/bin/sh
+# Purge the config files of removed packages on a Debian system
+
+# Use aptitude or apt-get
+if which aptitude > /dev/null 2>&1
+then
+    APT=aptitude
+elif which apt-get > /dev/null 2>&1
+then
+    APT=apt-get
+else
+    echo >&2 'Unable to find aptitude nor apt-get :('
+    exit 1
+fi
+
+PKGLIST=$(dpkg -l | sed -n 's/^rc \+\([^ ]\+\).*$/\1/p')
+[ -n "$PKGLIST" ] || exit
+
+echo "These packages will be removed:" $PKGLIST
+if [ "$(id -u)" = "0" ] ; then
+    exec "$APT" purge $PKGLIST
+else
+    exec sudo "$APT" purge $PKGLIST
+fi
