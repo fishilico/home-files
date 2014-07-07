@@ -5,7 +5,7 @@
 #   matches packets used by pingare not in the specified network
 # - ip and not net 10.0.0.0/8
 #   matches IPv4 packets which are not in the specified network
-# - tcp dst port http
+# - tcp dst port http
 #   matches requests to HTTP server
 
 # Simulate an ethernet pcap header (built with "tcpdump -w")

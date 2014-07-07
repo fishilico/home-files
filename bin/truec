@@ -49,7 +49,7 @@ truec_file() {
 
 if [ $# -ge 1 ]
 then
-    # Process each file on the command line
+    # Process each file on the command line
     for FILE
     do
         truec_file "$FILE"
