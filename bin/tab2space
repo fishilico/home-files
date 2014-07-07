@@ -1,12 +1,21 @@
 #!/bin/bash
-# Convert tabs into 4-spaces in specified files
+# Convert tabs into 4-spaces in specified files (or not if -t is given),
+# strip spaces at the end of lines and replace nbsp with spaces.
 
 TAB=$'\t'
+NBSP=$'\xc2\xa0'
+
+REPLACE_TABS=true
+if [ "$1" = '-t' ]
+then
+    REPLACE_TABS=false
+    shift
+fi
 
 for file in "$@"
 do
     # Replace tab by 4 spaces
-    if grep -q "$TAB" < "$file"
+    if "$REPLACE_TABS" && grep -q -F "$TAB" < "$file"
     then
         echo "[tab] $file"
         sed -i --follow-symlinks "s/$TAB/    /g" "$file"
@@ -17,5 +26,12 @@ do
     then
         echo "[eol] $file"
         sed -i --follow-symlinks "s/ \+\$//" "$file"
+    fi
+
+    # Remove non-breakable spaces
+    if grep -q -F "$NBSP" < "$file"
+    then
+        echo "[nbsp] $file"
+        sed -i --follow-symlinks "s/$NBSP/ /" "$file"
     fi
 done
