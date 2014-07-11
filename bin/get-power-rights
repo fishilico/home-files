@@ -1,0 +1,43 @@
+#!/bin/sh
+# Get the rights of the current session about the power management system
+# For D-Bus-related options, "d-feet" lists graphically all available interface
+# Introspection on the CLI can be done with:
+# gdbus introspect --system --dest "org.freedesktop..." --object-path "/org/freedesktop/..."
+
+if which gdbus > /dev/null 2>&1
+then
+    dbus_get() {
+        gdbus call --system --dest "$1" --object-path "$2" --method "$1.$3" | \
+            sed -e 's/^(\(.*\),).*/\1/' -e "s/'//g"
+    }
+elif which dbus-send > /dev/null 2>&1
+then
+    dbus_get() {
+        dbus-send --system --print-reply --dest="$1" "$2" "$3" | \
+            sed -e '/^method /d' -e 's/ *boolean //' -e 's/ *string "\(.*\)"/\1/'
+    }
+else
+    echo >&2 "Unable to find a D-Bus command-line client"
+    exit 1
+fi
+
+echo_ability() {
+    echo -n "Can $1: "
+    dbus_get "$2" "$3" "$4"
+}
+
+if dbus_get org.freedesktop.login1 /org/freedesktop/login1 Manager.CanPowerOff > /dev/null 2>&1
+then
+    # systemd-logind interface
+    echo_ability 'suspend' org.freedesktop.login1 /org/freedesktop/login1 Manager.CanSuspend
+    echo_ability 'hybrid sleep' org.freedesktop.login1 /org/freedesktop/login1 Manager.CanHybridSleep
+    echo_ability 'hibernate' org.freedesktop.login1 /org/freedesktop/login1 Manager.CanHibernate
+    echo_ability 'power off' org.freedesktop.login1 /org/freedesktop/login1 Manager.CanPowerOff
+    echo_ability 'reboot' org.freedesktop.login1 /org/freedesktop/login1 Manager.CanReboot
+else
+    # ConsoleKit and UPower interface
+    echo_ability 'suspend' org.freedesktop.UPower /org/freedesktop/UPower SuspendAllowed
+    echo_ability 'hibernate' org.freedesktop.UPower /org/freedesktop/UPower HibernateAllowed
+    echo_ability 'power off' org.freedesktop.ConsoleKit /org/freedesktop/ConsoleKit/Manager Manager.CanStop
+    echo_ability 'reboot' org.freedesktop.ConsoleKit /org/freedesktop/ConsoleKit/Manager Manager.CanRestart
+fi
