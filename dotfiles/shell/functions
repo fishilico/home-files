@@ -190,6 +190,26 @@ hexdec() {
     (echo 'ibase=16' ; (print_args_or_stdin "$@" | tr '[a-f]' '[A-F]')) | bc -q
 }
 
+# Recursive md5sum, sha1sum, sha256sum... in directories
+md5sumd() {
+    find "$@" -type f -exec md5sum {} +
+}
+sha1sumd() {
+    find "$@" -type f -exec sha1sum {} +
+}
+sha224sumd() {
+    find "$@" -type f -exec sha224sum {} +
+}
+sha256sumd() {
+    find "$@" -type f -exec sha256sum {} +
+}
+sha384sumd() {
+    find "$@" -type f -exec sha384sum {} +
+}
+sha512sumd() {
+    find "$@" -type f -exec sha512sum {} +
+}
+
 # Sort domain names by their subdomains
 dnssort() {
     # Reverse dot-separated components
