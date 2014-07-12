@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+# -*- coding:UTF-8 -*-
+# Copyright (c) 2014 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Clean-up files in directories which only contain "data" files
+
+Examples of such directories:
+* a website without any executable programs,
+* a camera folder which only contains pictures and movies,
+* a network share with non-remotely-executable code (e.g. gitweb data).
+
+This script cleans up directories by removing temporary files and fix
+permissions.
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+import argparse
+import functools
+import os
+import stat
+import sys
+
+
+@functools.lru_cache()
+def mode_str(mode):
+    """Get a string respresentation of a file mode"""
+    return (
+        ('r' if mode & stat.S_IRUSR else '-') +
+        ('w' if mode & stat.S_IWUSR else '-') +
+        (('s' if mode & stat.S_IXUSR else 'S') if mode & stat.S_ISUID else
+         ('x' if mode & stat.S_IXUSR else '-')) +
+        ('r' if mode & stat.S_IRGRP else '-') +
+        ('w' if mode & stat.S_IWGRP else '-') +
+        (('s' if mode & stat.S_IXGRP else 'S') if mode & stat.S_ISGID else
+         ('x' if mode & stat.S_IXGRP else '-')) +
+        ('r' if mode & stat.S_IROTH else '-') +
+        ('w' if mode & stat.S_IWOTH else '-') +
+        (('t' if mode & stat.S_IXOTH else 'T') if mode & stat.S_ISVTX else
+         ('x' if mode & stat.S_IXOTH else '-')))
+
+
+def do_chmod(filetype, path, mode_from, mode_to, dry_run):
+    print("{}Updating {} {}: {} -> {}".format(
+        '[dry] ' if dry_run else '', filetype, path,
+        mode_str(mode_from), mode_str(mode_to)))
+    if not dry_run:
+        os.chmod(path, mode_to)
+
+
+def do_remove(filetype, path, dry_run):
+    print("{}Removing {} {}".format(
+        '[dry] ' if dry_run else '', filetype, path))
+    if not dry_run:
+        os.remove(path)
+
+
+def clean_data_dir(basedir, fmode, dmode, dry_run=False):
+    fmode_keep = fmode & stat.S_IWUSR
+    fmode_mask = ~fmode_keep
+    for dirpath, dirnames, filenames in os.walk(basedir):
+        for dirname in dirnames:
+            path = os.path.join(dirpath, dirname)
+
+            # Fix directory mode
+            mode = os.stat(path).st_mode
+            assert stat.S_ISDIR(mode)
+            mode = stat.S_IMODE(mode)
+            if mode != dmode:
+                do_chmod('dir', path, mode, dmode, dry_run)
+        for filename in filenames:
+            path = os.path.join(dirpath, filename)
+
+            # Remove temporary files
+            if filename[-1] == '~':
+                do_remove('temp file', path, dry_run)
+                continue
+
+            # Remove system files
+            if filename == 'Thumbs.db':
+                do_remove('system file', path, dry_run)
+                continue
+
+            # Fix file mode
+            mode = os.stat(path).st_mode
+            if stat.S_ISREG(mode):
+                mode = stat.S_IMODE(mode)
+                if mode & fmode_mask != fmode & fmode_mask:
+                    new_mode = (fmode & fmode_mask) | (mode & fmode_keep)
+                    do_chmod('file', path, mode, new_mode, dry_run)
+            else:
+                assert not stat.S_ISDIR(mode)
+    return True
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Clean-up data directories")
+    parser.add_argument('-g', '--group', action='store_true',
+                        help="remove any permission related to \"other\"")
+    parser.add_argument('-u', '--user', action='store_true',
+                        help="remove any permission but the user-related ones")
+    parser.add_argument('-n', '--dry-run', action='store_true',
+                        help="only print what would be done without doing it")
+    parser.add_argument('-w', '--keep-write', action='store_true',
+                        help="keep writable files")
+    parser.add_argument('directories', metavar='DIRS', nargs='*',
+                        help="data directories")
+    args = parser.parse_args(argv)
+
+    # Compute file and directory Unix permission flags
+    fmode = stat.S_IRUSR
+    dmode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+    if not args.user:
+        fmode |= stat.S_IRGRP
+        dmode |= stat.S_IRGRP | stat.S_IXGRP
+        if not args.group:
+            fmode |= stat.S_IROTH
+            dmode |= stat.S_IROTH | stat.S_IXOTH
+    if args.keep_write:
+        fmode |= stat.S_IWUSR
+
+    if args.directories:
+        for basedir in args.directories:
+            if not clean_data_dir(basedir, fmode, dmode, args.dry_run):
+                return 1
+    else:
+        if not clean_data_dir(os.path.curdir, fmode, dmode, args.dry_run):
+            return 1
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
