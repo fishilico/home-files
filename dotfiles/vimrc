@@ -91,9 +91,9 @@ augroup usercommands
   " Force noet on some files
   autocmd BufRead */Makefile* set noexpandtab
   autocmd BufRead *.mk set noexpandtab
-  autocmd BufRead *.fc set noexpandtab
-  autocmd BufRead *.if set noexpandtab
-  autocmd BufRead *.te set noexpandtab
+  autocmd BufRead *.fc set noexpandtab shiftwidth=8 softtabstop=8 tabstop=8
+  autocmd BufRead *.if set noexpandtab shiftwidth=8 softtabstop=8 tabstop=8
+  autocmd BufRead *.te set noexpandtab shiftwidth=8 softtabstop=8 tabstop=8
 
   " Wrap long git commit messages
   autocmd FileType gitcommit set textwidth=72
