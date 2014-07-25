@@ -14,7 +14,7 @@ else
 fi
 
 PKGLIST=$(dpkg -l | sed -n 's/^rc \+\([^ ]\+\).*$/\1/p')
-[ -n "$PKGLIST" ] || exit
+[ -n "$PKGLIST" ] || exit 0
 
 echo "These packages will be removed:" $PKGLIST
 if [ "$(id -u)" = "0" ] ; then
