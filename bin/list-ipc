@@ -1,0 +1,152 @@
+#!/usr/bin/env python
+# -*- coding:UTF-8 -*-
+"""List information about IPC (inter-process communication) facilities
+
+This script works in a similar way as "ipcs" (from util-linux project).
+On recent systems, /proc/sysvipc/{msg,sem,shm} exist and give the same
+information directly from procfs files.
+"""
+import argparse
+import ctypes
+import ctypes.util
+import errno
+import os
+
+
+class struct_ipc_perm(ctypes.Structure):
+    _fields_ = [
+        ('key', ctypes.c_int32),  # Key supplied to shmget
+        ('uid', ctypes.c_uint32),  # Effective UID of owner
+        ('gid', ctypes.c_uint32),  # Effective GID of owner
+        ('cuid', ctypes.c_uint32),  # Effective UID of creator
+        ('cgid', ctypes.c_uint32),  # Effective GID of creator
+        ('mode', ctypes.c_uint16),  # Permissions + SHM_DEST and SHM_LOCKED flags
+        ('_pad1', ctypes.c_uint16),
+        ('_seq', ctypes.c_uint16),  # Sequence number
+        ('_pad2', ctypes.c_uint16),
+        ('_reserved1', ctypes.c_ulong),
+        ('_reserved2', ctypes.c_ulong)]
+
+
+class struct_shmid_ds(ctypes.Structure):
+    _fields_ = [
+        ('shm_perm', struct_ipc_perm),  # ownership and permissions
+        ('shm_segsz', ctypes.c_size_t),  # size of segment (bytes)
+        ('shm_atime', ctypes.c_uint64),  # last attach time (shmat)
+        ('shm_dtime', ctypes.c_uint64),  # last detach time (shmdt)
+        ('shm_ctime', ctypes.c_uint64),  # last change time by shmctl
+        ('shm_cpid', ctypes.c_int),  # PID of creator
+        ('shm_lpid', ctypes.c_int),  # PID of last shmat/shmdt
+        ('shm_nattch', ctypes.c_ulong),  # number of current attaches
+        ('_reserved1', ctypes.c_ulong),
+        ('_reserved2', ctypes.c_ulong)]
+
+
+class struct_semid_ds(ctypes.Structure):
+    _fields_ = [
+        ('sem_perm', struct_ipc_perm),  # ownership and permissions
+        ('sem_otime', ctypes.c_uint64),  # last semop time
+        ('_reserved1', ctypes.c_ulong),
+        ('sem_ctime', ctypes.c_uint64),  # last change time by semctl
+        ('_reserved2', ctypes.c_ulong),
+        ('sem_nsems', ctypes.c_ulong),  # number of semaphores in set
+        ('_reserved3', ctypes.c_ulong),
+        ('_reserved4', ctypes.c_ulong)]
+
+
+def ErrnoResult(value):
+    """ctypes validator for function which returns -1 and set errno on error"""
+    if value == -1:
+        errnum = ctypes.get_errno()
+        raise OSError(errnum, os.strerror(errnum))
+    return value
+
+
+SHM_STAT = 13
+SHM_INFO = 14
+
+SHM_DEST = 0o1000  # segment will be destroyed on last detach
+SHM_LOCKED = 0o2000  # segment will not be swapped
+SHM_HUGETLB = 0o4000  # segment is mapped via hugetlb
+SHM_NORESERVE = 0o10000  # don't check for reservations
+
+SEM_STAT = 18
+SEM_INFO = 19
+
+libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
+libc.shmctl.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(struct_shmid_ds)]
+libc.shmctl.restype = ErrnoResult
+libc.semctl.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.POINTER(struct_semid_ds)]
+libc.semctl.restype = ErrnoResult
+
+
+def list_shm():
+    """List shared memory segments"""
+    shmseg = struct_shmid_ds()
+    maxid = libc.shmctl(0, SHM_INFO, ctypes.pointer(shmseg))
+    if maxid == 0:
+        print("No shared memory segment")
+        return
+    print("  SHM ID     Key ID      Owner      Creator  Mode Status   Size #attach CPID  LPID")
+    for i in range(maxid + 1):
+        try:
+            shmid = libc.shmctl(i, SHM_STAT, ctypes.pointer(shmseg))
+        except OSError as exc:
+            if exc.errno == errno.EACCES:
+                print("   SHM {:d}: access denied".format(i))
+                continue
+            elif exc.errno == errno.EINVAL:
+                print("   SHM {:d}: currently unused".format(i))
+                continue
+            raise
+        status = 'd' if shmseg.shm_perm.mode & SHM_DEST else '-'
+        status += 'l' if shmseg.shm_perm.mode & SHM_LOCKED else '-'
+        status += 'h' if shmseg.shm_perm.mode & SHM_HUGETLB else '-'
+        status += 'n' if shmseg.shm_perm.mode & SHM_NORESERVE else '-'
+        print("{:10d} 0x{:08x} {:5d}:{:<5d} {:5d}:{:<5d} {:3o} {} {:10d} {:4d} {:5d} {:5d}".format(
+            shmid, shmseg.shm_perm.key,
+            shmseg.shm_perm.uid, shmseg.shm_perm.gid,
+            shmseg.shm_perm.cuid, shmseg.shm_perm.cgid,
+            shmseg.shm_perm.mode & 0o777,
+            status,
+            shmseg.shm_segsz, shmseg.shm_nattch,
+            shmseg.shm_cpid, shmseg.shm_lpid))
+
+
+def list_sem():
+    """List System V semaphore"""
+    semary = struct_semid_ds()
+    maxid = libc.semctl(0, 0, SEM_INFO, ctypes.pointer(semary))
+    if maxid == 0:
+        print("No System V semaphore")
+        return
+    print("  SEM ID     Key ID      Owner      Creator  Mode #sems")
+    for i in range(maxid + 1):
+        try:
+            semid = libc.semctl(i, 0, SEM_STAT, ctypes.pointer(semary))
+        except OSError as exc:
+            if exc.errno == errno.EACCES:
+                print("   SEM {:d}: access denied".format(i))
+                continue
+            elif exc.errno == errno.EINVAL:
+                print("   SEM {:d}: currently unused".format(i))
+                continue
+            raise
+        print("{:10d} 0x{:08x} {:5d}:{:<5d} {:5d}:{:<5d} {:3o} {:5d}".format(
+            semid, semary.sem_perm.key,
+            semary.sem_perm.uid, semary.sem_perm.gid,
+            semary.sem_perm.cuid, semary.sem_perm.cgid,
+            semary.sem_perm.mode, semary.sem_nsems))
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="List information about IPC facilities")
+    args = parser.parse_args(argv)
+    list_shm()
+    print("")
+    list_sem()
+
+
+if __name__ == '__main__':
+    main()
