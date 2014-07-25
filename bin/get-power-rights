@@ -28,14 +28,14 @@ echo_ability() {
 
 if dbus_get org.freedesktop.login1 /org/freedesktop/login1 Manager.CanPowerOff > /dev/null 2>&1
 then
-    # systemd-logind interface
+    echo "Using systemd-logind D-Bus interface"
     echo_ability 'suspend' org.freedesktop.login1 /org/freedesktop/login1 Manager.CanSuspend
     echo_ability 'hybrid sleep' org.freedesktop.login1 /org/freedesktop/login1 Manager.CanHybridSleep
     echo_ability 'hibernate' org.freedesktop.login1 /org/freedesktop/login1 Manager.CanHibernate
     echo_ability 'power off' org.freedesktop.login1 /org/freedesktop/login1 Manager.CanPowerOff
     echo_ability 'reboot' org.freedesktop.login1 /org/freedesktop/login1 Manager.CanReboot
 else
-    # ConsoleKit and UPower interface
+    echo "Using ConsoleKit and UPower D-Bus interface"
     echo_ability 'suspend' org.freedesktop.UPower /org/freedesktop/UPower SuspendAllowed
     echo_ability 'hibernate' org.freedesktop.UPower /org/freedesktop/UPower HibernateAllowed
     echo_ability 'power off' org.freedesktop.ConsoleKit /org/freedesktop/ConsoleKit/Manager Manager.CanStop
