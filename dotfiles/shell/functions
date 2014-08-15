@@ -235,3 +235,18 @@ mplayer_webcam() {
 strace_exec() {
     strace -s 65536 -qq -e execve -e signal=none -f "$@" 2>&1 | grep -v ' = -1 ENOENT ([^)]*)$'
 }
+
+# Find the package which provides an installed command
+if [ -x /usr/bin/which ] ; then
+    if [ -x /usr/bin/pacman ] ; then
+        # Arch Linux
+        whichpkg() {
+            pacman -Q --owns $(/usr/bin/which "$@")
+        }
+    elif [ -x /usr/bin/dpkg ] ; then
+        # Debian
+        whichpkg() {
+            dpkg --search $(/usr/bin/which "$@")
+        }
+    fi
+fi
