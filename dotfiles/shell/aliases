@@ -156,7 +156,7 @@ if type alias > /dev/null 2>&1 ; then
         elif [ -x /bin/grep ] ; then
             alias lgrep='/bin/grep --line-buffered'
         else
-            alias lgrep='grep --line-buffered'
+            alias lgrep='\grep --line-buffered'
         fi
     fi
 

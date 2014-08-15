@@ -144,7 +144,7 @@ if grep --help 2> /dev/null |grep -q -- --color ; then
     if [ -n "$BASH_VERSION" -o -n "$ZSH_VERSION" ] ; then
         # Modern shells support array substitution
         hl() {
-            grep -E --color=always -e '' "${@/#/-e}"
+            \grep -E --color=always -e '' "${@/#/-e}"
         }
     else
         # Same function, with a temporary file
@@ -155,7 +155,7 @@ if grep --help 2> /dev/null |grep -q -- --color ; then
                 echo "$1" >> "$FILE"
                 shift
             done
-            grep -E --color=always -e '' -f "$FILE"
+            \grep -E --color=always -e '' -f "$FILE"
             /bin/rm "$FILE"
         }
     fi
@@ -243,7 +243,7 @@ mplayer_webcam() {
 
 # Trace process executions
 strace_exec() {
-    strace -s 65536 -qq -e execve -e signal=none -f "$@" 2>&1 | grep -v ' = -1 ENOENT ([^)]*)$'
+    strace -s 65536 -qq -e execve -e signal=none -f "$@" 2>&1 | \grep -v ' = -1 ENOENT ([^)]*)$'
 }
 
 # Find the package which provides an installed command
