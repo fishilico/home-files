@@ -96,6 +96,16 @@ epoch2utc() {
 date_epoch() {
     date '+%s'
 }
+# Dump the local timezone file
+tzdump() {
+    if [ -L /etc/localtime ] ; then
+        zdump -v $(readlink /etc/localtime)
+    elif [ -r /etc/localtime ] ; then
+        zdump -v /etc/localtime
+    else
+        zdump -v /usr/share/zoneinfo/UTC
+    fi | sed 's,^/usr/share/zoneinfo/,,'
+}
 
 # Retrieve HTTPS certificate of a website
 get_https_cert() {
