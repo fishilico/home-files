@@ -57,6 +57,7 @@
 	filename = 5
 	linenumber = 2
 [core]
+	abbrev = 12
 	excludesfile = ~/.gitignore_global
 [grep]
 	lineNumber = true
