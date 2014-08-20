@@ -67,6 +67,8 @@
 	tool = vimdiff
 [push]
 	default = simple
+[sendemail]
+	confirm = always
 
 [url "git@github.com:"]
 	pushInsteadOf = github:
