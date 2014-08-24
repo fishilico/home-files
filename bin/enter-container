@@ -1,0 +1,29 @@
+#!/bin/sh
+# Enter in a container by issuing a correct nsenter command
+# nsenter is provided by util-linux project.
+
+if [ $# -ne 1 ]
+then
+    echo "Usage: $0 PID"
+    exit 1
+fi
+
+TARGET="$1"
+
+if ! [ -d "/proc/$TARGET/ns" ]
+then
+    echo >&2 "Invalid target PID"
+    exit 1
+fi
+
+# Build a parameter array
+set -- '--target' "$TARGET"
+! [ -L "/proc/$TARGET/ns/ipc" ] || set -- "$@" '--ipc'
+! [ -L "/proc/$TARGET/ns/mnt" ] || set -- "$@" '--mount'
+! [ -L "/proc/$TARGET/ns/net" ] || set -- "$@" '--net'
+! [ -L "/proc/$TARGET/ns/pid" ] || set -- "$@" '--pid'
+! [ -L "/proc/$TARGET/ns/user" ] || set -- "$@" '--user'
+! [ -L "/proc/$TARGET/ns/uts" ] || set -- "$@" '--uts'
+
+echo "Running nsenter $@"
+exec nsenter "$@"
