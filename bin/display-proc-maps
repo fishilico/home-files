@@ -21,6 +21,8 @@
 # THE SOFTWARE.
 """Display the memory mapping of some processes
 
+This displays similar information as "pmap" tool from procps-ng.
+
 @author: Nicolas Iooss
 @license: MIT
 """
