@@ -300,4 +300,7 @@ if type alias > /dev/null 2>&1 ; then
 
     # Open xterm in fullscreen
     alias xterm-full='xterm -bg black -fg white -fullscreen'
+
+    # Make Arch Linux package with a temporary directory
+    alias makepkgtmp='BUILDDIR="/tmp/makepkg-$(id -nu)" makepkg'
 fi
