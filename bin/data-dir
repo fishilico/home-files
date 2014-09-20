@@ -80,7 +80,7 @@ def clean_data_dir(basedir, fmode, dmode, dry_run=False):
             path = os.path.join(dirpath, dirname)
 
             # Fix directory mode
-            mode = os.stat(path).st_mode
+            mode = os.lstat(path).st_mode
             assert stat.S_ISDIR(mode)
             mode = stat.S_IMODE(mode)
             if mode != dmode:
@@ -99,7 +99,7 @@ def clean_data_dir(basedir, fmode, dmode, dry_run=False):
                 continue
 
             # Fix file mode
-            mode = os.stat(path).st_mode
+            mode = os.lstat(path).st_mode
             if stat.S_ISREG(mode):
                 mode = stat.S_IMODE(mode)
                 if mode & fmode_mask != fmode & fmode_mask:
