@@ -243,6 +243,9 @@ if type alias > /dev/null 2>&1 ; then
         fi
     fi
 
+    # Generate DNS SSHFP records for the current host
+    alias sshfp-here='ssh-keygen -r $(hostname)'
+
     # View mails in hold queue
     if which postqueue > /dev/null 2>&1 ; then
         alias mailq-hold='postqueue -p |lgrep -E "^[0-9A-F]*!"'
