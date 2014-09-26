@@ -1,0 +1,25 @@
+#!/bin/sh
+# Launch gpg-agent with ssh support
+
+if [ -n "$SSH_AUTH_SOCK" ]
+then
+    echo >&2 "ssh agent already exists, its socket is $SSH_AUTH_SOCK"
+    exit 1
+fi
+
+GPG_AGENT_INFO_PATH="$HOME/.cache/gpg-agent-info"
+if [ -r "$GPG_AGENT_INFO_PATH" ]
+then
+    echo >&2 "Found GPG agent info file: $GPG_AGENT_INFO_PATH"
+    echo >&2 "This may indicate that gpg-agent is already running"
+    exit 1
+fi
+
+if ! gpg-agent --sh --daemon --enable-ssh-support --write-env-file "$GPG_AGENT_INFO_PATH"
+then
+    ERRCODE="$?"
+    echo >&2 "gpg-agent failed with code $ERRCODE"
+    exit $ERRCODE
+fi
+
+echo "gpg-agent is running. You can source $GPG_AGENT_INFO_PATH to use it."
