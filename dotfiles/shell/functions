@@ -27,6 +27,17 @@ find_empty() {
     find "$@" -type d -empty -print
 }
 
+# Compute size of subdirectories and sort them
+dus() {
+    du -h "$@" | sort -h
+}
+du1s() {
+    du -h --max-depth=1 "$@" | sort -h
+}
+du2s() {
+    du -h --max-depth=2 "$@" | sort -h
+}
+
 # Read passwords. Zsh uses "?prompt" option to display a prompt and other
 # shells (Bash, Ash, ...) use -p option, so use echo to be compatible.
 # Dash fails with "read: Illegal option -s" as this is not POSIX-compliant.
