@@ -1,0 +1,52 @@
+#!/bin/sh
+# Disable network-facing services
+#
+# This can be used on a desktop workstation before connecting to an untrusted
+# network to reduce the attack surface.
+
+if [ -x /usr/bin/systemctl ] || which systemctl > /dev/null 2>&1
+then
+    # Systemd
+    disable_service() {
+        local STATE
+        STATE=$(systemctl is-active "$1")
+        if [ $? = 0 ]
+        then
+            echo "Disabling $1 (state was $STATE)"
+            systemctl disable "$1" || exit $?
+            systemctl stop "$1" || exit $?
+        fi
+    }
+elif [ -x /usr/sbin/service ] || which service > /dev/null 2>&1
+then
+    # Debian-based system
+    disable_service() {
+        if [ -e "/etc/init.d/$1" ]
+        then
+            echo "Disabling $1 (state $STATE)..."
+            service "$1" stop || exit $?
+            update-rc.d "$1" remove || exit $?
+        fi
+    }
+else
+    echo >&2 "Unknown system, unable to disable services"
+    exit 1
+fi
+
+# Disable services which are never used on an untrusted network
+disable_service avahi-daemon
+disable_service proftpd
+disable_service vsftpd
+
+# Disable SSH with an extra safety check
+if [ -z "$SSH_CLIENT" ]
+then
+    disable_service ssh
+    disable_service sshd
+else
+    echo "Warning: NOT disabling ssh as current session comes from SSH."
+fi
+
+echo "Current network-facing processes:"
+ss -lnptu 'not ( src 127.0.0.0/8 or src ::1/128 )' | \
+    sed '1d;s/ \+/\t/g' | cut -f1,5,7 | column -t
