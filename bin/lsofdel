@@ -1,0 +1,9 @@
+#!/bin/sh
+# List opened files which have been deleted (unlinked)
+
+if [ "$#" -eq 0 ]
+then
+    exec lsof +L1
+else
+    exec lsof +L1 -a '(' "$@" ')'
+fi
