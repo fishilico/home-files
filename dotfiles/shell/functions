@@ -124,6 +124,13 @@ get_https_cert() {
          -showcerts | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'
 }
 
+# Check the DANE configuration for a HTTPS website (cert and TLSA DNS record)
+# To get a TLS record, use something like:
+#   dig TLSA _443._tcp.good.dane.verisignlabs.com
+check_https_dane() {
+    gnutls-cli --dane --ca-verification --ocsp --port 443 "$1" < /dev/null
+}
+
 # Combine postcat with less
 postless() {
     local DIR OUTPUT STATUS
