@@ -27,18 +27,23 @@ fi
 if [ -r /etc/arch-release ]
 then
     echo "arch"
+    exit
 elif [ -r /etc/debian_version ]
 then
     echo "debian"
+    exit
 elif [ -r /etc/gentoo-release ]
 then
     echo "gentoo"
+    exit
 elif [ -r /etc/redhat-release ]
 then
     echo "redhat"
+    exit
 elif [ -r /etc/SuSE-release ]
 then
     echo "suse"
+    exit
 fi
 
 # Use issue as a last resort
