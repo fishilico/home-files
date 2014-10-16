@@ -29,7 +29,7 @@ install_rec() {
         if [ -d $SRC_FILE ]
         then
             # Make directory
-            [ -d "$DST_FILE" ] || mkdir -v "$DST_FILE"
+            mkdir -pv "$DST_FILE"
             if ! [ -d "$DST_FILE" ]
             then
                 echo >&2 "Error: file is not a directory ($DST_FILE)"
@@ -73,7 +73,7 @@ install_rec "$SOURCE_DIR/dotfiles" "$INSTALL_DIR/." || RETURN_VAL=1
 # Remove broken symlinks in bin/ and install custom programs
 BIN_INSTALL_DIR="$INSTALL_DIR/bin"
 echo "Installing bin in $INSTALL_DIR"
-[ -d "$BIN_INSTALL_DIR" ] || mkdir -v "$BIN_INSTALL_DIR" || exit 1
+mkdir -pv "$BIN_INSTALL_DIR" || exit 1
 find "$BIN_INSTALL_DIR/" -maxdepth 1 -xtype l -exec rm -v {} \;
 install_rec "$SOURCE_DIR/bin" "$BIN_INSTALL_DIR/" || RETURN_VAL=1
 unset BIN_INSTALL_DIR
