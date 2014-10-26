@@ -306,4 +306,6 @@ if type alias > /dev/null 2>&1 ; then
 
     # Make Arch Linux package with a temporary directory
     alias makepkgtmp='BUILDDIR="/tmp/makepkg-$(id -nu)" makepkg'
+    # Do not compress package (useful for large packages)
+    alias makepkgtmptar='BUILDDIR="/tmp/makepkg-$(id -nu)" PKGEXT=.tar makepkg'
 fi
