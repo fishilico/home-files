@@ -24,6 +24,9 @@ if type alias > /dev/null 2>&1 ; then
         alias chown='chown -v'
     fi
 
+    # Make "strings" never treat files as objects (much secure)
+    alias strings='strings -a'
+
     # Always use /usr/bin/sudo if available to prevent PATH hijacking
     # sadm alias is for SELinux
     if [ -x /usr/bin/sudo ] ; then
