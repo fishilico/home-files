@@ -69,6 +69,8 @@
 	default = simple
 [sendemail]
 	confirm = always
+[tar "tar.xz"]
+	command = xz -c
 
 [url "git@github.com:"]
 	pushInsteadOf = github:
