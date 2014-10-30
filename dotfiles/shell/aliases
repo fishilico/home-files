@@ -207,8 +207,12 @@ if type alias > /dev/null 2>&1 ; then
             -\\\"\""
 
     # Colored dmesg
+    # "sdmesg" (= sudo dmesg) is needed with /proc/sys/kernel/dmesg_restrict
     if dmesg --help 2> /dev/null |grep -q -- --color ; then
         alias dmesg='dmesg --color'
+        alias sdmesg='sudo dmesg --color'
+    else
+        alias sdmesg='sudo dmesg'
     fi
 
     # Continued dmesg, if "dmesg -w" is not avalaible
