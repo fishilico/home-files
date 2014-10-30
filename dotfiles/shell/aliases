@@ -176,6 +176,9 @@ if type alias > /dev/null 2>&1 ; then
     # Make a SSL connection to IP:port
     alias openssl-connect='openssl s_client -connect'
 
+    # Use gpg with SKS OpenPGP Public Key Server
+    alias gpg-keysrv='gpg --keyserver=keys.gnupg.net'
+
     # Colored diff
     if which colordiff > /dev/null 2>&1 ; then
         alias diff='colordiff -u'
