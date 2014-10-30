@@ -224,6 +224,9 @@ if type alias > /dev/null 2>&1 ; then
         alias scp='rsync -avzP'
     fi
 
+    # Open file within a X Desktop environment (see xdg-mime command for configuration)
+    alias xo='xdg-open'
+
     # X Window bell
     if which xset > /dev/null 2>&1 ; then
         alias xbell-off='xset b off'
