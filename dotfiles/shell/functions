@@ -278,3 +278,41 @@ if [ -x /usr/bin/which ] ; then
         }
     fi
 fi
+
+# Create an archive from the current git repository to the given path
+gitarc() {
+    local ARCPATH ARCFILE FORMAT
+    ARCPATH="$1"
+    if [ -z "$ARCPATH" ] ; then
+        ARCPATH="$(git rev-parse --show-toplevel).tar.gz"
+        if [ -z "$ARCPATH" ] ; then
+            echo >&2 "Unable to build a path to created archive"
+            return 1
+        fi
+        echo >&2 "Creating archive in $ARCPATH"
+    fi
+    ARCFILE="$(basename "$ARCPATH")"
+    case "$ARCFILE" in
+        *.tar)
+            FORMAT=tar
+            ;;
+        *.tar.gz)
+            FORMAT=tar.gz
+            ;;
+        *.tar.xz)
+            FORMAT=tar.xz
+            ;;
+        *.tgz)
+            FORMAT=tgz
+            ;;
+        *.zip)
+            FORMAT=zip
+            ;;
+        *)
+            echo >&2 "Unknown file type for $ARCFILE"
+            return 1
+    esac
+    git -C "$(git rev-parse --show-toplevel)" archive \
+        --format="$FORMAT" --output="$ARCPATH" \
+        --prefix="${ARCFILE%.$FORMAT}/" HEAD
+}
