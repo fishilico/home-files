@@ -314,6 +314,10 @@ if type alias > /dev/null 2>&1 ; then
     alias virtualenv2-sys='virtualenv2 --system-site-packages'
     alias virtualenv3-sys='virtualenv3 --system-site-packages'
 
+    # Always provide virtualenv2/3 as some systems do not provide them
+    alias virtualenv2='virtualenv --python=python2'
+    alias virtualenv3='virtualenv --python=python3'
+
     # Open xterm in fullscreen
     alias xterm-full='xterm -bg black -fg white -fullscreen'
 
