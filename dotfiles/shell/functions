@@ -179,7 +179,8 @@ if grep --help 2> /dev/null |grep -q -- --color ; then
     fi
 fi
 
-# Enhance the output of "mount"
+# Enhance the output of "mount" by aligning columns.
+# "findmnt" from util-linux project produces nicer output.
 mounttable() {
     mount | LC_ALL=C sort -k3 | column -t
 }
