@@ -2,25 +2,36 @@ scriptencoding utf-8
 " ^^ Please leave the above line at the start of the file.
 
 " This file is mostly based on Gentoo's /etc/vim/vimrc and ArchLinux's
-" /usr/share/vim/vimfiles/archlinux.vim files, with other slight customizations
+" /usr/share/vim/vimfiles/archlinux.vim files, with other slight customizations.
+" http://vimawesome.com/ provides a list of vim plugins but none is used here.
 
 " General settings
 set nocompatible " Use Vim defaults instead of 100% vi compatibility
 set backspace=2 " Allow backspacing over everything in insert mode (same as indent,eol,start)
 set autoindent " Always set auto-indenting on
-set history=50 " keep 50 lines of command history
+set copyindent " Copy the structure of existing lines when indenting a new line
+set autoread " Reload file when modified outside of vim
+set history=500 " keep 500 lines of command history
 set ruler " Show the cursor position all the time
+set rulerformat=%=%h%m%r%w\ %(%c%V%),%l/%L\ %P
+set showmode " Show the current mode on the last line
+let mapleader="," " Use comma as the leader key
 
 set viminfo='20,\"500 " Keep a .viminfo file.
 set incsearch " To move the search while typing
 set laststatus=1
 set cmdheight=2
+set showfulltag " View full tag when doing a tag search
 
 " Indentation configuration
 set expandtab " Always use space, no tabs
 set shiftwidth=4
 set softtabstop=4
 set tabstop=4
+
+" Enable folding based on indentation
+set foldmethod=indent
+set nofoldenable
 
 " Suffixes that get lower priority when doing tab completion for filenames.
 " These are files we are not likely to want to edit or read.
@@ -29,7 +40,12 @@ set suffixes=~,.aux,.bak,.bbl,.brf,.blg,.cb,.dvi,.idx,.ilg,.info,.log,.lo,.o,.ou
 " Configure completion
 set wildmenu
 set wildmode=longest:full,full
-set wildignore=*.swp,*.bak,*.o,*.pyc,*.pyo,*/.git/*
+set wildignore+=*~,*.bak,*.o,*.pyc,*.pyo,*.swo,*.swp
+set wildignore+=*.dll,*.exe,*.so,*.swf,*.zip,*.tar
+set wildignore+=*/.git/*,*/.hq/*,*/.svn/*
+if exists("&wildignorecase")
+  set wildignorecase
+endif
 
 if has('gui_running')
   " Make shift-insert work like in Xterm
@@ -143,11 +159,22 @@ if &t_Co > 2 || has("gui_running")
   "set colorcolumn=80
 
   " Show tabs with \u25ba and dots
-  set list listchars=tab:►.
+  set list
+  set listchars=nbsp:¤,tab:►.,trail:·,extends:»,precedes:«
 
   " Highlight extra whitespaces
   highlight ExtraWhitespace ctermbg=red guibg=red
   let g:m_extra_whitespace = matchadd('ExtraWhitespace', '\s\+$')
+endif
+
+" Spell correction with vim7 (http://www.cs.swarthmore.edu/help/vim/vim7.html)
+if has("spell")
+  " toggle spelling with F4 key
+  map <F4> :set spell!<CR><Bar>:echo "Spell Check: " . strpart("OffOn", 3 * &spell, 3)<CR>
+  " they were using white on white
+  highlight PmenuSel ctermfg=black ctermbg=lightgray
+  " limit it to just the top 10 items
+  set sps=best,10
 endif
 
 " Terminal fixes
@@ -190,5 +217,18 @@ endif
 nmap <C-t> :tabnew<CR>
 imap <C-t> <ESC>:tabnew<CR>i
 map <C-t> :tabnew<CR>:E<CR>
+nnoremap <LEADER>nt :tabnew<CR>
+nnoremap <LEADER>h :tabprevious<CR>
+nnoremap <LEADER>l :tabnext<CR>
+
+" Clear search with comma + space
+nnoremap <LEADER><SPACE> :nohlsearch<CR>
+
+" Fold/unfold code with space
+nnoremap <SPACE> za
+vnoremap <SPACE> zf
+
+" Save with sudo
+command! -nargs=1 Wroot :w !sudo tee <args> > /dev/null
 
 " vim: set fenc=utf-8 tw=80 sw=2 sts=2 et foldmethod=marker :
