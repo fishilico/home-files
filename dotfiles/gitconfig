@@ -47,6 +47,11 @@
 	whatis = show -s --pretty='tformat:%h (%s, %ad)' --date=short
 	whois = "!sh -c 'git log -i --pretty=\"format:%an <%ae>\" --author=\"$1\" | sort -u' -"
 
+	# Fetch GitHub pull requests with: git pr-fetch origin 42
+	# This can also be done by adding to [remote "origin"] in .git/config:
+	#    fetch = +refs/pull/*/head:refs/remotes/origin/pr/*
+	pr-fetch = "!sh -c 'git fetch \"$1\" \"pull/$2/head:pr/$2\"' -"
+
 [branch]
 	autosetuprebase = always
 [color]
