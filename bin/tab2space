@@ -38,6 +38,6 @@ do
     if grep -q -F "$NBSP" < "$file"
     then
         echo "[nbsp] $file"
-        sed -i --follow-symlinks "s/$NBSP/ /" "$file"
+        sed -i --follow-symlinks "s/$NBSP/ /g" "$file"
     fi
 done
