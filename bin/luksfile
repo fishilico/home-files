@@ -1,0 +1,144 @@
+#!/bin/sh
+# LUKS-encrypted file helper
+#
+# Helper script to mount/umount LUKS-encrypted file volume
+#
+# It is possible to declare in /etc/fstab a LUKS file with the following syntax:
+#   #{luksfile}/path/to/file /mnt/mountpoint_name
+#
+# To perform actions needed root access without entering any password,
+# add these lines to /etc/sudoers (using visudo):
+#     $USER ALL=(root) NOPASSWD: /usr/bin/losetup --show -f /*
+#     $USER ALL=(root) NOPASSWD: /usr/bin/losetup -d /dev/loop*
+#     $USER ALL=(root) NOPASSWD: /usr/bin/cryptsetup luksOpen /dev/loop*
+#     $USER ALL=(root) NOPASSWD: /usr/bin/cryptsetup luksClose /dev/mapper/*
+#     $USER ALL=(root) NOPASSWD: /usr/bin/umount /dev/mapper/luksfile_*
+
+
+# Ensure that loop module is loaded
+if [ ! -d /sys/module/loop ]
+then
+    echo "Loading loop module..."
+    sudo modprobe loop || exit $?
+fi
+
+# Verbose sudo
+sudo_v() {
+    echo >&2 "Running sudo $*"
+    sudo "$@"
+    return $?
+}
+
+# Find the loop device associated to a file
+find_loopdev() {
+    # "losetup --associated /path/to/file" writes lines such as:
+    #     /dev/loop0: [65027]:13762605 (/path/to/file)
+    losetup --associated "$1" | sed -n 's/^\([^:]\+\): \[[0-9]*\]:.*/\1/p' | head -n1
+}
+
+luksfile_file() {
+    local C LUKS_FILE DEVMAP_BLOCK DEVMAP_PATH MOUNTPOINT
+    LUKS_FILE="$1"
+    DEVMAP_BLOCK="luksfile_$(basename "$LUKS_FILE")"
+    DEVMAP_PATH="/dev/mapper/$DEVMAP_BLOCK"
+
+    if [ -z "$2" ]
+    then
+        MOUNTPOINT="/mnt/$(basename "$LUKS_FILE")"
+    else
+        MOUNTPOINT="$2"
+    fi
+
+    if [ -b "$DEVMAP_PATH" ]
+    then
+        # The file was already mounted
+        echo -n "Do you want to dismount $LUKS_FILE ? [yN] "
+        while read C < /dev/tty
+        do
+            case "$C" in
+              [yY])
+                if grep -q "$DEVMAP_PATH" /proc/self/mountinfo
+                then
+                    umount "$DEVMAP_PATH" || sudo_v umount "$DEVMAP_PATH" || exit $?
+                    if grep -q "$DEVMAP_PATH" /proc/self/mountinfo
+                    then
+                        echo >&2 "Error: $DEVMAP_PATH still in /proc/self/mountinfo"
+                        exit 1
+                    fi
+                fi
+                sudo_v cryptsetup luksClose "$DEVMAP_PATH" || exit $?
+                LODEV="$(find_loopdev "$LUKS_FILE")"
+                if [ -z "$LODEV" ]
+                then
+                    echo >&2 "Error: $LUKS_FILE is not associated with any loop device"
+                    exit 1
+                fi
+                sudo_v losetup -d "$LODEV" || exit $?
+                exit 0
+                ;;
+              ""|[nN])
+                break
+                ;;
+            esac
+        done
+    else
+        # Mount the encrypted file, via a loop device
+        LODEV="$(find_loopdev "$LUKS_FILE")"
+        if [ -z "$LODEV" ]
+        then
+            LODEV="$(sudo_v losetup --show -f "$1" || exit $?)"
+            if [ -z "$LODEV" ]
+            then
+                echo >&2 "Error: unable to setup a loop device"
+                exit 1
+            fi
+        fi
+        sudo_v cryptsetup luksOpen "$LODEV" "$DEVMAP_BLOCK" || exit $?
+        # Wait a little for possible automount operations
+        sleep .5
+    fi
+
+    if ! grep -q "$DEVMAP_PATH" /proc/self/mountinfo
+    then
+        # The device has not been automatically mounted
+        if [ ! -d "$MOUNTPOINT" ]
+        then
+            echo >&2 "Not mounting $DEVMAP_BLOCK because $MOUNTPOINT does not exist"
+            return
+        fi
+        if ! mount "$DEVMAP_PATH"
+        then
+            echo "Unable to mount the luks volume as user"
+            echo "You may now mount the volume with:"
+            echo "sudo mount '$DEVMAP_PATH' '$MOUNTPOINT' -o nodev,noexec,nosuid"
+            echo "or add such a line to your /etc/fstab:"
+            echo "$DEVMAP_PATH $MOUNTPOINT auto defaults,user,nodev,noexec,nosuid,noauto 0 0"
+            return
+        fi
+        # Wait a little for the mount to be proceeded through the notification system
+        sleep .1
+    fi
+    if which xdg-open > /dev/null 2>&1
+    then
+        echo "Opening $MOUNTPOINT"
+        xdg-open "$MOUNTPOINT"
+    fi
+}
+
+
+if [ $# -ge 1 ]
+then
+    # Handle "lukfile FILE [MOUNTPOINT]"
+    luksfile_file "$1" "${2:-}" || exit $?
+else
+    # Process each file in /etc/fstab
+    ( sed -n 's/^\s*#\s*{luksfile}\s*\(.*\)$/\1/p' < /etc/fstab | \
+    while IFS= read -r LINE
+    do
+        set -- $LINE
+        if [ $# -ge 1 ]
+        then
+            luksfile_file "$1" "${2:-}" <&3 || exit $?
+        fi
+    done ) 3<&0
+fi
