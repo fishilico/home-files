@@ -1,8 +1,8 @@
 [Desktop Entry]
 Encoding=UTF-8
-Exec=numlockx
-Name=NumLockX
-Comment=Turns NumLock on in X
+Exec=sh -c "if [ -e ~/.config/nonumlock ]; then numlockx off; else numlockx; fi"
+Name=NumLockX (conditional)
+Comment=Turn NumLock on in X if ~/.config/nonumlock does not exist
 Terminal=false
 Type=Application
 StartupNotify=false
