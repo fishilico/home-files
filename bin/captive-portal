@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+# -*- coding:UTF-8 -*-
+# Copyright (c) 2015 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Figure out whether the web access is currently filtered by a captive portal
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+import argparse
+import http.client
+import webbrowser
+
+
+DEFAULT_DOMAIN = 'www.google.com'
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Test web connectivity and find captive portal")
+    parser.add_argument('-d', '--domain',
+                        help="domain to be tested for reachability")
+    parser.add_argument('-n', '--no-browser', action='store_true',
+                        help="never open a web browser")
+    parser.add_argument('-s', '--show-headers', action='store_true',
+                        help="display HTTP headers of the redirect")
+    args = parser.parse_args(argv)
+
+    domain = args.domain or DEFAULT_DOMAIN
+    if domain.lower().startswith('http://'):
+        domain = domain[len('http://'):]
+    domain = domain.split('/', 1)[0]
+    conn = http.client.HTTPConnection(domain)
+    conn.request('HEAD', '/')
+    resp = conn.getresponse()
+    conn.close()
+
+    # If status if OK or it is a redirect to a Google website, it's fine
+    if resp.status // 100 == 2 or '//www.google.' in resp.headers['location']:
+        print("The web is reachable.")
+        return 0
+
+    if resp.status != 302:
+        print("Expected HTTP 302 status, not {} {}".format(
+            resp.status, resp.reason))
+        return 1
+
+    redirurl = resp.headers['location']
+    print("Captive portal: {}".format(redirurl))
+
+    if args.show_headers:
+        print("HTTP headers other than location:")
+        for key, value in resp.headers.items():
+            if key.lower() != 'location':
+                print("  {}: {}".format(key, value))
+
+    # Open a web browser with the redirected URL
+    if not args.no_browser:
+        webbrowser.open(redirurl)
+    return 0
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main())
