@@ -305,10 +305,13 @@ if type alias > /dev/null 2>&1 ; then
     # Some shortcuts related to C and ASM
     # Transform C code to LLVM intermediate representation
     alias c2llvm='clang -S -O0 -emit-llvm -o /dev/stdout'
-    # Disassemble binary objects
+    # Disassemble x86 binary objects, with AT&T or intel syntax
     alias disx86_16='objdump -D -b binary -mi8086'
     alias disx86_32='objdump -D -b binary -mi386'
     alias disx86_64='objdump -D -b binary -mi386:x86-64'
+    alias disx86_16i='objdump -D -b binary -mi8086 -Mintel'
+    alias disx86_32i='objdump -D -b binary -mi386 -Mintel'
+    alias disx86_64i='objdump -D -b binary -mi386:x86-64 -Mintel'
 
     # Python profiler
     alias pyprof='python -m cProfile -s cumtime'
