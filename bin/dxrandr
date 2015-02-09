@@ -18,13 +18,15 @@ xrandr.load_from_x()
 
 # To activate auxiliary screen, we need to known the width of the primary one.
 # Here the script is adapted for a laptop (which needs to be portable among
-# multiple auxiliary screens), so assume primary screen is the first LVDS*
+# multiple auxiliary screens), so assume primary screen is the first one
+# connected with LVDS (Low-Voltage Differential Signalling) or eDP (embedded
+# DisplayPort) interface.
 primary_width = 0
 primary_name = ''
 for name in xrandr.outputs:
     state = xrandr.state.outputs[name]
     config = xrandr.configuration.outputs[name]
-    if config.active and state.connected and name.upper().startswith('LVDS'):
+    if config.active and state.connected and (name.upper().startswith('LVDS') or name.startswith('eDP')):
         primary_width = state.modes[0].width
         primary_name = name
         break
