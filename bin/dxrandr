@@ -1,83 +1,116 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2
+# -*- coding:UTF-8 -*-
+# Copyright (c) 2015 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 # -*- coding: utf-8 -*-
-"""Default XRandR -- Reset XRandR configuration to a known state"""
+"""Default XRandR -- Reset XRandR configuration to a known state
 
-# Use ARandR screenlayout python library
-# Inspired by unxrandr code (from ARandR)
+Inspired by unxrandr code (from ARandR)
 
+@author: Nicolas Iooss
+@license: MIT
+"""
 import optparse
 
+# Use ARandR screenlayout python library
 import screenlayout.auxiliary
 import screenlayout.xrandr
 
-p = optparse.OptionParser(description=__doc__, usage="%prog")
-p.parse_args()
 
-xrandr = screenlayout.xrandr.XRandR()
-xrandr.load_from_x()
+def get_primary_width_name(xrandr):
+    """Retrieve the width and name of a screen which is considered primary
 
-# To activate auxiliary screen, we need to known the width of the primary one.
-# Here the script is adapted for a laptop (which needs to be portable among
-# multiple auxiliary screens), so assume primary screen is the first one
-# connected with LVDS (Low-Voltage Differential Signalling) or eDP (embedded
-# DisplayPort) interface.
-primary_width = 0
-primary_name = ''
-for name in xrandr.outputs:
-    state = xrandr.state.outputs[name]
-    config = xrandr.configuration.outputs[name]
-    if config.active and state.connected and (name.upper().startswith('LVDS') or name.startswith('eDP')):
-        primary_width = state.modes[0].width
-        primary_name = name
-        break
+    The primary screen is the first connected screen with either:
+    * LVDS (Low-Voltage Differential Signalling) interface
+    * eDP (embedded DisplayPort) interface
+    """
+    for name in xrandr.outputs:
+        if not xrandr.configuration.outputs[name].active:
+            continue
+        state = xrandr.state.outputs[name]
+        if not state.connected:
+            continue
+        if name.upper().startswith('LVDS') or name.startswith('eDP'):
+            return (state.modes[0].width, name)
+    return (0, '')
 
-has_change = False
-for name in xrandr.outputs:
-    state = xrandr.state.outputs[name]
-    config = xrandr.configuration.outputs[name]
 
-    # If output is not connected, ensure it is deactivated
-    if not state.connected:
-        if config.active and not state.connected:
-            print("Output %s is active but disconnected. Deactivate !" % name)
-            config.active = False
-            has_change = True
-        continue
+def main(argv=None):
+    parser = optparse.OptionParser(description=__doc__, usage="%prog")
+    parser.parse_args(argv)
 
-    # normal X position
-    pos_x = 0 if name == primary_name else primary_width
+    xrandr = screenlayout.xrandr.XRandR()
+    xrandr.load_from_x()
+    primary_width, primary_name = get_primary_width_name(xrandr)
 
-    if not config.active:
-        print("Output %s is connected but not active. Activate !" % name)
-        config.active = True
-        config.position = screenlayout.auxiliary.Position((pos_x, 0))
-        config.mode = state.modes[0]
-        config.rotation = screenlayout.auxiliary.NORMAL
-        has_change = True
+    has_change = False
+    for name in xrandr.outputs:
+        state = xrandr.state.outputs[name]
+        config = xrandr.configuration.outputs[name]
 
-    if name == primary_name:
-        if config.position.left != 0 or config.position.top != 0:
-            print("Output %s is primary but not top-left. Move !" % name)
-            config.position = screenlayout.auxiliary.Position((0, 0))
-            has_change = True
-    else:
-        if config.position.left != pos_x and config.position.top == 0:
-            print("Output %s is not primary. Move !" % name)
+        # If output is not connected, ensure it is deactivated
+        if not state.connected:
+            if config.active and not state.connected:
+                print("Output {} is active but disconnected. Deactivate!".format(name))
+                config.active = False
+                has_change = True
+            continue
+
+        # normal X position
+        pos_x = 0 if name == primary_name else primary_width
+
+        if not config.active:
+            print("Output {} is connected but not active. Activate!".format(name))
+            config.active = True
             config.position = screenlayout.auxiliary.Position((pos_x, 0))
+            config.mode = state.modes[0]
+            config.rotation = screenlayout.auxiliary.NORMAL
             has_change = True
 
-    best_mode = state.modes[0]
-    if list(config.mode) < list(best_mode):
-        print("Output %s has not maximal size. Maximize !" % name)
-        config.mode = best_mode
-        has_change = True
+        if name == primary_name:
+            if config.position.left != 0 or config.position.top != 0:
+                print("Output {} is primary but not top-left. Move!".format(name))
+                config.position = screenlayout.auxiliary.Position((0, 0))
+                has_change = True
+        else:
+            if config.position.left != pos_x and config.position.top == 0:
+                print("Output {} is not primary. Move !".format(name))
+                config.position = screenlayout.auxiliary.Position((pos_x, 0))
+                has_change = True
 
-    if hasattr(config, 'rotation') and config.rotation.angle:
-        print("Output %s is rotated. Rotate it back to normal" % name)
-        config.rotation = screenlayout.auxiliary.NORMAL
-        has_change = True
+        best_mode = state.modes[0]
+        if list(config.mode) < list(best_mode):
+            print("Output {} has not maximal size. Maximize!".format(name))
+            config.mode = best_mode
+            has_change = True
 
-if has_change:
-    print("Apply new configuration")
-    print(xrandr.save_to_shellscript_string(["%(xrandr)s"]).strip())
-    xrandr.save_to_x()
+        if hasattr(config, 'rotation') and config.rotation.angle:
+            print("Output {} is rotated. Rotate it back to normal".format(name))
+            config.rotation = screenlayout.auxiliary.NORMAL
+            has_change = True
+
+    if has_change:
+        print("Apply new configuration")
+        print(xrandr.save_to_shellscript_string(["%(xrandr)s"]).strip())
+        xrandr.save_to_x()
+
+
+if __name__ == '__main__':
+    main()
