@@ -312,6 +312,11 @@ if type alias > /dev/null 2>&1 ; then
     alias disx86_16i='objdump -D -b binary -mi8086 -Mintel'
     alias disx86_32i='objdump -D -b binary -mi386 -Mintel'
     alias disx86_64i='objdump -D -b binary -mi386:x86-64 -Mintel'
+    # Disassemble ARM binary objects, using native or "none-eabi" objdump
+    alias disarm='objdump -D -b binary -marm'
+    alias disarmt='objdump -D -b binary -marm -Mforce-thumb'
+    alias disnarm='arm-none-eabi-objdump -D -b binary -marm'
+    alias disnarmt='arm-none-eabi-objdump -D -b binary -marm -Mforce-thumb'
 
     # Python profiler
     alias pyprof='python -m cProfile -s cumtime'
