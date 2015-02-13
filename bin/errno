@@ -3,7 +3,7 @@
 """Print the error message matching the given error code"
 
 Usage example:
-    $ for i in -i -n -s -in -is -ns -ins ; do strerror -c $i 13 ; done
+    $ for i in -i -n -s -in -is -ns -ins ; do errno -c $i 13 ; done
     EACCES
     13
     Permission denied
