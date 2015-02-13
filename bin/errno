@@ -44,6 +44,12 @@ if __name__ == '__main__':
                         help="show description string")
     args = parser.parse_args()
 
+    # By default, show all components
+    if not any((args.id, args.num, args.str)):
+        args.id = True
+        args.num = True
+        args.str = True
+
     # Set locale from environment variables if -c is not given
     locale.setlocale(locale.LC_ALL, 'C' if args.langc else '')
 
@@ -60,7 +66,7 @@ if __name__ == '__main__':
         elif args.num:
             line = str(n)
 
-        if args.str or not line:
+        if args.str:
             if line:
                 line += ': '
             line += os.strerror(n)
