@@ -177,7 +177,7 @@ then
     # Check interface with ndisc6 before ping6
     if which ndisc6 > /dev/null 2>&1
     then
-        echo -n 'NDISC6 '
+        printf 'NDISC6 '
         if ! ndisc6 $(echo $DEST | tr '%' ' ')
         then
             echo >&2 "ndisc6 failed!"

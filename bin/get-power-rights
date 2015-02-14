@@ -22,7 +22,7 @@ else
 fi
 
 echo_ability() {
-    echo -n "Can $1: "
+    printf %s "Can $1: "
     dbus_get "$2" "$3" "$4"
 }
 

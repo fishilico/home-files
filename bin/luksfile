@@ -52,7 +52,7 @@ luksfile_file() {
     if [ -b "$DEVMAP_PATH" ]
     then
         # The file was already mounted
-        echo -n "Do you want to dismount $LUKS_FILE ? [yN] "
+        printf %s "Do you want to dismount $LUKS_FILE ? [yN] "
         while read C < /dev/tty
         do
             case "$C" in
