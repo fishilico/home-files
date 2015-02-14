@@ -13,10 +13,10 @@ while read line
 do
     TITLE=${line%:*}
     TEMP=${line#*:}
-    TITLE=`echo $TITLE | sed 's/^temp/pci/;s/^Physical id /phyid/'`
-    TITLE=`printf %-$(echo -n $TEMP |wc -m)s "$TITLE"`
-    TITLES=`echo "$TITLES $TITLE"`
-    TEMPS=`echo "$TEMPS $TEMP"`
+    TITLE=$(echo $TITLE | sed 's/^temp/pci/;s/^Physical id /phyid/')
+    TITLE=$(printf "%-$(printf %s "$TEMP" |wc -m)s" "$TITLE")
+    TITLES="$TITLES $TITLE"
+    TEMPS="$TEMPS $TEMP"
 done
 echo "$TEMPS"
 echo "$TITLES"
