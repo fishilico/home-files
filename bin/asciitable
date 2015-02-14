@@ -30,19 +30,19 @@ print_ascii() {
             # Convert ($L + $C) to octal
             if [ "$L" -lt 32 ]
             then
-                NUM=$(($L + $C + 64))
+                NUM=$((L + C + 64))
                 printf '^'
             else
-                NUM=$(($L + $C))
+                NUM=$((L + C))
                 printf ' '
             fi
             # Use "printf %b" to execute the backslashed sequence in dash
             # zsh printf built-in function doesn't understand %b
             if [ -n "$ZSH_VERSION" ]
             then
-                printf "\\$(($NUM/64*100 + $NUM%64/8*10 + $NUM%8))"
+                printf "\\$((NUM/64*100 + NUM%64/8*10 + NUM%8))"
             else
-                printf '%b' "\\$(($NUM/64*100 + $NUM%64/8*10 + $NUM%8))"
+                printf '%b' "\\$((NUM/64*100 + NUM%64/8*10 + NUM%8))"
             fi
         done
     done
