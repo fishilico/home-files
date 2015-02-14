@@ -25,5 +25,5 @@ set -- '--target' "$TARGET"
 ! [ -L "/proc/$TARGET/ns/user" ] || set -- "$@" '--user'
 ! [ -L "/proc/$TARGET/ns/uts" ] || set -- "$@" '--uts'
 
-echo "Running nsenter $@"
+echo "Running nsenter $*"
 exec nsenter "$@"
