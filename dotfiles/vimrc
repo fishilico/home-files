@@ -160,8 +160,9 @@ if &t_Co > 2 || has("gui_running")
   " Show matching brackets
   set showmatch
 
-  " Show column 80 in color
-  "set colorcolumn=80
+  " Toggle show column 80 in color with Leader+c, 120 with Leader+C
+  nnoremap <LEADER>c :let &colorcolumn=(&colorcolumn == 80 ? 0 : 80)<CR>
+  nnoremap <LEADER>C :let &colorcolumn=(&colorcolumn == 120 ? 0 : 120)<CR>
 
   " Show tabs with \u25ba and dots
   set list
