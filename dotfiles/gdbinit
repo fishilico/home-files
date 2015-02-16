@@ -1,0 +1,5 @@
+# Change to use Intel syntax instead of AT&T
+#set disassembly-flavor intel
+
+# Like "display/i $pc" but also with hexadecimal
+set disassemble-next-line on
