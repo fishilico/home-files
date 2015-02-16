@@ -4,6 +4,7 @@ scriptencoding utf-8
 " This file is mostly based on Gentoo's /etc/vim/vimrc and ArchLinux's
 " /usr/share/vim/vimfiles/archlinux.vim files, with other slight customizations.
 " http://vimawesome.com/ provides a list of vim plugins but none is used here.
+" http://www.tuppervim.org/ (French) lists some tips and Github projects
 
 " General settings
 set nocompatible " Use Vim defaults instead of 100% vi compatibility
@@ -22,6 +23,10 @@ set incsearch " To move the search while typing
 set laststatus=1
 set cmdheight=2
 set showfulltag " View full tag when doing a tag search
+
+" Theme
+set background=dark
+colorscheme desert
 
 " Indentation configuration
 set expandtab " Always use space, no tabs
