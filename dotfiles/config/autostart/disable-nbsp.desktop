@@ -1,0 +1,10 @@
+[Desktop Entry]
+Encoding=UTF-8
+# To re-enable non breakable spaces, run "setxkbmap -option"
+# Use "setxkbmap -print" to print the current options
+Exec=/usr/bin/setxkbmap -option nbsp:none
+Name=Disable NBSP in X keymap
+Comment=Make the AltGr+Space combination behaves like a regular space in X
+Terminal=false
+Type=Application
+StartupNotify=false
