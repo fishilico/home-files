@@ -3,6 +3,8 @@
 bindkey -v
 
 # Redefine a lot of keys
+# Default bindings are defined here:
+# https://github.com/zsh-users/zsh/blob/master/Src/Zle/zle_bindings.c
 bindkey "^@" set-mark-command
 bindkey "^A" beginning-of-line
 bindkey "^B" backward-char
@@ -145,86 +147,7 @@ bindkey "^[^?" backward-kill-word
 bindkey "^_" undo
 bindkey " "-"~" self-insert
 bindkey "^?" backward-delete-char
-bindkey "\M-^@"-"\M-^C" self-insert
-bindkey "\M-^D" list-choices
-bindkey "\M-^E"-"\M-^F" self-insert
-bindkey "\M-^G" send-break
-bindkey "\M-^H" backward-kill-word
-bindkey "\M-^I"-"\M-^J" self-insert-unmeta
-bindkey "\M-^K" self-insert
-bindkey "\M-^L" clear-screen
-bindkey "\M-^M" self-insert-unmeta
-bindkey "\M-^N"-"\M-^\^" self-insert
-bindkey "\M-^_" copy-prev-word
-bindkey "\M- "-"\M-!" expand-history
-bindkey "\M-\"" quote-region
-bindkey "\M-#" self-insert
-bindkey "\M-\$" spell-word
-bindkey "\M-%"-"\M-&" self-insert
-bindkey "\M-'" quote-line
-bindkey "\M-("-"\M-," self-insert
-bindkey "\M--" neg-argument
-bindkey "\M-." insert-last-word
-bindkey "\M-/" self-insert
-bindkey "\M-0"-"\M-9" digit-argument
-bindkey "\M-:"-"\M-;" self-insert
-bindkey "\M-<" beginning-of-buffer-or-history
-bindkey "\M-=" self-insert
-bindkey "\M->" end-of-buffer-or-history
-bindkey "\M-?" which-command
-bindkey "\M-@" self-insert
-bindkey "\M-A" accept-and-hold
-bindkey "\M-B" backward-word
-#bindkey "\M-C" capitalize-word
-bindkey "\M-C" self-insert
-bindkey "\M-D" kill-word
-bindkey "\M-E" self-insert
-bindkey "\M-F" forward-word
-bindkey "\M-G" get-line
-bindkey "\M-H" run-help
-bindkey "\M-I"-"\M-K" self-insert
-bindkey "\M-L" down-case-word
-bindkey "\M-M" self-insert
-bindkey "\M-N" history-search-forward
-bindkey "\M-O" self-insert
-bindkey "\M-P" history-search-backward
-bindkey "\M-Q" push-line
-bindkey "\M-R" self-insert
-bindkey "\M-S" spell-word
-bindkey "\M-T" transpose-words
-bindkey "\M-U" up-case-word
-bindkey "\M-V" self-insert
-bindkey "\M-W" copy-region-as-kill
-bindkey "\M-X"-"\M-\^" self-insert
-bindkey "\M-_" insert-last-word
-bindkey "\M-\`" self-insert
-bindkey "\M-a" accept-and-hold
-bindkey "\M-b" backward-word
-bindkey "\M-c" capitalize-word
-bindkey "\M-d" kill-word
-bindkey "\M-e" self-insert
-bindkey "\M-f" forward-word
-bindkey "\M-g" get-line
-bindkey "\M-h" run-help
-bindkey "\M-i"-"\M-k" self-insert
-bindkey "\M-l" down-case-word
-bindkey "\M-m" self-insert
-bindkey "\M-n" history-search-forward
-bindkey "\M-o" self-insert
-bindkey "\M-p" history-search-backward
-bindkey "\M-q" push-line
-bindkey "\M-r" self-insert
-bindkey "\M-s" spell-word
-bindkey "\M-t" transpose-words
-bindkey "\M-u" up-case-word
-bindkey "\M-v" self-insert
-bindkey "\M-w" copy-region-as-kill
-bindkey "\M-x" execute-named-cmd
-bindkey "\M-y" yank-pop
-bindkey "\M-z" execute-last-named-cmd
-bindkey "\M-{" self-insert
-bindkey "\M-|" vi-goto-column
-bindkey "\M-}"-"\M-~" self-insert
+bindkey "\M-^@"-"\M-~" self-insert
 bindkey "\M-^?" backward-kill-word
 bindkey "^[[1;5C" emacs-forward-word
 bindkey "^[[1;5D" emacs-backward-word
