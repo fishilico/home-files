@@ -113,9 +113,10 @@ mac_to_ip6ll() {
         return 1
     fi
 
-    # Set the universal bit in the second hexdigit
-    SECOND=$(echo $SECOND | tr '014589cdCD' '2367abefEF')
-    IP6=$(echo "fe80::$FIRST$SECOND$TAIL" | tr '[[:upper:]]' '[[:lower:]]')
+    # Invert the universal bit in the second hexdigit
+    SECOND=$(echo "$SECOND" | \
+        tr '0123456789abABcdCDefEF' '23016745ab8989efEFcdCD')
+    IP6=$(echo "fe80::$FIRST$SECOND$TAIL" | tr '[:upper:]' '[:lower:]')
     if [ $# -ge 2 ]
     then
         ip6_to_ip6ll "$IP6" "$2"
