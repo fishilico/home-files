@@ -3,8 +3,9 @@ scriptencoding utf-8
 
 " This file is mostly based on Gentoo's /etc/vim/vimrc and ArchLinux's
 " /usr/share/vim/vimfiles/archlinux.vim files, with other slight customizations.
+" https://github.com/tpope/vim-sensible contains some commons vim configuration.
 " http://vimawesome.com/ provides a list of vim plugins but none is used here.
-" http://www.tuppervim.org/ (French) lists some tips and Github projects
+" http://www.tuppervim.org/ (French) lists some tips and Github projects.
 
 " General settings
 set nocompatible " Use Vim defaults instead of 100% vi compatibility
@@ -20,9 +21,13 @@ let mapleader="," " Use comma as the leader key
 
 set viminfo='20,\"500 " Keep a .viminfo file.
 set incsearch " To move the search while typing
-set laststatus=1
+set laststatus=1 " Show a status line on the last window when there are at least 2 windows
 set cmdheight=2
 set showfulltag " View full tag when doing a tag search
+set nrformats-=octal " Don't use octal number when incrementing/decrementing with ^A/^X
+set scrolloff=1 " Always show at least one line above and below the cursor
+set sidescrolloff=5 " Always show at least 5 columns at cursor sides in nowrap mode
+set display+=lastline " Display part ofthe lastline in the window instead of @ lines
 
 " Theme
 set background=dark
@@ -33,6 +38,7 @@ set expandtab " Always use space, no tabs
 set shiftwidth=4
 set softtabstop=4
 set tabstop=4
+set smarttab " <Tab> in front of a line uses shiftwidth instead of tabstop or softabstop
 
 " Enable folding based on indentation
 set foldmethod=indent
