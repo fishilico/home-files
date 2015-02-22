@@ -198,11 +198,6 @@ if type alias > /dev/null 2>&1 ; then
     # Diff for patches: all text, new file, show C function, unified context
     alias diff-patch='diff -aNpu'
 
-    # Use most to display man pages using colors
-    if which most > /dev/null 2>&1 ; then
-        alias man='man -P most'
-    fi
-
     # vman = use vim as a pager
     alias vman="man -P \"/bin/sh -c \\\"col -b -p -x | \
         vim -R \

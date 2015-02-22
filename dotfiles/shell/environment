@@ -81,6 +81,11 @@ if [ -x /usr/bin/lesspipe ] ; then
     export LESSCLOSE="/usr/bin/lesspipe %s %s"
 fi
 
+# Use most to display man pages using colors
+if [ -x /usr/bin/most ] || which most > /dev/null 2>&1 ; then
+    export MANPAGER=most
+fi
+
 # Enable GCC colors (since GCC 4.8.0)
 export GCC_COLORS=1
 
