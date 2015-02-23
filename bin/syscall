@@ -1,0 +1,265 @@
+#!/usr/bin/env python
+# -*- coding:UTF-8 -*-
+# Copyright (c) 2015 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Convert a system call number to its text identifier and back
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+import argparse
+import os
+import os.path
+import platform
+import re
+import sys
+import webbrowser
+
+
+# Well-known locations of syscall C headers per architecture
+# Kernel locations are relative to /usr/src/linux or
+# https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/
+SC_INCLUDE_LOCATIONS = {
+    'arm': (
+        ('natinc', 'asm/unistd.h'),
+        ('kernel', 'arch/arm/include/uapi/asm/unistd.h'),
+    ),
+    'x86_32': (
+        ('natinc', 'asm/unistd_32.h'),
+        # Kernel header generated from arch/x86/syscalls/syscall_32.tbl
+        ('kernel', 'arch/x86/include/generated/uapi/asm/unistd_32.h'),
+    ),
+    'x86_64': (
+        ('natinc', 'asm/unistd_64.h'),
+        # Kernel header generated from arch/x86/syscalls/syscall_64.tbl
+        ('kernel', 'arch/x86/include/generated/uapi/asm/unistd_64.h'),
+    ),
+}
+
+# List of (native, current) compatible tuples
+COMPAT_ARCHS = (
+    ('x86_64', 'x86_32'),
+)
+
+
+def normalize_arch(arch):
+    """Normalize the name of an architecture"""
+    arch = arch.lower()
+    if re.match(r'^armv[1-9]+l$', arch):
+        return 'arm'
+    if re.match(r'^i[3-6]86$', arch):
+        return 'x86_32'
+    if arch in ('amd64', 'x86-64'):
+        return 'x86_64'
+    if arch in ('x86', 'x86-32'):
+        return 'x86_32'
+    return arch
+
+
+def find_syscall_include(arch=None):
+    """Find a C include header with all syscalls of the supplied architecture
+    """
+    native_arch = normalize_arch(platform.machine())
+    arch = normalize_arch(arch) if arch is not None else native_arch
+    if arch not in SC_INCLUDE_LOCATIONS:
+        sys.stderr.write("Unknown architecture {}\n".format(arch))
+        return
+
+    tried_locations = []
+    for loctype, path in SC_INCLUDE_LOCATIONS[arch]:
+        if loctype == 'natinc':
+            # Path into "native" include directory
+            if arch != native_arch and (native_arch, arch) not in COMPAT_ARCHS:
+                continue
+            fullpath = os.path.join('/usr/include', path)
+            if os.path.exists(fullpath):
+                return fullpath
+            tried_locations.append(fullpath)
+        elif loctype == 'kernel':
+            # Use path to kernel build headers
+            kernel_build = '/lib/modules/{}/build'.format(platform.release())
+            fullpath = os.path.join(kernel_build, path)
+            if os.path.exists(fullpath):
+                return fullpath
+
+            # Kernel source checkout directory
+            fullpath = os.path.join('/usr/src/linux', path)
+            if os.path.exists(fullpath):
+                return fullpath
+            tried_locations.append(fullpath)
+
+    sys.stderr.write("Unable to find an include header for {}\n".format(arch))
+    sys.stderr.write("Here are the locations which were tried:\n{}\n".format(
+        '\n'.join(tried_locations)))
+    return
+
+
+def read_syscalls_from_file(filename):
+    """Build a syscall dictionary from the given C header file"""
+    syscalls = {}
+    syscall_aliases = {}
+    special_names = (
+        'OABI_SYSCALL_BASE',
+        'SYSCALL_BASE',
+    )
+    with open(filename, 'r') as headerfile:
+        for line in headerfile:
+            matches = re.match(r'#define\s+__NR_(\S+)\s+(.*)', line)
+            if matches is not None:
+                name, rawnum = matches.groups()
+
+                # Skip special names
+                if name in special_names:
+                    continue
+
+                # Decode rawnum
+                rawnum = rawnum.strip().replace(' ', '')
+                rawnum = rawnum.replace('\t', '')
+                rawnum = re.sub(r'/\*.*\*/', '', rawnum)
+                if rawnum.startswith('(__NR_SYSCALL_BASE+'):
+                    assert rawnum[-1] == ')'
+                    rawnum = rawnum[len('(__NR_SYSCALL_BASE+'):-1]
+
+                # Sanity checks
+                assert name != ''
+                assert name not in syscalls
+
+                if rawnum.startswith('__NR_'):
+                    # Syscall aliases
+                    assert name not in syscall_aliases
+                    syscall_aliases[name] = rawnum[5:]
+                elif re.match(r'[0-9]+$', rawnum):
+                    # Record decimal syscall number
+                    syscalls[name] = int(rawnum)
+                elif re.match(r'0x[0-9a-fA-F]+$', rawnum):
+                    # Record hexadecimal syscall number
+                    syscalls[name] = int(rawnum[2:], 16)
+                else:
+                    sys.stderr.write(
+                        "Invalid syscall number on line: {}\n".format(line))
+
+    # Put aliases into syscall_list
+    for alias, real in syscall_aliases.items():
+        syscalls[alias] = syscalls[real]
+    return syscalls
+
+
+def syscall_number(name, syscalls_name2nr, syscalls_nr2name):
+    """Convert a possible string representation of a syscall to a number"""
+    name = name.strip().replace(' ', '')
+    if name.startswith('__NR_'):
+        name = name[5:]
+    elif name.startswith('NR_'):
+        name = name[3:]
+    elif name.startswith('SYS_'):
+        name = name[4:]
+
+    if re.match(r'[0-9]+$', name):
+        num = int(name)
+    elif re.match(r'0x[0-9a-fA-F]+$', name):
+        num = int(name[2:], 16)
+    elif name in syscalls_name2nr:
+        num = syscalls_name2nr[name]
+    elif name.lower() in syscalls_name2nr:
+        num = syscalls_name2nr[name.lower()]
+    else:
+        raise ValueError("unknown syscall {}".format(name))
+
+    if num not in syscalls_nr2name:
+        raise ValueError("unknown syscall number {}".format(num))
+    return num
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Convert a system call number to its text identifier")
+    parser.add_argument('syscalls', metavar='SC', nargs='*',
+                        help="system calls to analyze")
+    parser.add_argument('-a', '--arch', type=str,
+                        help="architecture to use")
+    parser.add_argument('-b', '--browser', action='store_true',
+                        help="open the associated man page in a browser")
+    parser.add_argument('-H', '--show_header', action='store_true',
+                        help="show the used header file")
+    parser.add_argument('-l', '--list', action='store_true',
+                        help="list the available system calls")
+    parser.add_argument('-L', '--list-sorted', action='store_true',
+                        help="list the system calls with a sort by name")
+    parser.add_argument('-m', '--man', action='store_true',
+                        help="open the associated man page")
+    args = parser.parse_args(argv)
+
+    if args.list_sorted:
+        args.list = True
+
+    if not args.list and not args.syscalls:
+        parser.print_help()
+        return 0
+
+    # Find an include file according to the architecture
+    filename = find_syscall_include(args.arch)
+    if not filename:
+        return 1
+
+    if args.show_header:
+        print("Using {}".format(filename))
+
+    # Parse the file
+    name2nr = read_syscalls_from_file(filename)
+
+    # Reverse the syscalls mappings
+    nr2name = {}
+    for name, num in name2nr.items():
+        nr2name.setdefault(num, set()).add(name)
+
+    # Find which syscalls to list according to the program arguments
+    if args.list_sorted:
+        syscalls_list = [nr for _, nr in sorted(name2nr.items())]
+    elif args.list:
+        syscalls_list = sorted(nr2name.keys())
+    else:
+        try:
+            syscalls_list = [syscall_number(name, name2nr, nr2name)
+                             for name in args.syscalls]
+        except ValueError as exc:
+            parser.error(exc.args[0])
+
+    # Show selected syscalls
+    nr_format = "{:" + str(len(str(max(syscalls_list)))) + "}"
+    for sc_nr in syscalls_list:
+        names = sorted(nr2name[sc_nr])
+        print((nr_format + ": {}").format(sc_nr, ', '.join(names)))
+
+    # Open man pages
+    if args.browser:
+        url_pattern = 'http://man7.org/linux/man-pages/man2/{}.2.html'
+        for sc_nr in syscalls_list:
+            # Take first name of aliases, as man pages are anyway linked
+            url = url_pattern.format(sorted(nr2name[sc_nr])[0])
+            print("Opening {}".format(url))
+            webbrowser.open(url)
+    elif args.man:
+        for sc_nr in syscalls_list:
+            name = sorted(nr2name[sc_nr])[0]
+            os.system('man 2 "{}"'.format(name))
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())
