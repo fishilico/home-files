@@ -12,7 +12,7 @@ install_rec() {
 
     for SRC_FILE in "$SRC_DIR"/*
     do
-        FILENAME="`basename "$SRC_FILE"`"
+        FILENAME="${SRC_FILE##*/}"
         DST_FILE="$DST_PREFIX$FILENAME"
         [ -n "$FILENAME" ] || continue
 
@@ -26,7 +26,7 @@ install_rec() {
         done
         [ "$IGNPAT_TEST" = "$IGNPAT_REF" ] || continue
 
-        if [ -d $SRC_FILE ]
+        if [ -d "$SRC_FILE" ]
         then
             # Make directory
             mkdir -pv "$DST_FILE"
@@ -48,11 +48,11 @@ install_rec() {
             then
                 echo >&2 "Error: file is not a symlink ($DST_FILE)"
                 RETURN_VAL=1
-            elif [ "x`readlink "$DST_FILE"`" != "x$SRC_FILE" ]
+            elif [ "x$(readlink "$DST_FILE")" != "x$SRC_FILE" ]
             then
                 echo >&2 "Error: wrong target for symlink ($DST_FILE)"
                 echo >&2 "  Expected: $SRC_FILE"
-                echo >&2 "  Got: `readlink "$DST_FILE"`"
+                echo >&2 "  Got: $(readlink "$DST_FILE")"
                 RETURN_VAL=1
             fi
         fi
@@ -61,8 +61,8 @@ install_rec() {
 }
 
 # Find our location
-cd "`dirname $0`"
-SOURCE_DIR="`pwd -P`"
+cd "$(dirname -- "$0")"
+SOURCE_DIR="$(pwd -P)"
 RETURN_VAL=0
 
 # Remove broken hidden symlinks in $INSTALL_DIR and install home dotfiles
