@@ -292,7 +292,7 @@ gitarc() {
         fi
         echo >&2 "Creating archive in $ARCPATH"
     fi
-    ARCFILE="$(basename "$ARCPATH")"
+    ARCFILE="${ARCPATH##*/}"
     case "$ARCFILE" in
         *.tar)
             FORMAT=tar

@@ -19,11 +19,11 @@ elif [ -z "$ZSH_VERSION" ]; then
     # not bash nor zsh, maybe ash or dash?
     # find best configuration dir and include every configuration files
     SHELL_CONFIG_DIR=""
-    # Try $0 if the file has been directly source'd
-    if [ "$(basename -- $0)" = ".profile" -a -d "$(dirname -- $0)/.shell" ] ; then
-        SHELL_CONFIG_DIR="$(dirname -- $0)/.shell"
-    elif [ "$(basename -- $0)" = "profile" -a -d "$(dirname -- $0)/shell" ] ; then
-        SHELL_CONFIG_DIR="$(dirname -- $0)/shell"
+    # Try $0 if it contains the path which has been used to source the file
+    if [ "${0##*/}" = ".profile" -a -d "${0%.profile}.shell" ] ; then
+        SHELL_CONFIG_DIR="${0%.profile}.shell"
+    elif [ "${0##*/}" = "profile" -a -d "${0%profile}shell" ] ; then
+        SHELL_CONFIG_DIR="${0%profile}shell"
     elif [ -n "$SUDO_USER" ] ; then
         SUDO_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
         SHELL_CONFIG_DIR="$SUDO_HOME/.shell"
