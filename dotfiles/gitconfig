@@ -1,6 +1,8 @@
 [user]
 	name = Nicolas Iooss
 	email = nicolas.iooss_git@polytechnique.org
+	# Use "git config commit.gpgsign true" to automatically sign commits
+	signingkey = E25E 254C 8EE4 D303 554B  F5AF EC70 1A1D A494 C5EB
 [alias]
 	amend = commit --amend
 	st = status -bs
@@ -37,8 +39,8 @@
 	ls-untracked = "!git status --porcelain -uall | awk '$1 == \"??\" {print $2}'"
 	ign = ls-files --ignored --others --exclude-standard
 
-	lg = log --format='%Cgreen%h %Cred%cr %Creset%s %Cblue%cn'
-	logg = log --graph --color --decorate
+	lg = log --format='%Cgreen%h %Cred%cr %Creset%s %Cblue%cn %C(cyan)(%G?)'
+	logg = log --graph --color --decorate --show-signature
 	lo = log --graph --decorate --pretty=oneline --abbrev-commit --max-count 20
 	lol = log --graph --decorate --pretty=oneline --abbrev-commit
 	lola = log --graph --decorate --pretty=oneline --abbrev-commit --all
