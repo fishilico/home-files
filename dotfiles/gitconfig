@@ -72,8 +72,10 @@
 	autocorrect = 1
 [merge]
 	tool = vimdiff
-[push]
-	default = simple
+# Remove this option as old git (Debian Wheezy) does not know it.
+# Anyway "push.default=simple" is the default for recent git (>= 2.0).
+#[push]
+#	default = simple
 [sendemail]
 	confirm = always
 [tar "tar.xz"]
