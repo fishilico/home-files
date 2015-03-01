@@ -31,6 +31,14 @@ Usage example:
     13: Permission denied
     EACCES = 13: Permission denied
 
+Here are some list of error numbers:
+* Linux kernel:
+  - https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/include/uapi/asm-generic/errno-base.h
+  - https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/include/uapi/asm-generic/errno.h
+
+* strace:
+  http://sourceforge.net/p/strace/code/ci/master/tree/linux/errnoent.h
+
 @author: Nicolas Iooss
 @license: MIT
 """
