@@ -39,15 +39,20 @@ import webbrowser
 SC_INCLUDE_LOCATIONS = {
     'arm': (
         ('natinc', 'asm/unistd.h'),
+        ('inc', 'arm-linux-gnueabihf/asm/unistd.h'),
         ('kernel', 'arch/arm/include/uapi/asm/unistd.h'),
     ),
     'x86_32': (
         ('natinc', 'asm/unistd_32.h'),
+        ('inc', 'i386-linux-gnu/asm/unistd_32.h'),
+        ('inc', 'x86_64-linux-gnu/asm/unistd_32.h'),
         # Kernel header generated from arch/x86/syscalls/syscall_32.tbl
         ('kernel', 'arch/x86/include/generated/uapi/asm/unistd_32.h'),
     ),
     'x86_64': (
         ('natinc', 'asm/unistd_64.h'),
+        ('inc', 'x86_64-linux-gnu/asm/unistd_64.h'),
+        ('inc', 'i386-linux-gnu/asm/unistd_64.h'),
         # Kernel header generated from arch/x86/syscalls/syscall_64.tbl
         ('kernel', 'arch/x86/include/generated/uapi/asm/unistd_64.h'),
     ),
@@ -88,6 +93,8 @@ def find_syscall_include(arch=None):
             # Path into "native" include directory
             if arch != native_arch and (native_arch, arch) not in COMPAT_ARCHS:
                 continue
+            loctype = 'inc'  # Fall-through
+        if loctype == 'inc':
             fullpath = os.path.join('/usr/include', path)
             if os.path.exists(fullpath):
                 return fullpath
@@ -114,7 +121,7 @@ def find_syscall_include(arch=None):
 def read_syscalls_from_file(filename):
     """Build a syscall dictionary from the given C header file"""
     syscalls = {}
-    syscall_aliases = {}
+    syscall_relative = []
     special_names = (
         'OABI_SYSCALL_BASE',
         'SYSCALL_BASE',
@@ -129,22 +136,35 @@ def read_syscalls_from_file(filename):
                 if name in special_names:
                     continue
 
+                # Check unicity
+                assert name not in syscalls
+
                 # Decode rawnum
                 rawnum = rawnum.strip().replace(' ', '')
                 rawnum = rawnum.replace('\t', '')
                 rawnum = re.sub(r'/\*.*\*/', '', rawnum)
-                if rawnum.startswith('(__NR_SYSCALL_BASE+'):
-                    assert rawnum[-1] == ')'
-                    rawnum = rawnum[len('(__NR_SYSCALL_BASE+'):-1]
 
-                # Sanity checks
-                assert name != ''
-                assert name not in syscalls
+                # Find relative syscalls
+                matches = re.match(r'\(__NR_([^)+]+)\+(.*)\)$', rawnum)
+                if matches is not None:
+                    relative_name, raw_offset = matches.groups()
+                    if relative_name in special_names:
+                        # (__NR_SYSCALL_BASE+offset) -> offset
+                        rawnum = raw_offset
+                    elif re.match(r'[0-9]+$', raw_offset):
+                        # Save a syscall relative to another one
+                        offset = int(raw_offset)
+                        syscall_relative.append((name, relative_name, offset))
+                        continue
+                    elif re.match(r'0x[0-9a-fA-F]+$', raw_offset):
+                        # Save a syscall relative to another one
+                        offset = int(raw_offset[2:], 16)
+                        syscall_relative.append((name, relative_name, offset))
+                        continue
 
                 if rawnum.startswith('__NR_'):
                     # Syscall aliases
-                    assert name not in syscall_aliases
-                    syscall_aliases[name] = rawnum[5:]
+                    syscall_relative.append((name, rawnum[5:], 0))
                 elif re.match(r'[0-9]+$', rawnum):
                     # Record decimal syscall number
                     syscalls[name] = int(rawnum)
@@ -156,8 +176,8 @@ def read_syscalls_from_file(filename):
                         "Invalid syscall number on line: {}\n".format(line))
 
     # Put aliases into syscall_list
-    for alias, real in syscall_aliases.items():
-        syscalls[alias] = syscalls[real]
+    for alias, real, offset in syscall_relative:
+        syscalls[alias] = syscalls[real] + offset
     return syscalls
 
 
