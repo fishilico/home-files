@@ -57,8 +57,11 @@ def main(argv=None):
         print("The web is reachable.")
         return 0
 
-    if resp.status != 302:
-        print("Expected HTTP 302 status, not {} {}".format(
+    # HTTP redirect status:
+    # * 302 Found
+    # * 307 Temporary Redirect
+    if resp.status not in (302, 307):
+        print("Expected HTTP 302 or 307 status, not {} {}".format(
             resp.status, resp.reason))
         return 1
 
