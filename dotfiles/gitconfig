@@ -72,6 +72,9 @@
 	autocorrect = 1
 [merge]
 	tool = vimdiff
+[pretty]
+	# Use git log --pretty=fixes <commitid> to get a pretty "Fixes:" line
+	fixes = Fixes: %h (\"%s\")
 # Remove this option as old git (Debian Wheezy) does not know it.
 # Anyway "push.default=simple" is the default for recent git (>= 2.0).
 #[push]
