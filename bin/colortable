@@ -68,22 +68,27 @@ def build_colors256():
     return colors
 
 COLORS256_RGB = build_colors256()
-assert(len(COLORS256_RGB) == 256)
+assert len(COLORS256_RGB) == 256
 
 
-def color_index2term(index, visible=False, usebg=False):
+def color_index2term(index, colorparams):
     """Format a color index to a nice terminal representation
 
     Parameters
     ----------
     index: a color index between 0 and 255
 
-    visible: boolean, optional, default: False
+    colorparams: a dictionary of optional paramaters:
+
+    bold (boolean):
+        use bold text
+
+    usebg (boolean):
+        change background color instead of foreground
+
+    visible (boolean):
         tweak colors to always make text visible,
         force white background when displaying black text and vice-versa
-
-    usebg: boolean, optional, default: False
-        change background color instead of foreground
 
     Returns
     -------
@@ -95,15 +100,17 @@ def color_index2term(index, visible=False, usebg=False):
     # pylint: disable=C0103
     r, g, b = (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff
 
+    usebg = colorparams.get('usebg', False)
+
     # compute escape sequence which ensure a text to be visible, if needed
-    escape_sequence = ''
-    if visible:
+    escape_sequence = '1;' if colorparams.get('bold') else ''
+    if colorparams.get('visible'):
         if not usebg:
             # White background for dark foreground colors
-            escape_sequence = '107;' if r + g + b < 192 else '40;'
+            escape_sequence += '107;' if r + g + b < 192 else '40;'
         else:
             # Black foreground for light background colors
-            escape_sequence = '30;' if r + g + b >= 510 else '97;'
+            escape_sequence += '30;' if r + g + b >= 510 else '97;'
 
     # Use several escape sequences so that 16-colors appears correctly on
     # non-256color terms
@@ -129,31 +136,39 @@ def main(argv=None):
     """Program entry point"""
     parser = argparse.ArgumentParser(
         description="Display terminal colors in a table")
+    parser.add_argument('-B', '--bold', action='store_true',
+                        help="use bold colors")
     parser.add_argument('-b', '--background', action='store_true',
                         help="change background color instead of foreground")
     parser.add_argument('-v', '--visible', action='store_true',
                         help="tweak colors to always make text visible")
     args = parser.parse_args(argv)
 
+    colorparams = {
+        'bold': args.bold,
+        'usebg': args.background,
+        'visible': args.visible,
+    }
+
     # Display the table
     print("16-colors table:")
     for line in range(4):
         print(" ".join([
-            color_index2term(4*line + col, args.visible, args.background)
+            color_index2term(4*line + col, colorparams)
             for col in range(4)]))
     print("")
 
     print("216-RGB-colors table:")
     for line in range(36):
         print(" ".join([
-            color_index2term(6*line + col + 16, args.visible, args.background)
+            color_index2term(6*line + col + 16, colorparams)
             for col in range(6)]))
     print("")
 
     print("24-gray-colors table:")
     for line in range(4):
         print(" ".join([
-            color_index2term(6*line + col + 232, args.visible, args.background)
+            color_index2term(6*line + col + 232, colorparams)
             for col in range(6)]))
 
 
