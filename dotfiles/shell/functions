@@ -333,3 +333,39 @@ gitarc() {
         --format="$FORMAT" --output="$ARCPATH" \
         --prefix="${ARCFILE%.$FORMAT}/" HEAD
 }
+
+# Override objdump to write stdin to a temporary file if no file is provided in
+# the arguments, because objdump only operated on regular files.
+objdump_wrapper() {
+    local ARG RETVAL TARGET TEMPFILE
+    TARGET="$1"
+    shift
+    for ARG in "$@"
+    do
+        if [ "${ARG#-}" = "$ARG" ] || [ "$ARG" = "--" ]
+        then
+            # ARG begins with a dash or is -- indicated there is a file
+            "$TARGET" "$@"
+            return $?
+        fi
+    done
+
+    # There is no file, let's create one
+    TEMPFILE="$(mktemp /tmp/objdump.XXXXXXXXXX)"
+    trap "/bin/rm -f \"$TEMPFILE\"" EXIT HUP INT QUIT TERM
+    cat > "$TEMPFILE"
+    "$TARGET" "$@" "$TEMPFILE"
+    RETVAL=$?
+    /bin/rm -f "$TEMPFILE"
+    return $RETVAL
+}
+
+# Use aliases if available, and because dash are allowed in their names
+if type alias > /dev/null 2>&1 ; then
+    alias objdump='objdump_wrapper /usr/bin/objdump'
+    alias arm-none-eabi-objdump='objdump_wrapper /usr/bin/arm-none-eabi-objdump'
+else
+    objdump() {
+        objdump_wrapper /usr/bin/objdump "$@"
+    }
+fi

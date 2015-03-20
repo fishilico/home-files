@@ -299,17 +299,17 @@ if type alias > /dev/null 2>&1 ; then
     # Transform C code to LLVM intermediate representation
     alias c2llvm='clang -S -O0 -emit-llvm -o /dev/stdout'
     # Disassemble x86 binary objects, with AT&T or intel syntax
-    alias disx86_16='objdump -D -b binary -mi8086'
-    alias disx86_32='objdump -D -b binary -mi386'
-    alias disx86_64='objdump -D -b binary -mi386:x86-64'
-    alias disx86_16i='objdump -D -b binary -mi8086 -Mintel'
-    alias disx86_32i='objdump -D -b binary -mi386 -Mintel'
-    alias disx86_64i='objdump -D -b binary -mi386:x86-64 -Mintel'
+    alias disx86_16='objdump -D -bbinary -mi8086'
+    alias disx86_32='objdump -D -bbinary -mi386'
+    alias disx86_64='objdump -D -bbinary -mi386:x86-64'
+    alias disx86_16i='objdump -D -bbinary -mi8086 -Mintel'
+    alias disx86_32i='objdump -D -bbinary -mi386 -Mintel'
+    alias disx86_64i='objdump -D -bbinary -mi386:x86-64 -Mintel'
     # Disassemble ARM binary objects, using native or "none-eabi" objdump
-    alias disarm='objdump -D -b binary -marm'
-    alias disarmt='objdump -D -b binary -marm -Mforce-thumb'
-    alias disnarm='arm-none-eabi-objdump -D -b binary -marm'
-    alias disnarmt='arm-none-eabi-objdump -D -b binary -marm -Mforce-thumb'
+    alias disarm='objdump -D -bbinary -marm'
+    alias disarmt='objdump -D -bbinary -marm -Mforce-thumb'
+    alias disnarm='arm-none-eabi-objdump -D -bbinary -marm'
+    alias disnarmt='arm-none-eabi-objdump -D -bbinary -marm -Mforce-thumb'
 
     # Python profiler
     alias pyprof='python -m cProfile -s cumtime'
