@@ -1,5 +1,62 @@
 # Change to use Intel syntax instead of AT&T
 #set disassembly-flavor intel
 
+# Do not question the user about killing the inferior on exit
+set confirm off
+
 # Like "display/i $pc" but also with hexadecimal
 set disassemble-next-line on
+
+# Turn off pagination (like "set height unlimited")
+set pagination off
+
+# Color the prompt
+set prompt \033[0;1;33m(gdb) \033[0m
+
+# Import python functions and commands
+source ~/.gdb/arch.py
+source ~/.gdb/entrypoint.py
+source ~/.gdb/linux_procmap.py
+source ~/.gdb/linux_syscall.py
+
+# User-defined commands
+
+define break-entry
+    tbreak *$entrypoint()
+end
+document break-entry
+Install a temporary breakpoint on program entrypoint.
+end
+
+define ipmap
+    info proc mappings
+end
+document ipmap
+List of mapped memory regions
+Shortcut for "info proc mappings"
+end
+
+# Anti ptrace(PTRACE_TRACEME) anti-debug trick
+set $_anti_ptraceme_bpnum = 0
+define anti-ptraceme
+    catch syscall ptrace
+    set $_anti_ptraceme_bpnum = $bpnum
+    commands $bpnum
+        # Check that the first argument is PTRACE_TRACEME (=0)
+        if $syscallarg(1) == 0
+            # Create a new catchpoint for the return
+            tcatch syscall ptrace
+            commands $bpnum
+                set-syscallarg -1 0
+                continue
+            end
+            # Remove the current catchpoint
+            delete $_anti_ptraceme_bpnum
+            set $_anti_ptraceme_bpnum = 0
+        end
+        continue
+    end
+end
+document anti-ptraceme
+Install a catchpoint on ptrace to get around basic anti-debug tricks.
+end
