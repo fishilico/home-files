@@ -176,8 +176,6 @@ if type alias > /dev/null 2>&1 ; then
     # Make a SSL connection to IP:port
     alias openssl-connect='openssl s_client -connect'
 
-    # Use gpg with SKS OpenPGP Public Key Server
-    alias gpg-keysrv='gpg --keyserver=keys.gnupg.net'
     # Ask certification level when signing keys.
     alias gpg-sign='gpg --ask-cert-level --sign-key'
     alias gpg-resign-iknowwhatimdoing='gpg --ask-cert-level --expert --sign-key'
