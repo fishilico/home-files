@@ -42,7 +42,7 @@ du2s() {
 # shells (Bash, Ash, ...) use -p option, so use echo to be compatible.
 # Dash fails with "read: Illegal option -s" as this is not POSIX-compliant.
 read_pass() {
-    echo >&2 -n 'Password: ' && read -s "$@" && echo ''
+    printf >&2 'Password: ' && read -s "$@" && echo ''
 }
 
 # Generate random passwords from kernel random number generator
@@ -110,7 +110,7 @@ date_epoch() {
 # Dump the local timezone file
 tzdump() {
     if [ -L /etc/localtime ] ; then
-        zdump -v $(readlink /etc/localtime)
+        zdump -v "$(readlink /etc/localtime)"
     elif [ -r /etc/localtime ] ; then
         zdump -v /etc/localtime
     else
@@ -134,7 +134,7 @@ check_https_dane() {
 # Combine postcat with less
 postless() {
     local DIR OUTPUT STATUS
-    if [ $# -eq 1 -a \! -e "$1" ] ; then
+    if [ $# -eq 1 ] && ! [ -e "$1" ] ; then
         # Find message by ID in Postfix spool
         for DIR in /var/spool/postfix/* /var/spool/postfix/*/* ; do
             [ -d "$DIR" ] || continue
@@ -167,8 +167,9 @@ if grep --help 2> /dev/null |grep -q -- --color ; then
     else
         # Same function, with a temporary file
         hl() {
+            local FILE
             FILE="$(mktemp)"
-            trap '/bin/rm -f "$FILE"' EXIT HUP INT QUIT TERM
+            trap "/bin/rm -f \"$FILE\"" EXIT HUP INT QUIT TERM
             while [ $# -ge 1 ] ; do
                 echo "$1" >> "$FILE"
                 shift
@@ -213,10 +214,10 @@ fi
 
 # Convert decimal to hexadecimal and vice-versa
 dechex() {
-    (echo 'obase=16' ; print_args_or_stdin "$@") | bc -q | tr '[A-F]' '[a-f]'
+    (echo 'obase=16' ; print_args_or_stdin "$@") | bc -q | tr 'A-F' 'a-f'
 }
 hexdec() {
-    (echo 'ibase=16' ; (print_args_or_stdin "$@" | tr '[a-f]' '[A-F]')) | bc -q
+    (echo 'ibase=16' ; (print_args_or_stdin "$@" | tr 'a-f' 'A-F')) | bc -q
 }
 
 # Recursive md5sum, sha1sum, sha256sum... in directories
@@ -286,12 +287,12 @@ if [ -x /usr/bin/which ] ; then
     if [ -x /usr/bin/pacman ] ; then
         # Arch Linux
         whichpkg() {
-            pacman -Q --owns $(/usr/bin/which "$@")
+            /usr/bin/which "$@" | xargs pacman -Q --owns
         }
     elif [ -x /usr/bin/dpkg ] ; then
         # Debian
         whichpkg() {
-            dpkg --search $(/usr/bin/which "$@")
+            /usr/bin/which "$@" | xargs dpkg --search
         }
     fi
 fi
