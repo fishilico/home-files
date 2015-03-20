@@ -262,7 +262,23 @@ mplayer_webcam() {
 
 # Trace process executions
 strace_exec() {
-    strace -s 65536 -qq -e execve -e signal=none -f "$@" 2>&1 | \grep -v ' = -1 ENOENT ([^)]*)$'
+    local SYSCALLS
+    SYSCALLS='execve'
+    # Trace execveat if it is known by strace
+    if strace -qq -e execveat true 2> /dev/null
+    then
+        SYSCALLS="$SYSCALLS,execveat"
+    fi
+    # Run the program without modifying its stdin/out/err streams
+    ( \
+        ( \
+            strace -s 65536 -e "$SYSCALLS" -e signal=none -o /proc/self/fd/3 \
+                -f "$@" >&4 \
+        ) 3>&1 | \
+        \grep -v >&2 \
+            -e '^[0-9]\+ \+execve\(at\)\?(.*) = -1 ENOENT ([^)]*)$' \
+            -e '^[0-9]\+ \++++ exited with [0-9]\+ +++$' \
+    ) 4>&1
 }
 
 # Find the package which provides an installed command
