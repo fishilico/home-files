@@ -1,0 +1,25 @@
+#! perl -w
+# Make it possible to call some shell commands from key shortcuts
+# Requires wmctrl for the fullscreen command
+
+sub on_user_command {
+    my ($self, $cmd) = @_;
+
+    # Use wmctrl to toggle the fullscreen status of the current window
+    # Command from: https://aur.archlinux.org/packages/urxvt-fullscreen/
+    if ($cmd eq "keycmd:togglefull") {
+        qx/wmctrl -r :ACTIVE: -b toggle,fullscreen,above/;
+        return;
+    }
+
+    # Open a new terminal window with the same current directory
+    if ($cmd eq "keycmd:newwindow") {
+        chomp(my $shell_pid = qx/pgrep -oP $$/);
+        if ($shell_pid eq "") {
+            $shell_pid = 'self';
+        }
+        # Change to the directory referenced by /proc/PID/cwd and launch urxvt
+        system("bash -c 'cd -P /proc/$shell_pid/cwd && (urxvt & disown %)'");
+        return;
+    }
+}

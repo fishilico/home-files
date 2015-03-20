@@ -1,0 +1,108 @@
+! X resources configuration file
+! Load it with "xrdb ~/.Xresources"
+! Query current configuration with "xrdb -query -all"
+! Arch Linux documentation: https://wiki.archlinux.org/index.php/X_resources
+!
+! uxrvt documentations:
+! * Arch Linux https://wiki.archlinux.org/index.php/Rxvt-unicode
+! * Gentoo http://wiki.gentoo.org/wiki/Rxvt-unicode
+
+! Terminal colors for xterm and urxvt.
+! Initially a mix of Tango and White-on-Black themes.
+! xfce-terminal color themes can be found on:
+! http://git.xfce.org/apps/xfce4-terminal/tree/colorschemes
+! ... which is installed to /usr/share/xfce4/terminal/colorschemes/
+*background: black
+*foreground: #efefef
+*color0:  #000000
+*color1:  #cc0000
+*color2:  #4e9a06
+*color3:  #c4a000
+*color4:  #3465a4
+*color5:  #85509b
+*color6:  #06989a
+*color7:  #d3d7cf
+*color8:  #808080
+*color9:  #ff5555
+*color10: #55ff55
+*color11: #ffff55
+*color12: #739fcf
+*color13: #ff55ff
+*color14: #55ffff
+*color15: #ffffff
+*cursorColor: #4466aa
+
+! rxvt-unicode (urxvt) configuration
+! See "urxvt --help"
+
+! Look like xterm for compatibility
+URxvt.termName: xterm-256color
+URxvt.loginShell: true
+
+! Initial size
+URxvt.geometry: 85x32
+
+! Add a terminal window icon (needs rxvt-unicode-pixbuf on Arch Linux)
+URxvt.iconFile: /usr/share/icons/gnome/32x32/apps/utilities-terminal.png
+
+! Font preference
+!URxvt.font: xft:Bitstream Vera Sans Mono:pixelsize=13:antialias=false
+URxvt.font: xft:Droid Sans Mono:style=Book:pixelsize=15
+
+! Fade text n% upon unfocus
+URxvt.fading: 20
+
+! No transparency (requires compositing)
+URxvt.tintColor: black
+URxvt.depth: 24
+
+! Scrolling and scrollbar (styles rxvt, plain, next or xterm)
+URxvt.scrollstyle: plain
+URxvt.scrollBar: true
+URxvt.scrollBar_right: true
+URxvt.scrollTtyKeypress: true
+URxvt.scrollTtyOutput: false
+URxvt.scrollWithBuffer: true
+URxvt.secondaryScreen: true
+URxvt.secondaryScroll: false
+
+! De-iconify (map) on receipt of a bell character
+URxvt.mapAlert: true
+! Blink the window too
+! It is possible to combine it on XFCE configuration (xfconf) with:
+! * "/general/urgent_blink=true" in xfwm4 channel
+! * "/plugins/plugin-42/include-all-blinking=true" in xfce4-panel channel,
+!   where "/plugins/plugin-42" is tasklist plugin
+URxvt.urgentOnBell: true
+
+! Inhibit writing record into the system log file utmp
+URxvt.utmpInhibit: false
+
+! Disable Ctrl+Shift default binding
+URxvt.iso14755: false
+URxvt.iso14755_52: false
+
+! Misc options
+URxvt.saveLines: 5000
+URxvt.visualBell: false
+URxvt.cutchars: "()*,<>[]{}|'"
+
+! Make the Ctrl-Arrow keys work like XTerm instead of \eOc, \eOd...
+URxvt.keysym.Control-Up: \033[1;5A
+URxvt.keysym.Control-Down: \033[1;5B
+URxvt.keysym.Control-Left: \033[1;5D
+URxvt.keysym.Control-Right: \033[1;5C
+
+! Perl extensions:
+! * Make URL clickable, open with xdg-open, which can be configured to be
+!   the default browser (eg. /usr/bin/chromium -incognito)
+! * Copy-paste using Ctrl-Shift-C/V
+! * Toogle fullscreen with F11
+! * Open a new terminal window with Ctrl-Shift-N
+URxvt.perl-ext-common: default,clipboard,keycmd,matcher
+URxvt.url-launcher: /usr/bin/xdg-open
+URxvt.matcher.button: 1
+URxvt.keysym.Shift-Control-C: perl:clipboard:copy
+URxvt.keysym.Shift-Control-V: perl:clipboard:paste
+URxvt.keysym.F11: perl:keycmd:togglefull
+URxvt.keysym.Shift-Control-N: perl:keycmd:newwindow
