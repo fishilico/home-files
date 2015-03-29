@@ -5,3 +5,7 @@
 # Use "set bell-style audible" or "set bell-style visible" to restore bell.
 set bell-style none
 set prefer-visible-bell
+
+# Use Ctrl+arrow to move cursor per words in readline-based CLI (e.g. python)
+"\e[1;5D": backward-word
+"\e[1;5C": forward-word
