@@ -93,6 +93,14 @@ URxvt.keysym.Control-Down: \033[1;5B
 URxvt.keysym.Control-Left: \033[1;5D
 URxvt.keysym.Control-Right: \033[1;5C
 
+! Same thing for home, end and Fn keys
+*URxvt*keysym.Home: \033OH
+*URxvt*keysym.End: \033OF
+*URxvt*keysym.F1: \033OP
+*URxvt*keysym.F2: \033OQ
+*URxvt*keysym.F3: \033OR
+*URxvt*keysym.F4: \033OS
+
 ! Perl extensions:
 ! * Make URL clickable, open with xdg-open, which can be configured to be
 !   the default browser (eg. /usr/bin/chromium -incognito)
