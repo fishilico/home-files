@@ -370,3 +370,13 @@ else
         objdump_wrapper /usr/bin/objdump "$@"
     }
 fi
+
+# Use Google Translate to speak, when espeak is not installed
+# Source: https://twitter.com/climagic/status/580751523048734720
+googlesay() {
+    curl -s \
+        -A 'Mozilla/5.0 (Linux; U; Android; en-us) AppleWebKit/999+ (KHTML, like Gecko) Safari/999.9' \
+        'https://translate.google.com/translate_tts' \
+        -d "tl=en&q=$*" | \
+    mpg123 -q -
+}
