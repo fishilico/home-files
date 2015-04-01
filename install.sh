@@ -101,8 +101,15 @@ validate_gpg_gitlog() {
         gpg --list-key "$KEYFP" > /dev/null || return $?
     fi
 
+    # git log --show-signature is only available with git>=1.7.9
+    if [ "$(git log --format='=%G?' --max-count=1)" = '=%G?' ]
+    then
+        echo "git log does not support GPG signature. Skipping validation."
+        return 0
+    fi
+
     # Check that the 10 last commits are GPG-signed (with good or untrusted)
-    if git --no-pager log --format='%H=%G?' --max-count 10 | grep -v '=[GU]$'
+    if git --no-pager log --format='%H=%G?' --max-count=10 | grep -v '=[GU]$'
     then
         echo >&2 "Error: some commits are not signed"
         return 1

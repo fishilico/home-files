@@ -41,7 +41,7 @@
 
 	lg = log --format='%Cgreen%h %Cred%cr %Creset%s %Cblue%cn %C(cyan)(%G?)'
 	logg = log --graph --color --decorate --show-signature
-	lo = log --graph --decorate --pretty=oneline --abbrev-commit --max-count 20
+	lo = log --graph --decorate --pretty=oneline --abbrev-commit --max-count=20
 	lol = log --graph --decorate --pretty=oneline --abbrev-commit
 	lola = log --graph --decorate --pretty=oneline --abbrev-commit --all
 	peeps = !git log --pretty=format:%aN | sort | uniq -c | sort -rn
