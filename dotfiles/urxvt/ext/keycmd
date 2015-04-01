@@ -8,7 +8,7 @@ sub on_user_command {
     # Use wmctrl to toggle the fullscreen status of the current window
     # Command from: https://aur.archlinux.org/packages/urxvt-fullscreen/
     if ($cmd eq "keycmd:togglefull") {
-        qx/wmctrl -r :ACTIVE: -b toggle,fullscreen,above/;
+        qx/wmctrl -r :ACTIVE: -b toggle,fullscreen/;
         return;
     }
 
