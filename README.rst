@@ -30,7 +30,7 @@ Some commands
 -------------
 
 * Install binary files in ``$HOME/bin`` and hidden files (in ``dotfiles``) in
-``$HOME``, after validating the git history with GnuPG signatures on commits::
+  ``$HOME``, after validating the GnuPG signatures in the last git commits::
 
     ./install.sh
 
