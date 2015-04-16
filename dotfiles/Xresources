@@ -84,7 +84,7 @@ URxvt.iso14755_52: false
 
 ! Misc options
 URxvt.saveLines: 5000
-URxvt.visualBell: false
+URxvt.visualBell: true
 URxvt.cutchars: "()*,<>[]{}|'"
 
 ! Make the Ctrl-Arrow keys work like XTerm instead of \eOc, \eOd...
