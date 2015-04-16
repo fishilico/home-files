@@ -66,7 +66,7 @@ zstyle ':completion:*:complete:-command-::*' ignored-patterns '*\~'
 # Put color everywhere, using LS_COLORS
 eval "$(dircolors -b)"
 zstyle ':completion:*' list-colors ''
-zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
+zstyle ':completion:*:default' list-colors "${(s.:.)LS_COLORS}"
 
 # Allow completion for a_b to ami_bak, and idem with a.b and a-b, case-insensitive matching
 zstyle ':completion:*' matcher-list 'm:{[:lower:]}={[:upper:]}' 'm:{[:lower:][:upper:]}={[:upper:][:lower:]}' 'r:|[._-]=* r:|=*'
@@ -79,7 +79,9 @@ zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
 zstyle ':completion:*:processes-names' command "ps -eo cmd= | sed 's:\([^ ]*\).*:\1:;s:\(/[^ ]*/\)::;/^\[/d'"
 zstyle ':completion:*:*:kill:*' menu yes select
 #zstyle ':completion:*:kill:*' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
-function _pslist() {reply=(`ps -u $USER -o pid,user,nice,pcpu,pmem,cputime,tname,start_time,args`)}
+function _pslist() {
+    reply=($(ps -u "$USER" -o pid,user,nice,pcpu,pmem,cputime,tname,start_time,args))
+}
 compctl -K _pslist kill
 
 # Complete SSH hosts with .ssh/config

@@ -121,7 +121,7 @@ if type alias > /dev/null 2>&1 ; then
 
     # Grep history without writing "h ..." lines into it
     histgrep() {
-        fc -l 1 -1 | sed -n "/${1:-.}/s/^ */!/p" | tail -n ${2:-15}
+        fc -l 1 -1 | sed -n "/${1:-.}/s/^ */!/p" | tail -n "${2:-15}"
     }
     alias h=' histgrep'
 

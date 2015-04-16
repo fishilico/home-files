@@ -7,5 +7,4 @@
 # Pause
 echo ""
 echo "--PAUSE--"
-read i
-unset i
+read

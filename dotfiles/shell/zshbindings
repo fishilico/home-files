@@ -145,9 +145,9 @@ bindkey "^[|" vi-goto-column
 bindkey "^[~" _bash_complete-word
 bindkey "^[^?" backward-kill-word
 bindkey "^_" undo
-bindkey " "-"~" self-insert
+bindkey " -~" self-insert
 bindkey "^?" backward-delete-char
-bindkey "\M-^@"-"\M-~" self-insert
+bindkey "\M-^@-\M-~" self-insert
 bindkey "\M-^?" backward-kill-word
 bindkey "^[[1;5C" emacs-forward-word
 bindkey "^[[1;5D" emacs-backward-word

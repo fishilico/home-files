@@ -7,7 +7,7 @@ if systemd-analyze plot > "$TEMP"
 then
     xdg-open "$TEMP"
     echo "Press 'Enter' to quit."
-    read DUMMY 2> /dev/null
+    read 2> /dev/null
 else
     exit $?
 fi

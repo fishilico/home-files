@@ -173,13 +173,13 @@ if [ -z "$DEST" ]
 then
     echo >&2 "Invalid destination: $1"
     exit 1
-elif echo "$DEST" |grep -q '%'
+elif [ "$DEST" != "${DEST#*%}" ]
 then
     # Check interface with ndisc6 before ping6
     if which ndisc6 > /dev/null 2>&1
     then
         printf 'NDISC6 '
-        if ! ndisc6 $(echo "$DEST" | tr '%' ' ')
+        if ! ndisc6 "${DEST%%%*}" "${DEST#*%}"
         then
             echo >&2 "ndisc6 failed!"
             exit 1

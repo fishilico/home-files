@@ -34,27 +34,27 @@ function test_network()
     fi
 
     # Do nothing if interface does not have an IP address
-    if [ -z "$(ip -oneline -4 addr show dev $IFACE)" ]
+    if [ -z "$(ip -oneline -4 addr show dev "$IFACE")" ]
     then
         echo -ne "\r!! No IP address for $IFACE"
         return 1
     fi
-    echo_white $(date)
+    echo_white "$(date)"
 
-    local IPADDR=$(ip -oneline -4 addr show dev $IFACE |
+    local IPADDR=$(ip -oneline -4 addr show dev "$IFACE" |
         sed -ne 's/^.* inet \([^ ]\+\) .*$/\1/p' |xargs echo)
     echo_green "Network is UP on $IFACE ($IPADDR)"
 
     # Default gateway
-    local IPGW=$(ip -oneline -4 route show default dev $IFACE |
+    local IPGW=$(ip -oneline -4 route show default dev "$IFACE" |
         sed -ne 's/^.* via \([^ ]\+\) .*$/\1/p')
-    if [ -n "$IPGW" -a -z "$(ip neigh show $IPGW dev $IFACE)" ]
+    if [ -n "$IPGW" -a -z "$(ip neigh show "$IPGW" dev "$IFACE")" ]
     then
         # Fill ARP table with a ping
         echo_startgray
-        ping -c1 $IPGW
+        ping -c1 "$IPGW"
     fi
-    if [ -z "$(ip neigh show $IPGW dev $IFACE)" ]
+    if [ -z "$(ip neigh show "$IPGW" dev "$IFACE")" ]
     then
         echo_red "Gateway not found"
         return 1
@@ -89,7 +89,7 @@ while true
 do
     if test_network
     then
-        COUNT=$(($COUNT+1))
+        COUNT=$((COUNT+1))
         if [ $COUNT = 1 ]
         then
             echo_blue "First successful ping ^^ !"

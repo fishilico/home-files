@@ -27,10 +27,10 @@ then
     SSH_PROXYCOMMAND="socat - PROXY:$HTTP_PROXY_HOST:%h:%p,proxyport=$HTTP_PROXY_PORT"
 elif which connect > /dev/null 2>&1
 then
-    SSH_PROXYCOMMAND='connect -H $HTTP_PROXY_HOST:$HTTP_PROXY_PORT %h %p'
+    SSH_PROXYCOMMAND="connect -H $HTTP_PROXY_HOST:$HTTP_PROXY_PORT %h %p"
 elif which connect-proxy > /dev/null 2>&1
 then
-    SSH_PROXYCOMMAND='connect-proxy -H $HTTP_PROXY_HOST:$HTTP_PROXY_PORT %h %p'
+    SSH_PROXYCOMMAND="connect-proxy -H $HTTP_PROXY_HOST:$HTTP_PROXY_PORT %h %p"
 fi
 if type alias > /dev/null 2>&1 && [ -n "$SSH_PROXYCOMMAND" ]
 then
@@ -59,9 +59,9 @@ fi
 
 # Add all routes by specifing a gateway
 xroutes_add_via() {
-    ip -4 route add 129.104.30.0/24 via $1
-    ip -4 route add 129.104.38.10/32 via $1
-    ip -4 route add 129.104.192.0/18 via $1
+    ip -4 route add 129.104.30.0/24 via "$1"
+    ip -4 route add 129.104.38.10/32 via "$1"
+    ip -4 route add 129.104.192.0/18 via "$1"
     echo "Added routes to X via $1"
 }
 # Add all routes with current gateway
