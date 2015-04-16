@@ -43,6 +43,9 @@ Examples:
 
     $ printf '\x80' | crc32 -r
     0xedb88320
+    $ python -c \
+      'from binascii import crc32;print(hex(~crc32(b"\x80",-1)&0xffffffff))'
+    0xedb88320
 
 * CRC32C polynom
 
