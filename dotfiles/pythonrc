@@ -1,4 +1,5 @@
 # Source: http://docs.python.org/2/tutorial/interactive.html
 # Please export PYTHONSTARTUP=~/.pythonrc to use Python completion
-import rlcompleter, readline
+import readline
+import rlcompleter
 readline.parse_and_bind('tab: complete')

@@ -66,7 +66,7 @@ class Dconf(object):
         """Write a dconf value"""
         logger.info("write: {} = {}".format(key, value))
         if not onlyprint:
-           return '\n'.join( _run_command([DCONF_CMD, 'write', key, value]))
+            return '\n'.join(_run_command([DCONF_CMD, 'write', key, value]))
 
     @staticmethod
     def write_if_needed(key, value, onlyprint=False):

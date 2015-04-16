@@ -76,8 +76,8 @@ def display_proc_maps(pid, do_group):
                 if not do_group:
                     # Just display the line without any smart logic
                     _display_pmaps_line(addr1, addr2, perms, path)
-                elif (p_addr1 is not None and p_addr2 == addr1
-                      and p_path == path):
+                elif (p_addr1 is not None and p_addr2 == addr1 and
+                      p_path == path):
                     # Group continuous lines
                     p_addr2 = addr2
                     p_perms = ''.join(p1 if p1 == p2 else '*'
