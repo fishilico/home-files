@@ -52,6 +52,15 @@ Examples:
     $ printf '\001' | crc32 -p C
     0x1edc6f41
 
+* Python CRC32
+
+    $ printf 'test' | crc32 -r -s -1
+    0x278081f3
+    $ python -c \
+        'from binascii import crc32;print(hex(~crc32(b"test")&0xffffffff))'
+    0x278081f3
+
+
 Documentation:
 * https://en.wikipedia.org/wiki/Cyclic_redundancy_check
   Wikipedia article, which gives some polynomials
@@ -167,6 +176,8 @@ def main(argv=None):
                         help="polynom to use (in hex notation or name)")
     parser.add_argument('-r', '--reverse', action='store_true',
                         help="reverse direction of CRC (and of polynom)")
+    parser.add_argument('-s', '--start', type=int, default=0,
+                        help="value to start with (default 0, sometimes -1")
     args = parser.parse_args(argv)
 
     try:
@@ -177,16 +188,18 @@ def main(argv=None):
     if args.reverse:
         polynom = reverse32_bits(polynom)
 
+    value = args.start & 0xffffffff
+
     if args.text:
         for text in args.text:
             data = text.encode('utf8')
-            value = crc32(polynom, text.encode('utf8'), reverse=args.reverse)
+            value = crc32(polynom, text.encode('utf8'), value=value,
+                          reverse=args.reverse)
             if args.cksum:
                 value = cksum(polynom, value, len(data), args.reverse)
             print(value if args.decimal else '0x{:08x}'.format(value))
     else:
         stdin = sys.stdin.buffer if sys.version_info >= (3, ) else sys.stdin
-        value = 0
         length = 0
         while True:
             data = stdin.read(4096)
