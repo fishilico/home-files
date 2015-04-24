@@ -180,6 +180,31 @@ if grep --help 2> /dev/null |grep -q -- --color ; then
     fi
 fi
 
+# Escape control characters when cat'ing binary streams to a TTY
+# Automaticaly add -v (for --show-nonprinting) to cat parameters.
+# This is known to be incompatible with busybox cat, which is detected by
+# testing wether /bin/cat is a symbolic link.
+protected_cat() {
+    python -c \
+        'import os,sys;a=sys.argv;os.execv(a[1],["cat","-v"][:1+sys.stdout.isatty()]+a[2:])' \
+        "$@"
+}
+if [ -x /usr/bin/python ] || which python > /dev/null 2>&1 ; then
+    if [ -x /usr/bin/cat ] ; then
+        if ! [ -L /usr/bin/cat ] ; then
+            cat() {
+                protected_cat /usr/bin/cat "$@"
+            }
+        fi
+    elif [ -x /bin/cat ] ; then
+        if ! [ -L /bin/cat ] ; then
+            cat() {
+                protected_cat /bin/cat "$@"
+            }
+        fi
+    fi
+fi
+
 # Enhance the output of "mount" by aligning columns.
 # "findmnt" from util-linux project produces nicer output.
 mounttable() {
