@@ -24,8 +24,10 @@ function echo_startgray()
 
 function test_network()
 {
+    local IFACE IPADDR IPGW
+
     # Find default route interface
-    local IFACE=$(ip -oneline -4 route show default |
+    IFACE=$(ip -oneline -4 route show default |
         sed -ne 's/^.*dev \([^ ]\+\) .*$/\1/p')
     if [ -z "$IFACE" ]
     then
@@ -41,12 +43,12 @@ function test_network()
     fi
     echo_white "$(date)"
 
-    local IPADDR=$(ip -oneline -4 addr show dev "$IFACE" |
+    IPADDR=$(ip -oneline -4 addr show dev "$IFACE" |
         sed -ne 's/^.* inet \([^ ]\+\) .*$/\1/p' |xargs echo)
     echo_green "Network is UP on $IFACE ($IPADDR)"
 
     # Default gateway
-    local IPGW=$(ip -oneline -4 route show default dev "$IFACE" |
+    IPGW=$(ip -oneline -4 route show default dev "$IFACE" |
         sed -ne 's/^.* via \([^ ]\+\) .*$/\1/p')
     if [ -n "$IPGW" -a -z "$(ip neigh show "$IPGW" dev "$IFACE")" ]
     then

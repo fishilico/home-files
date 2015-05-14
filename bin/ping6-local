@@ -86,7 +86,7 @@ ip4_to_ip6ll() {
 # Convert an IPv6 global address to a (MAC, interface) tuple and
 # compute an IPv6 link-local address
 ip6glob_to_ip6ll() {
-    local DEV IFACE OUT
+    local IFACE MAC OUT
     OUT=$(ip -6 neigh show "$1")
     MAC=$(echo "$OUT" | sed -n 's/.*lladdr \([0-9a-fA-F:]\{17\}\).*/\1/p')
     IFACE=$(echo "$OUT" | sed -n 's/.*dev \([^ ]\+\).*/\1/p')
