@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Source: https://github.com/dandelionmood/Smarty-syntax-coloration-for-GEdit -->
+<!--
+  Version:    1.1
+  Authors:    Antoni Boucher <bouanto@hotmail.com>
+              Pierre Quillery <pierre@quillery.fr>
+
+  Copyright (C) 2010-2011 Antoni Boucher <bouanto@hotmail.com>
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Library General Public
+  License as published by the Free Software Foundation; either
+  version 2 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Library General Public License for more details.
+
+  You should have received a copy of the GNU Library General Public
+  License along with this library; if not, write to the
+  Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+  Boston, MA 02111-1307, USA.
+-->
+
+<language id="stl" _name="Smarty" version="2.0" _section="Scripts">
+  <metadata>
+  <property name="mimetypes">text/x-smarty,text/plain</property>
+  <property name="globs">*.tpl</property>
+  <property name="block-comment-start">{*</property>
+  <property name="block-comment-end">*}</property>
+  </metadata>
+
+  <styles>
+    <style id="comment" _name="Comment" map-to="def:comment"/>
+    <style id="error" _name="Error" map-to="def:error"/>
+    <style id="keyword" _name="Keyword" map-to="def:keyword"/>
+    <style id="modifier" _name="Modifier" map-to="def:keyword"/>
+    <style id="variables" _name="Variables" map-to="def:identifier"/>
+    <style id="operator" _name="Operator" map-to="def:operator"/>
+    <style id="string" _name="String" map-to="def:string"/>
+  </styles>
+
+  <definitions>
+
+    <!--
+      We allow both comment formats :
+      - {*} (...) {/*}
+      - {* (...) *}
+    -->
+    <context id="comment-multiline" style-ref="comment" class="comment">
+      <start>{\*[}]?</start>
+      <end>[{]?[\/]?\*}</end>
+      <include>
+        <context ref="def:in-comment"/>
+      </include>
+    </context>
+
+    <!--
+      We try to detected improperly closed comment sections.
+    -->
+    <context id="close-comment-outside-comment" style-ref="error">
+      <match>[{]?[\/]?\*}(?!{\*[}]?)</match>
+    </context>
+
+
+
+
+    <!--
+      We accept both variables formats :
+      - $classic_php_format
+      - #Smarty.configuration.format#
+    -->
+    <context id="variables" style-ref="variables">
+      <match>(\$[a-zA-Z_][a-zA-Z0-9_\.]*|#[a-zA-Z_][a-zA-Z0-9_\.]*#)</match>
+    </context>
+
+
+
+
+
+    <!--
+      There are two strings format : the first one can contain variabless
+    -->
+    <context id="double-quoted-string" style-ref="string">
+      <start>"</start>
+      <end>"</end>
+      <include>
+        <context ref="variables" />
+      </include>
+    </context>
+
+    <context id="single-quoted-string" style-ref="string">
+      <start>'</start>
+      <end>'</end>
+    </context>
+
+
+
+
+
+    <!--
+      These are Smarty built-in functions.
+    -->
+    <context id="built-in-functions" style-ref="keyword">
+      <keyword>append</keyword>
+      <keyword>assign</keyword>
+      <keyword>block</keyword>
+      <keyword>call</keyword>
+      <keyword>capture</keyword>
+      <keyword>config_load</keyword>
+      <keyword>debug</keyword>
+      <keyword>extends</keyword>
+      <keyword>for</keyword>
+      <keyword>foreach</keyword>
+      <keyword>foreachelse</keyword>
+
+      <keyword>@index</keyword>
+      <keyword>@iteration</keyword>
+      <keyword>@first</keyword>
+      <keyword>@last</keyword>
+      <keyword>@show</keyword>
+      <keyword>@total </keyword>
+
+      <keyword>function</keyword>
+      <keyword>if</keyword>
+      <keyword>elseif</keyword>
+      <keyword>else</keyword>
+      <keyword>include</keyword>
+      <keyword>include_php</keyword>
+      <keyword>insert</keyword>
+      <keyword>ldelim</keyword>
+      <keyword>rdelim</keyword>
+      <keyword>literal</keyword>
+      <keyword>nocache</keyword>
+      <keyword>php</keyword>
+      <keyword>section</keyword>
+      <keyword>sectionelse</keyword>
+
+      <keyword>index</keyword>
+      <keyword>index_prev</keyword>
+      <keyword>index_next</keyword>
+      <keyword>iteration</keyword>
+      <keyword>first</keyword>
+      <keyword>last</keyword>
+      <keyword>rownum</keyword>
+      <keyword>loop</keyword>
+      <keyword>show</keyword>
+      <keyword>total</keyword>
+
+      <keyword>strip</keyword>
+      <keyword>while</keyword>
+    </context>
+
+    <!--
+      These are Smarty custom functions.
+    -->
+    <context id="custom-functions" style-ref="keyword">
+      <keyword>counter</keyword>
+      <keyword>cycle</keyword>
+      <keyword>eval</keyword>
+      <keyword>fetch</keyword>
+      <keyword>html_checkboxes</keyword>
+      <keyword>html_image</keyword>
+      <keyword>html_options</keyword>
+      <keyword>html_radios</keyword>
+      <keyword>html_select_date</keyword>
+      <keyword>html_select_time</keyword>
+      <keyword>html_table</keyword>
+      <keyword>mailto</keyword>
+      <keyword>math</keyword>
+      <keyword>textformat</keyword>
+    </context>
+
+    <!--
+      Smarty modifiers.
+    -->
+    <context id="modifiers" style-ref="modifier">
+      <prefix>^|</prefix>
+      <keyword>capitalize</keyword>
+      <keyword>cat</keyword>
+      <keyword>count_characters</keyword>
+      <keyword>count_paragraphs</keyword>
+      <keyword>count_sentences</keyword>
+      <keyword>count_words</keyword>
+      <keyword>date_format</keyword>
+      <keyword>default</keyword>
+      <keyword>escape</keyword>
+      <keyword>indent</keyword>
+      <keyword>lower</keyword>
+      <keyword>nl2br</keyword>
+      <keyword>regex_replace</keyword>
+      <keyword>replace</keyword>
+      <keyword>spacify</keyword>
+      <keyword>string_format</keyword>
+      <keyword>strip</keyword>
+      <keyword>strip_tags</keyword>
+      <keyword>truncate</keyword>
+      <keyword>upper</keyword>
+      <keyword>wordwrap</keyword>
+    </context>
+
+
+
+
+    <!--
+      Specific Smarty operators.
+    -->
+    <context id="operators" style-ref="operator" extend-parent="false">
+      <keyword>eq</keyword>
+      <keyword>ne</keyword>
+      <keyword>neq</keyword>
+      <keyword>gt</keyword>
+      <keyword>lt</keyword>
+      <keyword>gte</keyword>
+      <keyword>ge</keyword>
+      <keyword>lte</keyword>
+      <keyword>le</keyword>
+      <keyword>lte</keyword>
+      <keyword>mod</keyword>
+    </context>
+
+    <!--
+      Special operator for Smarty.
+    -->
+    <context id="advanced-operators" style-ref="operator" extend-parent="false">
+      <match>is (not )?(even|odd)( by)?</match>
+    </context>
+
+
+
+    <!--
+      This defines a block of Smarty content.
+    -->
+    <context id="block">
+      <start>{</start>
+      <end>}</end>
+      <include>
+        <!-- This will highlight the brackets surrounding our block -->
+        <context sub-pattern="0" where="start" style-ref="keyword"/>
+        <context sub-pattern="0" where="end" style-ref="keyword"/>
+
+        <context ref="php:operators" />
+        <context ref="operators" />
+        <context ref="advanced-operators" />
+
+        <context ref="php:decimal-number"/>
+        <context ref="php:float"/>
+        <context ref="php:boolean"/>
+        <context ref="php:null-value"/>
+
+        <context ref="single-quoted-string"/>
+        <context ref="double-quoted-string"/>
+
+        <context ref="built-in-functions"/>
+        <context ref="custom-functions"/>
+        <context ref="modifiers"/>
+
+        <context ref="variables"/>
+
+      </include>
+    </context>
+
+    <!--
+      This allows the presence of escaped content : its still HTML inside,
+      but no Smarty is allowed.
+    -->
+    <context id="escaped-content">
+      <start>{literal}</start>
+      <end>{/literal}</end>
+      <include>
+        <context sub-pattern="0" where="start" style-ref="keyword"/>
+        <context sub-pattern="0" where="end" style-ref="keyword"/>
+        <context ref="html:html"/>
+      </include>
+    </context>
+
+    <!--
+      This defines a Smarty template.
+    -->
+    <context id="smarty">
+      <include>
+        <context ref="escaped-content"/>
+        <context ref="comment-multiline"/>
+        <context ref="block"/>
+      </include>
+    </context>
+
+    <!--
+      We can still do HTML.
+    -->
+    <replace id="html:embedded-lang-hook" ref="smarty"/>
+
+    <context id="stl" class="no-spell-check">
+      <include>
+        <context ref="smarty"/>
+        <context ref="html:html"/>
+      </include>
+    </context>
+
+  </definitions>
+
+</language>

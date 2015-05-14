@@ -1,0 +1,6 @@
+<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
+  <mime-type type="text/x-smarty">
+    <comment>Smarty Template</comment>
+    <glob pattern="*.tpl"/>
+  </mime-type>
+</mime-info>
