@@ -311,6 +311,9 @@ if type alias > /dev/null 2>&1 ; then
     alias disnarm='arm-none-eabi-objdump -D -bbinary -marm'
     alias disnarmt='arm-none-eabi-objdump -D -bbinary -marm -Mforce-thumb'
 
+    # Disable ASLR (Address-Space Layout Randomisation)
+    alias noaslr='setarch $(uname -m) -R'
+
     # Python profiler
     alias pyprof='python -m cProfile -s cumtime'
     alias pyprof2='python2 -m cProfile -s cumtime'
