@@ -1,0 +1,23 @@
+#!/bin/sh
+# Aggressively clean-up files created by docker
+
+# Remove all stopped containers
+CONTAINERS_NUM="$(docker ps -a -q | wc -l)"
+echo "There are currently $CONTAINERS_NUM containers."
+if [ "$CONTAINERS_NUM" -gt 0 ]
+then
+    docker ps -a -q | xargs docker rm
+    echo "After cleanup, there remains $(docker ps -a -q | wc -l) containers."
+fi
+
+# Remove untagged images
+UNTAGGED_NUM="$(docker images | awk '{ if($1 == "<none>")print $3 }' | wc -l)"
+echo "There are currently $UNTAGGED_NUM untagged images."
+if [ "$UNTAGGED_NUM" -gt 0 ]
+then
+    docker images | awk '{ if($1 == "<none>")print $3 }' | xargs docker rmi
+    UNTAGGED_NUM="$(docker images | awk '{ if($1 == "<none>")print $3 }' | wc -l)"
+    echo "After cleanup, there remains $UNTAGGED_NUM untagged images."
+fi
+
+# To remove every image, run: docker rmi $(docker images -q)
