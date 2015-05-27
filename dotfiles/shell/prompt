@@ -49,6 +49,9 @@ elif [ -n "$ZSH_VERSION" ]; then
     PROMPT="%(?..%F{red}[%?]%f )$PROMPT"
     # Right prompt with date
     RPROMPT="%F{cyan}%D{%d/%m} %T%f"
+    # Colorize the spelling correction prompt
+    SPROMPT='zsh: correct %F{red}%R%f to %F{green}%r%f [nyae]? '
+    # Set window title too
     case "$TERM" in
         xterm*|rxvt*)
             PROMPT=$'%{\e]0;%n@%m: %~\a%}'"$PROMPT"
