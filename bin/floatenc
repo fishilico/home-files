@@ -1,0 +1,178 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2015 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""
+Encode a float number into hexadecimal representation or decode an hex number
+
+Encoding uses IEEE 754 specifications. In these specifications, a number n is
+represented using:
+* a sign s, 0 for positive numbers and 1 for negative ones
+* a significant, with a fraction part f, which is a positive or nul integer
+* a precision p, which is the number of bits in s
+* a base b = 2
+* an exponent e, which is a signed integer
+
+Then n = (-1)^s * (1 + (f / 2^(p-1))) * 2^e
+
+Sometimes the fraction is also called mantissa.
+
+The single-precision format encodes a float number on 32 bits:
+* 1 bit for the sign
+* 8 bits for the exponent, which is encoded relatively to -127
+* 23 bits for the fraction (24 for the significant)
+
+For example, 1 is encoded with s=0, e=0, f=0, so by 127 * 2^23 = 0x3f800000.
+Another example is 42 = 32 * (21/16) = 32 * (1 + 5/16)
+42 = (1 + 0x280000/(2^23)) * 2^5, so s=0, e=5, f=0x280000. 127 + 5 = 0x84.
+So 42 is represented by 0x84*2^23 + 0x280000 = 0x42280000.
+
+Encoded exponent 0 represents denormal numbers, and zero when f=0.
+Encoded exponent 255 represents infinity if f=0 and NaN (Not a Number) otherwise
+(+inf is 0x7f800000, -inf is 0xff800000, NaN is usually 0x7fc00000
+Normalized values have -127<e<128. The bounds of positive single-precision
+float values are 2^(-126)=1.18e-38 and (2-2^(-23))*2^127=3.4e38
+
+
+The double-precision format encodes numbers on 64 bits and uses:
+* 1 bit for the sign
+* 11 bits for the exponent, which is encoded relatively to -1023
+* 52 bits for the fraction (53 for the significant)
+
+For example 1 is encoded by 1023 * 2^52 = 0x3ff0000000000000.
+42 = 32 * (21/16) = 32 * (1 + 5/16) = (1 + 0x5000000000000/(2^52)) * 2^5
+So 42 is encoded by (5+1023)*2^52 + 0x5000000000000 = 0x4045000000000000
+
++inf is 0x7ff0000000000000, -inf 0xfff0000000000000, nan 0xfff8000000000000
+Normalized positive values are approximatively between 10^-308 and 10^308.
+
+
+Links:
+* https://en.wikipedia.org/wiki/Floating_point
+* https://en.wikipedia.org/wiki/IEEE_floating_point
+* https://en.wikipedia.org/wiki/Single-precision_floating-point_format
+* https://en.wikipedia.org/wiki/Double-precision_floating-point_format
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+import argparse
+import binascii
+import struct
+import sys
+
+
+class HexValue(object):
+    """Represent a value from an hexadecimal text input"""
+    def __init__(self, hexval):
+        if len(hexval) > 16:
+            raise ValueError("hexadecimal number too big: {}".format(hexval))
+
+        try:
+            # Prepend with a 0 if the length of the hexadecimal string is odd
+            if len(hexval) % 2:
+                hexval = '0' + hexval
+            self.value = binascii.unhexlify(hexval)
+        except ValueError:
+            raise ValueError("invalid hexadecimal number {}".format(hexval))
+
+
+class FloatValue(object):
+    """Represent a value from a number text input"""
+    def __init__(self, value, typespec=None):
+        self.value = float(value)
+        self.typespec = typespec
+
+
+def input_number(value):
+    """Transform a string value to a float or an integer for hexadecimal"""
+    value = value.lower()
+    if value in ('inf', '-inf', 'nan', '-nan'):
+        return FloatValue(value)
+    if '.' in value:
+        if value[-1] == 'f':
+            # Specify float by hand
+            return FloatValue(value[:-1], 'f')
+        return FloatValue(value)
+    if value.startswith('0x'):
+        return HexValue(value[2:])
+    # an integer without hexadecimal character would be a float
+    if all(c in '0123456789' for c in value):
+        return FloatValue(int(value))
+    return HexValue(value)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Float number encoder")
+    parser.add_argument('numbers', metavar='NUM', nargs='+', type=input_number,
+                        help="number, in float format (with dot) or hex")
+    parser.add_argument('-d', '--double', action='store_true',
+                        help="use double-precision representation (64 bits)")
+    parser.add_argument('--64', action='store_true', dest='double',
+                        help="use 64-bit precision representation")
+    parser.add_argument('-f', '--float', action='store_true',
+                        help="use single-precision representation (32 bits)")
+    parser.add_argument('--32', action='store_true', dest='float',
+                        help="use 32-bit precision representation")
+    parser.add_argument('-l', '--little', action='store_true',
+                        help="handle hexadecimal values in Little Endian")
+    args = parser.parse_args(argv)
+
+    # Enumerate all arguments
+    for num in args.numbers:
+        if isinstance(num, HexValue):
+            hexval = num.value
+            # Pad value with zeros
+            pad = None
+            if (args.double or 4 < len(hexval)) and len(hexval) < 8:
+                pad = b'\x00' * (8 - len(hexval))
+            elif len(hexval) < 4:
+                pad = b'\x00' * (4 - len(hexval))
+            if pad is not None:
+                hexval = (pad + hexval) if args.little else (hexval + pad)
+
+            if args.float and len(hexval) > 4:
+                parser.error('hexadecimal number too big for float')
+
+            floatval = struct.unpack(
+                ('<' if args.little else '>') +
+                ('f' if len(hexval) == 4 else 'd'),
+                hexval)[0]
+        else:
+            floatval = num.value
+            structfmt = ('<' if args.little else '>')
+            if args.double:
+                structfmt += 'd'
+            elif args.float:
+                structfmt += 'f'
+            elif num.typespec is not None:
+                structfmt += num.typespec
+            else:
+                # Use double by default
+                structfmt += 'd'
+            hexval = struct.pack(structfmt, floatval)
+
+        print('{} = {}'.format(
+            binascii.hexlify(hexval).decode('ascii'), floatval))
+
+
+if __name__ == '__main__':
+    sys.exit(main())
