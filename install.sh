@@ -122,12 +122,12 @@ validate_gpg_gitlog() {
         sed -n 's/gpg: Signature .* key ID \([0-9A-F]\+\)/\1/p' | head -n1)"
     if [ -z "$KEYID" ]
     then
-        echo >&2 "Error: unable to parse the output of 'git verify-commit HEAD'"
+        echo >&2 "Error: unable to parse the output of 'git log --show-signature HEAD'"
         return 1
     fi
     if ! (gpg --list-key "$KEYFP" | grep -q "^sub .*/$KEYID ")
     then
-        echo >&2 "Error: the commit has been signed with key $KEYID not in $KEYFP"
+        echo >&2 "Error: the last commit has been signed with key $KEYID not in $KEYFP"
         return 1
     fi
 
