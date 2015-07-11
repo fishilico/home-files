@@ -30,8 +30,17 @@ else
         # Check that the new commits are GPG-signed (with good or untrusted)
         if git --no-pager log --format='%H=%G?' master..origin/master | grep -v '=[GU]$'
         then
-            echo >&2 "[-] Error: some commits are not signed."
-            exit 1
+            # This may occur with git 1.7.10, which replaces %G? with nothing
+            # In such a case, check --show-signature for the last commit only
+            GPGMATCH="$(LANG=C git log --max-count=1 --show-signature origin/master 2>&1 | \
+                grep '^gpg: Signature ')"
+            if [ -z "$GPGMATCH" ]
+            then
+                echo >&2 "[-] Error: some commits are not signed."
+                exit 1
+            else
+                echo "[-] git log does not support %G? format. Only validate the last commit."
+            fi
         fi
 
         # Check that the last commit is signed with the good GPG key
@@ -39,7 +48,7 @@ else
             sed -n 's/gpg: Signature .* key ID \([0-9A-F]\+\)/\1/p' | head -n1)"
         if [ -z "$KEYID" ]
         then
-            echo >&2 "[-] Error: unable to parse the output of 'git log --show-signature HEAD'."
+            echo >&2 "[-] Error: unable to parse the output of 'git log --show-signature origin/master'."
             exit 1
         fi
         if ! (gpg --list-key "$KEYFP" | grep -q "^sub .*/$KEYID ")

@@ -67,7 +67,7 @@ install_rec() {
 
 # Check that the git history contains GPG-signed commits
 validate_gpg_gitlog() {
-    local DST_FILE KEYFP KEYID SRC_FILE
+    local DST_FILE GPGMATCH KEYFP KEYID SRC_FILE
 
     # Check that gpg is installed
     if ! gpg --version > /dev/null
@@ -111,15 +111,24 @@ validate_gpg_gitlog() {
     # Check that the 10 last commits are GPG-signed (with good or untrusted)
     if git --no-pager log --format='%H=%G?' --max-count=10 | grep -v '=[GU]$'
     then
-        echo >&2 "Error: some commits are not signed"
-        return 1
+        # This may occur with git 1.7.10, which replaces %G? with nothing
+        # In such a case, check --show-signature for the last commit only
+        GPGMATCH="$(LANG=C git log --max-count=1 --show-signature HEAD 2>&1 | \
+            grep '^gpg: Signature ')"
+        if [ -z "$GPGMATCH" ]
+        then
+            echo >&2 "Error: some commits are not signed."
+            exit 1
+        else
+            echo "git log does not support %G? format. Only validate the last commit."
+        fi
     fi
 
     # Check that the last commit is signed with the good GPG key
     # To do this, grab the key ID which was used and find it among the subkeys
     # Use "git log" instead of "git verify-commit" (git>=2.1.0)
     KEYID="$(LANG=C git log --max-count=1 --show-signature HEAD 2>&1 | \
-        sed -n 's/gpg: Signature .* key ID \([0-9A-F]\+\)/\1/p' | head -n1)"
+        sed -n 's/^gpg: Signature .* key ID \([0-9A-F]\+\)$/\1/p' | head -n1)"
     if [ -z "$KEYID" ]
     then
         echo >&2 "Error: unable to parse the output of 'git log --show-signature HEAD'"
