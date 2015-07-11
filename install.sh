@@ -37,7 +37,7 @@ install_rec() {
             mkdir -pv "$DST_FILE"
             if ! [ -d "$DST_FILE" ]
             then
-                echo >&2 "Error: file is not a directory ($DST_FILE)"
+                echo >&2 "[!] Error: file is not a directory ($DST_FILE)"
                 RETURN_VAL=1
             else
                 # Clean-up broken symlinks
@@ -51,13 +51,13 @@ install_rec() {
             [ -e "$DST_FILE" ] || ln -svf "$SRC_FILE" "$DST_FILE"
             if ! [ -L "$DST_FILE" ]
             then
-                echo >&2 "Error: file is not a symlink ($DST_FILE)"
+                echo >&2 "[!] Error: file is not a symlink ($DST_FILE)"
                 RETURN_VAL=1
             elif [ "x$(readlink "$DST_FILE")" != "x$SRC_FILE" ]
             then
-                echo >&2 "Error: wrong target for symlink ($DST_FILE)"
-                echo >&2 "  Expected: $SRC_FILE"
-                echo >&2 "  Got: $(readlink "$DST_FILE")"
+                echo >&2 "[!] Error: wrong target for symlink ($DST_FILE)"
+                echo >&2 "[!]   Expected: $SRC_FILE"
+                echo >&2 "[!]   Got: $(readlink "$DST_FILE")"
                 RETURN_VAL=1
             fi
         fi
@@ -72,7 +72,7 @@ validate_gpg_gitlog() {
     # Check that gpg is installed
     if ! gpg --version > /dev/null
     then
-        echo "gnupg is not installed. Skipping signature validation."
+        echo '[-] gnupg is not installed. Skipping signature validation.'
         return 0
     fi
 
@@ -84,7 +84,7 @@ validate_gpg_gitlog() {
         mkdir -pv -m 700 "$INSTALL_DIR/.gnupg" && ln -svf "$SRC_FILE" "$DST_FILE"
         if ! [ -e "$DST_FILE" ]
         then
-            echo >&2 "Error: unable to create $DST_FILE"
+            echo >&2 "[!] Error: unable to create $DST_FILE"
             return 1
         fi
     fi
@@ -96,7 +96,7 @@ validate_gpg_gitlog() {
     # Import the key if it is not found
     if ! gpg --list-key "$KEYFP" > /dev/null
     then
-        echo "Importing key $KEYFP..."
+        echo "[ ] Importing key $KEYFP..."
         gpg --import dotfiles/gnupg/mygpgpubkey.asc || return $?
         gpg --list-key "$KEYFP" > /dev/null || return $?
     fi
@@ -104,7 +104,7 @@ validate_gpg_gitlog() {
     # git log --show-signature is only available with git>=1.7.9
     if [ "$(git log --format='=%G?' --max-count=1)" = '=%G?' ]
     then
-        echo "git log does not support GPG signature. Skipping validation."
+        echo '[-] git log does not support GPG signature. Skipping validation.'
         return 0
     fi
 
@@ -117,10 +117,10 @@ validate_gpg_gitlog() {
             grep '^gpg: Signature ')"
         if [ -z "$GPGMATCH" ]
         then
-            echo >&2 "Error: some commits are not signed."
+            echo >&2 '[!] Error: some commits are not signed.'
             exit 1
         else
-            echo "git log does not support %G? format. Only validate the last commit."
+            echo '[-] git log does not support %G? format. Only validate the last commit.'
         fi
     fi
 
@@ -131,16 +131,16 @@ validate_gpg_gitlog() {
         sed -n 's/^gpg: Signature .* key ID \([0-9A-F]\+\)$/\1/p' | head -n1)"
     if [ -z "$KEYID" ]
     then
-        echo >&2 "Error: unable to parse the output of 'git log --show-signature HEAD'"
+        echo >&2 "[!] Error: unable to parse the output of 'git log --show-signature HEAD'"
         return 1
     fi
     if ! (gpg --list-key "$KEYFP" | grep -q "^sub .*/$KEYID ")
     then
-        echo >&2 "Error: the last commit has been signed with key $KEYID not in $KEYFP"
+        echo >&2 "[!] Error: the last commit has been signed with key $KEYID not in $KEYFP"
         return 1
     fi
 
-    echo "GPG validation of git history succeeded."
+    echo '[+] GPG validation of git history succeeded.'
 }
 
 RETURN_VAL=0
@@ -149,13 +149,13 @@ RETURN_VAL=0
 validate_gpg_gitlog || exit $?
 
 # Remove broken hidden symlinks in $INSTALL_DIR and install home dotfiles
-echo "Installing dotfiles in $INSTALL_DIR"
+echo "[ ] Installing dotfiles in $INSTALL_DIR"
 find "$INSTALL_DIR/" -maxdepth 1 -name '.*' -xtype l -exec rm -v {} \;
 install_rec "$SOURCE_DIR/dotfiles" "$INSTALL_DIR/." || RETURN_VAL=1
 
 # Remove broken symlinks in bin/ and install custom programs
 BIN_INSTALL_DIR="$INSTALL_DIR/bin"
-echo "Installing bin in $INSTALL_DIR"
+echo "[ ] Installing bin in $INSTALL_DIR"
 mkdir -pv "$BIN_INSTALL_DIR" || exit 1
 find "$BIN_INSTALL_DIR/" -maxdepth 1 -xtype l -exec rm -v {} \;
 install_rec "$SOURCE_DIR/bin" "$BIN_INSTALL_DIR/" || RETURN_VAL=1

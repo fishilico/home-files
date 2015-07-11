@@ -18,7 +18,7 @@ else
         head -n1 | tr -d ' ')"
     if ! gpg --list-key "$KEYFP" > /dev/null
     then
-        echo >&2 "[-] Error: GPG key $KEYFP is not installed."
+        echo >&2 "[!] Error: GPG key $KEYFP is not installed."
         exit 1
     fi
 
@@ -36,7 +36,7 @@ else
                 grep '^gpg: Signature ')"
             if [ -z "$GPGMATCH" ]
             then
-                echo >&2 "[-] Error: some commits are not signed."
+                echo >&2 "[!] Error: some commits are not signed."
                 exit 1
             else
                 echo "[-] git log does not support %G? format. Only validate the last commit."
@@ -48,12 +48,12 @@ else
             sed -n 's/gpg: Signature .* key ID \([0-9A-F]\+\)/\1/p' | head -n1)"
         if [ -z "$KEYID" ]
         then
-            echo >&2 "[-] Error: unable to parse the output of 'git log --show-signature origin/master'."
+            echo >&2 "[!] Error: unable to parse the output of 'git log --show-signature origin/master'."
             exit 1
         fi
         if ! (gpg --list-key "$KEYFP" | grep -q "^sub .*/$KEYID ")
         then
-            echo >&2 "[-] Error: the last commit has been signed with key $KEYID not in $KEYFP."
+            echo >&2 "[!] Error: the last commit has been signed with key $KEYID not in $KEYFP."
             exit 1
         fi
         echo "[+] GPG validation of git history succeeded."
