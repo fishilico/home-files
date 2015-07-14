@@ -154,21 +154,21 @@ def main(argv=None):
     print("16-colors table:")
     for line in range(4):
         print(" ".join([
-            color_index2term(4*line + col, colorparams)
+            color_index2term(4 * line + col, colorparams)
             for col in range(4)]))
     print("")
 
     print("216-RGB-colors table:")
     for line in range(36):
         print(" ".join([
-            color_index2term(6*line + col + 16, colorparams)
+            color_index2term(6 * line + col + 16, colorparams)
             for col in range(6)]))
     print("")
 
     print("24-gray-colors table:")
     for line in range(4):
         print(" ".join([
-            color_index2term(6*line + col + 232, colorparams)
+            color_index2term(6 * line + col + 232, colorparams)
             for col in range(6)]))
 
 
