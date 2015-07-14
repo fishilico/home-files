@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright (c) 2014 Nicolas Iooss
+# Copyright (c) 2014-2015 Nicolas Iooss
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,8 +38,15 @@ import os
 import stat
 import sys
 
+# Use memoization on Python >=3.2
+if sys.version_info >= (3, 2):
+    from functools import lru_cache
+else:
+    def lru_cache():
+        return lambda f: f
 
-@functools.lru_cache()
+
+@lru_cache()
 def mode_str(mode):
     """Get a string respresentation of a file mode"""
     return (
@@ -62,19 +69,30 @@ def do_chmod(filetype, path, mode_from, mode_to, dry_run):
         '[dry] ' if dry_run else '', filetype, path,
         mode_str(mode_from), mode_str(mode_to)))
     if not dry_run:
-        os.chmod(path, mode_to)
+        try:
+            os.chmod(path, mode_to)
+        except OSError as exc:
+            sys.stderr.write("chmod('{}'): {}\n".format(path, exc.strerror))
+            return False
+        return True
 
 
 def do_remove(filetype, path, dry_run):
     print("{}Removing {} {}".format(
         '[dry] ' if dry_run else '', filetype, path))
     if not dry_run:
-        os.remove(path)
+        try:
+            os.remove(path)
+        except OSError as exc:
+            sys.stderr.write("rm('{}'): {}\n".format(path, exc.strerror))
+            return False
+        return True
 
 
 def clean_data_dir(basedir, fmode, dmode, dry_run=False):
     fmode_keep = fmode & stat.S_IWUSR
     fmode_mask = ~fmode_keep
+    has_error = False
     for dirpath, dirnames, filenames in os.walk(basedir):
         for dirname in dirnames:
             path = os.path.join(dirpath, dirname)
@@ -84,18 +102,22 @@ def clean_data_dir(basedir, fmode, dmode, dry_run=False):
             assert stat.S_ISDIR(mode)
             mode = stat.S_IMODE(mode)
             if mode != dmode:
-                do_chmod('dir', path, mode, dmode, dry_run)
+                if not do_chmod('dir', path, mode, dmode, dry_run):
+                    has_error = True
+
         for filename in filenames:
             path = os.path.join(dirpath, filename)
 
             # Remove temporary files
             if filename[-1] == '~':
-                do_remove('temp file', path, dry_run)
+                if not do_remove('temp file', path, dry_run):
+                    has_error = True
                 continue
 
             # Remove system files
             if filename == 'Thumbs.db':
-                do_remove('system file', path, dry_run)
+                if not do_remove('system file', path, dry_run):
+                    has_error = True
                 continue
 
             # Fix file mode
@@ -104,10 +126,11 @@ def clean_data_dir(basedir, fmode, dmode, dry_run=False):
                 mode = stat.S_IMODE(mode)
                 if mode & fmode_mask != fmode & fmode_mask:
                     new_mode = (fmode & fmode_mask) | (mode & fmode_keep)
-                    do_chmod('file', path, mode, new_mode, dry_run)
+                    if not do_chmod('file', path, mode, new_mode, dry_run):
+                        has_error = True
             else:
                 assert not stat.S_ISDIR(mode)
-    return True
+    return not has_error
 
 
 def main(argv=None):
