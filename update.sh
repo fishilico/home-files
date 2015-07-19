@@ -89,6 +89,7 @@ then
     git checkout master || exit $?
 fi
 echo "[ ] Updating master by rebasing on top of origin/master..."
+git --no-pager diff --stat master..origin/master
 git rebase origin/master || exit $?
 echo "[+] Branch master has been successfully updated."
 
