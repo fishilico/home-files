@@ -139,7 +139,7 @@ validate_gpg_gitlog() {
         if [ -z "$GPGMATCH" ]
         then
             echo >&2 '[!] Error: some commits are not signed.'
-            exit 1
+            return 1
         else
             echo '[-] git log does not support %G? format. Only validate the last commit.'
         fi
