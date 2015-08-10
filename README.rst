@@ -20,6 +20,8 @@ Directories
   shells (bash, zsh...), git, vim, urxvt, python, etc.
 * ``specific/``: configuration files which are really specific to some of my
   systems (for example there is a VLC addon to read YouTube playlists).
+* ``tests/``: scripts which check the style of the files (PEP8-compliance of
+  Python scripts, copyright information, etc.).
 * ``xdgconfig/``: settings for Desktop Environments which do not use plain old
   text files.  These DE usally build a database and an provide an API which
   makes saving & restoring settings way harder than it has to be.  Nonetheless
@@ -34,6 +36,24 @@ Some commands
 
     ./install.sh
 
+* Update the repository in a way more secure than ``git pull``, by verifying
+  the GPG signature of incoming commits::
+
+    ./update.sh
+
 * Update MIME database after installation on a desktop system::
 
     cd ~/.local/share && update-mime-database mime
+
+* Run various tests::
+
+    ./run_tests
+
+
+`Travis-CI`_ status
+-------------------
+
+.. _Travis-CI: https://travis-ci.org/
+
+.. image:: https://travis-ci.org/fishilico/home-files.png?branch=master
+  :target: https://travis-ci.org/fishilico/home-files
