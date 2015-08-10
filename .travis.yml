@@ -1,0 +1,43 @@
+# Use http://lint.travis-ci.org/ to check the syntax of this file
+
+language: python
+python:
+  - "2.7"
+  - "3.3"
+  - "3.4"
+
+sudo: false
+
+addons:
+  apt:
+    packages:
+    - cabal-install
+    - ghc
+
+cache:
+  directories:
+    - $HOME/.cabal
+    - $HOME/.cache/pip
+
+install:
+# Install shellcheck, using Travis' cache
+  - test -x "$HOME/.cabal/bin/shellcheck" || (cabal update && cabal install shellcheck)
+  - PATH="$HOME/.cabal/bin:$PATH"
+# Install pep8 for the current version of Python
+  - pip install pep8
+
+script:
+# Run automated tests
+  - ./run_tests.sh
+# Install the files after removing conflicting local files
+  - rm -f ~/.bash_logout ~/.bashrc ~/.gitconfig ~/.gnupg/gpg.conf ~/.profile ~/.zshrc
+  - ./install.sh
+# Test updating branch master of the project
+  - git remote set-branches origin master
+  - git fetch origin
+  - git checkout origin/master -b master
+  - git checkout "$TRAVIS_BRANCH"
+  - ./update.sh
+
+notifications:
+  email: false
