@@ -35,7 +35,7 @@ script:
 # Test updating branch master of the project
   - git remote set-branches origin master
   - git fetch origin
-  - git checkout origin/master -b master
+  - test "$TRAVIS_BRANCH" = "master" || git checkout origin/master -b master
   - git checkout "$TRAVIS_BRANCH"
   - ./update.sh
 
