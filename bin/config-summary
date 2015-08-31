@@ -82,6 +82,7 @@ echo 'Network information'
 echo '-------------------'
 echo ''
 if has_command ip ; then
+    # Linux with iproute programs
     echo '* ip address::'
     ip address 2>&1 | indent_out
     echo '* ip -4 route list table all::'
@@ -92,13 +93,23 @@ if has_command ip ; then
     ip -4 rule 2>&1 | indent_out
     echo '* ip -6 rule::'
     ip -6 rule 2>&1 | indent_out
-else
+elif has_command ifconfig && has_command route ; then
+    # UN*X with net-tools programs
     echo '* ifconfig -a::'
     ifconfig -a 2>&1 | indent_out
-    echo '* route -n::'
+    echo '* route -4 -n::'
     route -n 2>&1 | indent_out
     echo '* route -6 -n::'
     route -6 -n 2>&1 | indent_out
+elif has_command ipconfig && has_command route ; then
+    # Windows
+    echo '* ipconfig::'
+    ipconfig 2>&1 | indent_out
+    echo '* route print::'
+    route print 2>&1 | indent_out
+else
+    echo 'no network configuration command found.'
+    echo ''
 fi
 for ETCFILE in /etc/resolv.conf /etc/hosts ; do
     if [ -r "$ETCFILE" ] ; then
@@ -109,7 +120,6 @@ for ETCFILE in /etc/resolv.conf /etc/hosts ; do
     fi
 done
 echo '* sysctl::'
-echo ''
 for SYSCTLFILE in \
     /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts \
     /proc/sys/net/ipv4/ip_forward \
@@ -120,11 +130,10 @@ for SYSCTLFILE in \
     /proc/sys/net/ipv6/conf/*/use_tempaddr
 do
     if [ -r "$SYSCTLFILE" ] ; then
-        echo "    $(echo "${SYSCTLFILE#/proc/sys/}" | tr / .) = $(cat "$SYSCTLFILE")"
+        echo "$(echo "${SYSCTLFILE#/proc/sys/}" | tr / .) = $(cat "$SYSCTLFILE")"
     fi
-done | sort
+done | sort | indent_out
 
-echo ''
 echo 'Disk information'
 echo '----------------'
 echo ''
@@ -141,7 +150,7 @@ elif has_command mount ; then
     echo '* mount::'
     mount | indent_out
 else
-    echo '* findmnt and mount command not found.'
+    echo '* findmnt and mount commands not found.'
 fi
 
 echo ''
@@ -213,8 +222,7 @@ do
     fi
 done | indent_out
 
-if [ -r /proc/sys/fs/binfmt_misc/status ]
-then
+if [ -r /proc/sys/fs/binfmt_misc/status ] ; then
     echo '* binfmt (``/proc/sys/fs/binfmt_misc``):'
     echo ''
     echo "  - status: $(cat /proc/sys/fs/binfmt_misc/status)"
@@ -224,8 +232,7 @@ then
             register|status)
                 ;;
             *)
-                if [ -r "$FILE" ]
-                then
+                if [ -r "$FILE" ] ; then
                     echo "  - $FMTNAME::"
                     echo ''
                     sed 's/^/      /' < "$FILE"
@@ -236,5 +243,7 @@ then
     done
     echo ''
 fi
-echo '* dmesg::'
-dmesg 2>&1 | indent_out
+if has_command dmesg ; then
+    echo '* dmesg::'
+    dmesg 2>&1 | indent_out
+fi
