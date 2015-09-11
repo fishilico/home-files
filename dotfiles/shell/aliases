@@ -334,6 +334,10 @@ if type alias > /dev/null 2>&1 ; then
     alias disnarm='arm-none-eabi-objdump -D -bbinary -marm'
     alias disnarmt='arm-none-eabi-objdump -D -bbinary -marm -Mforce-thumb'
 
+    # Run a program into gdb and break on Address Sanitizer errors
+    alias gdb-run='gdb -q -ex run --args'
+    alias gdb-asan-run='gdb -q -ex "tbreak _start" -ex run -ex "break __asan_report_error" -ex continue --args'
+
     # Read the internal Flash content (options verbose, programmer, read)
     alias myflashrom='flashrom -V -p internal -r'
 
