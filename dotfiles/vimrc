@@ -17,6 +17,7 @@ set history=500 " keep 500 lines of command history
 set ruler " Show the cursor position all the time
 set rulerformat=%=%h%m%r%w\ %(%c%V%),%l/%L\ %P
 set showmode " Show the current mode on the last line
+set showcmd " Show the number of characters or lines in Visual mode
 let mapleader="," " Use comma as the leader key
 
 set viminfo='20,\"500 " Keep a .viminfo file.
@@ -27,7 +28,8 @@ set showfulltag " View full tag when doing a tag search
 set nrformats-=octal " Don't use octal number when incrementing/decrementing with ^A/^X
 set scrolloff=1 " Always show at least one line above and below the cursor
 set sidescrolloff=5 " Always show at least 5 columns at cursor sides in nowrap mode
-set display+=lastline " Display part ofthe lastline in the window instead of @ lines
+set display+=lastline " Display part of the lastline in the window instead of @ lines
+set ffs=unix,dos,mac " Use <NL>-terminated lines by default, then <CR><NL> and finally <CR>
 
 " Theme
 set background=dark
