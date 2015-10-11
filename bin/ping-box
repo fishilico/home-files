@@ -49,7 +49,7 @@ function test_network()
 
     # Find default route interface
     IFACE=$(ip -oneline -4 route show default |
-        sed -ne 's/^.*dev \([^ ]\+\) .*$/\1/p')
+        sed -ne 's/^.*dev \([^ ]\+\) .*$/\1/;1p')
     if [ -z "$IFACE" ]
     then
         echo -ne "\r!! No default route, network is unreachable"
