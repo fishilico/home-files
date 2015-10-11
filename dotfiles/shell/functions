@@ -180,7 +180,7 @@ postless() {
 
 # Highlight a pattern, if grep accept colors
 if grep --help 2> /dev/null |grep -q -- --color ; then
-    if [ -n "$BASH_VERSION" -o -n "$ZSH_VERSION" ] ; then
+    if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ] ; then
         # Modern shells support array substitution
         hl() {
             \grep -E --color=always -e '' "${@/#/-e}"
@@ -234,7 +234,7 @@ mounttable() {
 
 # Print args or use standard input (mainly for internal use)
 print_args_or_stdin() {
-    if [ $# -eq 0 -o "$1" = "-" ] ; then
+    if [ $# -eq 0 ] || [ "$1" = "-" ] ; then
         cat
     else
         while [ $# -ge 1 ] ; do

@@ -30,9 +30,9 @@ fi
 # Common configuration, find best configuration dir
 SHELL_CONFIG_DIR=""
 # Try $BASH_SOURCE if the file has been directly source'd
-if [ "${BASH_SOURCE##*/}" = ".bashrc" -a -d "${BASH_SOURCE%.bashrc}.shell" ] ; then
+if [ "${BASH_SOURCE##*/}" = ".bashrc" ] && [ -d "${BASH_SOURCE%.bashrc}.shell" ] ; then
     SHELL_CONFIG_DIR="${BASH_SOURCE%.bashrc}.shell"
-elif [ "${BASH_SOURCE##*/}" = "bashrc" -a -d "${BASH_SOURCE%bashrc}shell" ] ; then
+elif [ "${BASH_SOURCE##*/}" = "bashrc" ] && [ -d "${BASH_SOURCE%bashrc}shell" ] ; then
     SHELL_CONFIG_DIR="${BASH_SOURCE%bashrc}shell"
 elif [ -n "$SUDO_USER" ] ; then
     SUDO_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
@@ -40,7 +40,7 @@ elif [ -n "$SUDO_USER" ] ; then
     unset SUDO_HOME
 fi
 # Fallback to home directory
-if [ -z "$SHELL_CONFIG_DIR" -o ! -d "$SHELL_CONFIG_DIR" ] ; then
+if [ -z "$SHELL_CONFIG_DIR" ] || [ ! -d "$SHELL_CONFIG_DIR" ] ; then
     SHELL_CONFIG_DIR="$HOME/.shell"
 fi
 # Source configuration files

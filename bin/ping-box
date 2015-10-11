@@ -71,7 +71,7 @@ function test_network()
     # Default gateway
     IPGW=$(ip -oneline -4 route show default dev "$IFACE" |
         sed -ne 's/^.* via \([^ ]\+\) .*$/\1/p')
-    if [ -n "$IPGW" -a -z "$(ip neigh show "$IPGW" dev "$IFACE")" ]
+    if [ -n "$IPGW" ] && [ -z "$(ip neigh show "$IPGW" dev "$IFACE")" ]
     then
         # Fill ARP table with a ping
         echo_startgray

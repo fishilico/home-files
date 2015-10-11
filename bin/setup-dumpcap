@@ -32,7 +32,7 @@ for P in /usr/bin /usr/sbin /bin /sbin ; do
 done
 
 [ -n "$DUMPCAP" ] || DUMPCAP="$(which dumpcap)"
-if [ -z "$DUMPCAP" -o ! -r "$DUMPCAP" ] ; then
+if [ -z "$DUMPCAP" ] || [ ! -r "$DUMPCAP" ] ; then
     echo >&2 "Error: dumpcap not found"
     exit 1
 fi

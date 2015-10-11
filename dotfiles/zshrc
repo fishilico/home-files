@@ -1,9 +1,9 @@
 # Find best configuration dir
 SHELL_CONFIG_DIR=""
 # Try $0 if the file has been directly source'd
-if [ "${0##*/}" = ".zshrc" -a -d "${0%.zshrc}.shell" ] ; then
+if [ "${0##*/}" = ".zshrc" ] && [ -d "${0%.zshrc}.shell" ] ; then
     SHELL_CONFIG_DIR="${0%.zshrc}.shell"
-elif [ "${0##*/}" = "zshrc" -a -d "${0%zshrc}shell" ] ; then
+elif [ "${0##*/}" = "zshrc" ] && [ -d "${0%zshrc}shell" ] ; then
     SHELL_CONFIG_DIR="${0%zshrc}shell"
 elif [ -n "$SUDO_USER" ] ; then
     SUDO_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
@@ -11,7 +11,7 @@ elif [ -n "$SUDO_USER" ] ; then
     unset SUDO_HOME
 fi
 # Fallback to home directory
-if [ -z "$SHELL_CONFIG_DIR" -o ! -d "$SHELL_CONFIG_DIR" ] ; then
+if [ -z "$SHELL_CONFIG_DIR" ] || [ ! -d "$SHELL_CONFIG_DIR" ] ; then
     SHELL_CONFIG_DIR="$HOME/.shell"
 fi
 # Source configuration files
