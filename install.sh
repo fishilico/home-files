@@ -62,6 +62,7 @@ install_rec() {
                 RETURN_VAL=1
             else
                 # Clean-up broken symlinks
+                # shellcheck disable=SC2039
                 find "$DST_FILE/" -maxdepth 1 -xtype l -exec rm -v {} \;
                 # Recursive call into directories
                 install_rec "$SRC_FILE" "$DST_FILE/" || RETURN_VAL=1
@@ -171,6 +172,7 @@ validate_gpg_gitlog || exit $?
 
 # Remove broken hidden symlinks in $INSTALL_DIR and install home dotfiles
 echo "[ ] Installing dotfiles in $INSTALL_DIR"
+# shellcheck disable=SC2039
 find "$INSTALL_DIR/" -maxdepth 1 -name '.*' -xtype l -exec rm -v {} \;
 install_rec "$SOURCE_DIR/dotfiles" "$INSTALL_DIR/." || RETURN_VAL=1
 
@@ -178,6 +180,7 @@ install_rec "$SOURCE_DIR/dotfiles" "$INSTALL_DIR/." || RETURN_VAL=1
 BIN_INSTALL_DIR="$INSTALL_DIR/bin"
 echo "[ ] Installing bin in $INSTALL_DIR"
 mkdir -pv "$BIN_INSTALL_DIR" || exit 1
+# shellcheck disable=SC2039
 find "$BIN_INSTALL_DIR/" -maxdepth 1 -xtype l -exec rm -v {} \;
 install_rec "$SOURCE_DIR/bin" "$BIN_INSTALL_DIR/" || RETURN_VAL=1
 unset BIN_INSTALL_DIR

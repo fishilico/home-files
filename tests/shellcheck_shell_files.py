@@ -33,6 +33,7 @@ import subprocess
 
 # Warnings excluded for every file
 SHELLCHECK_EXCLUDED_WARNS = (
+    'SC1091',  # Never follow external sources
     'SC2018',  # Use '[:lower:]' to support accents and foreign alphabets.
     'SC2019',  # Use '[:upper:]' to support accents and foreign alphabets.
     'SC2086',  # Some scripts use the fact that expanded variables change newline to space
@@ -41,9 +42,6 @@ SHELLCHECK_EXCLUDED_WARNS = (
 # Warnings excluded for specific files
 # Format: (regexp on the path, warning to be excluded)
 SHELLCHECK_SPECIFIC_EXCL_WARNS = (
-    # asciitable uses printf without format string to print character from code
-    (r'/bin/asciitable$', 'SC2017,SC2059'),
-
     # Shebang is missing in .bashrc, .zshrc...
     (r'/dotfiles/[^/]+$', 'SC2148'),
 
@@ -53,29 +51,7 @@ SHELLCHECK_SPECIFIC_EXCL_WARNS = (
     # .shell/aliases and .shell/functions use:
     # * \grep to avoid using the alias
     # * "ls |grep" structure to detect features
-    # * expanded variables in trap to automatically remove temporary files
-    (r'/dotfiles/shell/(aliases|functions)$', 'SC1001,SC2010,SC2064'),
-
-    # Shell aliases uses variables which expands when defined,
-    # and their support is detected through non-POSIX-sh "type alias"
-    (r'/bin/polyproxy$', 'SC2039,SC2139'),
-    (r'/dotfiles/shell/(aliases|environment|functions)$', 'SC2039,SC2139'),
-
-    # .shell/prompt uses $'\e' in a zsh-specific blob
-    (r'/dotfiles/shell/prompt$', 'SC2039'),
-
-    # install.sh and bin/rm-temp use {} in find command, which is not POSIX
-    (r'/bin/rm-temp$', 'SC2039'),
-    (r'/install\.sh$', 'SC2039'),
-
-    # shellcheck does not known that SAVEHIST and RPROMPT are internal zsh variables
-    (r'/dotfiles/(shell/prompt|zshrc)$', 'SC2034'),
-
-    # shellcheck yells a lot about valid zsh syntax
-    (r'/dotfiles/shell/zshcompletion$', 'SC2128,SC2016'),
-
-    # bin/config-summary outputs ReStructuredText format, with double backticks
-    (r'/bin/config-summary$', 'SC2016'),
+    (r'/dotfiles/shell/(aliases|functions)$', 'SC1001,SC2010'),
 )
 
 

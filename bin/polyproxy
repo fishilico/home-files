@@ -53,23 +53,30 @@ elif which connect-proxy > /dev/null 2>&1
 then
     SSH_PROXYCOMMAND="connect-proxy -H $HTTP_PROXY_HOST:$HTTP_PROXY_PORT %h %p"
 fi
+# shellcheck disable=SC2039
 if type alias > /dev/null 2>&1 && [ -n "$SSH_PROXYCOMMAND" ]
 then
+    # shellcheck disable=SC2139
     alias sshExt="ssh -o ProxyCommand='$SSH_PROXYCOMMAND'"
 
     # rsync over ssh doesn't use $RSYNC_PROXY
+    # shellcheck disable=SC2139
     alias rsyncSshExt="rsync -e \"ssh -o ProxyCommand='$SSH_PROXYCOMMAND'\""
 
     # If scp is an alias to rsync, give parameters to rsync
     if alias scp 2> /dev/null | grep -q 'rsync'
     then
+        # shellcheck disable=SC2139
         alias scpExt="scp -e \"ssh -o ProxyCommand='$SSH_PROXYCOMMAND'\""
     else
+        # shellcheck disable=SC2139
         alias scpExt="scp -o ProxyCommand='$SSH_PROXYCOMMAND'"
     fi
 
     # Chromium with proxy autoconfiguration
+    # shellcheck disable=SC2139
     alias chromium-xpac="chromium --proxy-pac-url=$HTTP_PROXY_PAC"
+    # shellcheck disable=SC2139
     alias chromium-xpro="chromium --proxy-server=$HTTP_PROXY_HOST:$HTTP_PROXY_PORT"
 fi
 

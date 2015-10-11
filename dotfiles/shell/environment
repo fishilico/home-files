@@ -73,7 +73,9 @@ if [ -r "$REAL_HOME/.pythonrc" ] ; then
 fi
 
 # Debian quilt configuration
+# shellcheck disable=SC2039
 if [ -r "$REAL_HOME/.quiltrc-dpkg" ] && type alias > /dev/null 2>&1 ; then
+    # shellcheck disable=SC2139
     alias dquilt="quilt --quiltrc $REAL_HOME/.quiltrc-dpkg"
 fi
 

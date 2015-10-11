@@ -13,6 +13,7 @@
 if [ -n "$BASH_VERSION" ]; then
     # include .bashrc if it exists
     if [ -f "$HOME/.bashrc" ]; then
+        # shellcheck source=/dev/null
         . "$HOME/.bashrc"
     fi
 elif [ -z "$ZSH_VERSION" ]; then
@@ -34,6 +35,7 @@ elif [ -z "$ZSH_VERSION" ]; then
 
     for FILE in aliases environment functions prompt 'local' ; do
         if [ -f "$SHELL_CONFIG_DIR/$FILE" ]; then
+            # shellcheck source=/dev/null
             . "$SHELL_CONFIG_DIR/$FILE"
         fi
     done

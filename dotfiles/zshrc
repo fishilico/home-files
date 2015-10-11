@@ -17,6 +17,7 @@ fi
 # Source configuration files
 for FILE in aliases environment functions prompt zshbindings zshcompletion 'local' ; do
     if [ -f "$SHELL_CONFIG_DIR/$FILE" ]; then
+        # shellcheck source=/dev/null
         . "$SHELL_CONFIG_DIR/$FILE"
     fi
 done
@@ -24,6 +25,7 @@ unset SHELL_CONFIG_DIR FILE
 
 # Keep 10000 lines of history within the shell and save it to ~/.zsh_history:
 HISTSIZE=10000
+# shellcheck disable=SC2034
 SAVEHIST=10000
 HISTFILE=$HOME/.zsh_history
 setopt appendhistory autocd beep extendedglob nomatch notify

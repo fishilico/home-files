@@ -46,6 +46,7 @@ fi
 # Source configuration files
 for FILE in aliases environment functions prompt 'local' ; do
     if [ -f "$SHELL_CONFIG_DIR/$FILE" ]; then
+        # shellcheck source=/dev/null
         . "$SHELL_CONFIG_DIR/$FILE"
     fi
 done

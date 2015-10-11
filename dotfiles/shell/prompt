@@ -69,12 +69,15 @@ elif [ -n "$ZSH_VERSION" ]; then
     # Display last returned value at the beginning of the prompt
     PROMPT="%(?..%F{red}[%?]%f )$PROMPT"
     # Right prompt with date
+    # shellcheck disable=SC2034
     RPROMPT="%F{cyan}%D{%d/%m} %T%f"
     # Colorize the spelling correction prompt
+    # shellcheck disable=SC2034
     SPROMPT='zsh: correct %F{red}%R%f to %F{green}%r%f [nyae]? '
     # Set window title too
     case "$TERM" in
         xterm*|rxvt*)
+            # shellcheck disable=SC2039
             PROMPT=$'%{\e]0;%n@%m: %~\a%}'"$PROMPT"
             ;;
     esac

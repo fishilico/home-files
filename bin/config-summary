@@ -223,6 +223,7 @@ do
 done | indent_out
 
 if [ -r /proc/sys/fs/binfmt_misc/status ] ; then
+    # shellcheck disable=SC2016
     echo '* binfmt (``/proc/sys/fs/binfmt_misc``):'
     echo ''
     echo "  - status: $(cat /proc/sys/fs/binfmt_misc/status)"

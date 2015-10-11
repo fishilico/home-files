@@ -24,6 +24,7 @@
 
 # mkdir && cd
 mcd() {
+    # shellcheck disable=SC2164
     mkdir -p "$1" && cd "$1"
 }
 
@@ -39,6 +40,7 @@ if find --help 2> /dev/null |grep -q -- -xtype ; then
     }
 else
     find_broken() {
+        # shellcheck disable=SC2039
         find "$@" -type l ! -exec test -e {} \; -print
     }
 fi
@@ -63,6 +65,7 @@ du2s() {
 # shells (Bash, Ash, ...) use -p option, so use echo to be compatible.
 # Dash fails with "read: Illegal option -s" as this is not POSIX-compliant.
 read_pass() {
+    # shellcheck disable=SC2039
     printf >&2 'Password: ' && read -r -s "$@" && echo ''
 }
 
@@ -91,6 +94,7 @@ show_entropy() {
 }
 
 # Log tail, to have colors when ccze is available
+# shellcheck disable=SC2039
 if which ccze > /dev/null 2>&1 ; then
     ltail() {
         tail "$@" |ccze -A
@@ -190,6 +194,7 @@ if grep --help 2> /dev/null |grep -q -- --color ; then
         hl() {
             local FILE
             FILE="$(mktemp)"
+            # shellcheck disable=SC2064
             trap "/bin/rm -f \"$FILE\"" EXIT HUP INT QUIT TERM
             while [ $# -ge 1 ] ; do
                 echo "$1" >> "$FILE"
@@ -252,6 +257,7 @@ if which xxd > /dev/null 2>&1 ; then
 fi
 
 # Reverse base64 and dump with "hexa" alias
+# shellcheck disable=SC2039
 if type alias > /dev/null 2>&1 ; then
     base6416() {
         print_args_or_stdin "$@" | base64 -d | hexa
@@ -268,21 +274,27 @@ hexdec() {
 
 # Recursive md5sum, sha1sum, sha256sum... in directories
 md5sumd() {
+    # shellcheck disable=SC2039
     find "$@" -type f -exec md5sum {} +
 }
 sha1sumd() {
+    # shellcheck disable=SC2039
     find "$@" -type f -exec sha1sum {} +
 }
 sha224sumd() {
+    # shellcheck disable=SC2039
     find "$@" -type f -exec sha224sum {} +
 }
 sha256sumd() {
+    # shellcheck disable=SC2039
     find "$@" -type f -exec sha256sum {} +
 }
 sha384sumd() {
+    # shellcheck disable=SC2039
     find "$@" -type f -exec sha384sum {} +
 }
 sha512sumd() {
+    # shellcheck disable=SC2039
     find "$@" -type f -exec sha512sum {} +
 }
 
@@ -404,6 +416,7 @@ objdump_wrapper() {
 
     # There is no file, let's create one
     TEMPFILE="$(mktemp /tmp/objdump.XXXXXXXXXX)"
+    # shellcheck disable=SC2064
     trap "/bin/rm -f \"$TEMPFILE\"" EXIT HUP INT QUIT TERM
     cat > "$TEMPFILE"
     "$TARGET" "$@" "$TEMPFILE"
@@ -413,6 +426,7 @@ objdump_wrapper() {
 }
 
 # Use aliases if available, and because dash are allowed in their names
+# shellcheck disable=SC2039
 if type alias > /dev/null 2>&1 ; then
     alias objdump='objdump_wrapper /usr/bin/objdump'
     alias arm-none-eabi-objdump='objdump_wrapper /usr/bin/arm-none-eabi-objdump'

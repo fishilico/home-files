@@ -23,6 +23,7 @@
 # Define useful shell aliases
 
 # alias may be unavailable, for example in busybox shell (ash)
+# shellcheck disable=SC2039
 if type alias > /dev/null 2>&1 ; then
     # Be verbose! (note: long options may be unavailable)
     alias mkdir='mkdir -v'
@@ -84,6 +85,7 @@ if type alias > /dev/null 2>&1 ; then
             LS_PARAMS="$LS_PARAMS --time-style="$(printf '"+\033[0;35m%%Y-%%m-%%d %%H:%%M\033[0m"')
         fi
     fi
+    # shellcheck disable=SC2139
     alias ls="ls $LS_PARAMS"
     alias l='ls'
     alias la='ls -A'
@@ -163,6 +165,7 @@ if type alias > /dev/null 2>&1 ; then
         GREP_PARAMS="$GREP_PARAMS --exclude-dir=.git --exclude-dir=.svn"
     fi
     if [ -n "$GREP_PARAMS" ] ; then
+        # shellcheck disable=SC2139
         alias grep="grep$GREP_PARAMS"
     fi
 
@@ -311,9 +314,11 @@ if type alias > /dev/null 2>&1 ; then
         # slightly different from "hexdump -C"
         _HEXDUMP_PART1='"%07.7_ax: " 16/1 "%02x ""  "'
         _HEXDUMP_PART2='16/1 "%_p""\n"'
+        # shellcheck disable=SC2139
         alias hexa="hexdump -e '$_HEXDUMP_PART1' -e '$_HEXDUMP_PART2'"
         _HEXDUMP_PART1='"%07.7_ax: " 32/1 "%02x ""  "'
         _HEXDUMP_PART2='32/1 "%_p""\n"'
+        # shellcheck disable=SC2139
         alias hexa32="hexdump -e '$_HEXDUMP_PART1' -e '$_HEXDUMP_PART2'"
         unset _HEXDUMP_PART1 _HEXDUMP_PART2
     fi

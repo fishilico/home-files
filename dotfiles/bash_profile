@@ -1,1 +1,2 @@
+# shellcheck source=/dev/null
 . "$HOME/.bashrc"

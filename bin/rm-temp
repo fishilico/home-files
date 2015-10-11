@@ -1,4 +1,5 @@
 #!/bin/sh
 # Remove temporary files in subfolders
+# shellcheck disable=SC2039
 exec find "$@" \( -name '*~' -o -name '*.bak' -o -name '*.tmp' \) \
     -exec rm -v {} \;
