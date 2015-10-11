@@ -84,6 +84,7 @@ BIN_SCRIPTS = {
     'set-title': 'direct',
     'setup-dumpcap': 'never',
     'smtp-send': 'help',
+    'suid-list': 'args[-p]',
     'syscall': 'args[-l]',
     'systemd-analyze-plot': 'never',
     'tab2space': 'never',

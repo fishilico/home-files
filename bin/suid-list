@@ -1,0 +1,587 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2015 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""List the programs with SUID bit or capabilities that are on the system
+
+This program is compatible with Python 2.6, 2.7 and 3.x
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+import optparse
+import errno
+import ctypes
+import logging
+import pwd
+import os
+import os.path
+import re
+import stat
+import sys
+
+
+# pylint: disable=invalid-name
+logger = logging.getLogger(__name__)
+
+
+def pathdesc_to_regexp(pathdesc):
+    """Compile a given file path description into a regular expression
+
+    The given description is a regexp pattern which begins with / and where dot
+    really means the dot character (no need to escape it).
+    ^(/usr)? is automatically prepended so that /usr/bin behaves the same as
+    /bin, /usr/lib as /lib, etc.
+    """
+    assert pathdesc[0] == '/'
+    assert not pathdesc.startswith('/usr')
+    assert '\\.' not in pathdesc
+    return re.compile(r'^(/usr)?' + pathdesc.replace('.', '\\.') + r'$')
+
+
+# Here are some types to express ourselves when defining the hard-coded list
+# of special files
+
+class SuidFile(object):
+    """SUID regular executable file
+
+    Matches a path to a regular file (realpath = path) against a given pattern.
+
+    It also matches the owner of the file, against "root" by default but it can
+    be a set of users.
+    """
+    # pylint: disable=too-few-public-methods
+    def __init__(self, filepattern, owners=None):
+        self.filepattern = pathdesc_to_regexp(filepattern)
+        self.owners = owners or ('root', )
+
+    def is_match(self, path, realpath, owner):
+        """Does the given path which resolve to realpath matches the file?"""
+        return (
+            path == realpath and
+            self.filepattern.match(path) and
+            owner in self.owners)
+
+
+class LinkToSuidFile(object):
+    """Symbolic link to a SUID executable file
+
+    See SuidFile description.
+    """
+    # pylint: disable=too-few-public-methods
+    def __init__(self, linkpattern, targetpattern, owners=None):
+        self.linkpattern = pathdesc_to_regexp(linkpattern)
+        self.targetpattern = pathdesc_to_regexp(targetpattern)
+        self.owners = owners or ('root', )
+
+    def is_match(self, path, realpath, owner):
+        """Perform the matching"""
+        return (
+            self.linkpattern.match(path) and
+            self.targetpattern.match(realpath) and
+            owner in self.owners)
+
+
+class CapsFile(object):
+    """File with capability attributes"""
+    # pylint: disable=too-few-public-methods
+    def __init__(self, filepattern, caps):
+        self.filepattern = pathdesc_to_regexp(filepattern)
+        self.caps = caps
+
+    def is_match(self, path, realpath, caps):
+        """Does the given path which resolve to realpath matches the file?"""
+        return (
+            path == realpath and
+            self.filepattern.match(path) and
+            self.caps == caps)
+
+
+# Define here known and fully trusted SUID programs.
+# These programs are usually installed on regular systems.
+# For each project, an URL to the project is given with an URL to online file
+# tree, is available.
+TRUSTED_SUID_FILES = (
+    # abrt-addon-ccpp, https://abrt.readthedocs.org/en/latest/
+    # https://github.com/abrt/abrt
+    SuidFile('/libexec/abrt-action-install-debuginfo-to-abrt-cache',
+             owners=('abrt',)),
+
+    # apache, http://httpd.apache.org/docs/trunk/suexec.html
+    # http://svn.apache.org/repos/asf/httpd/httpd/
+    SuidFile('/s?bin/suexec'),
+
+    # at, https://packages.qa.debian.org/a/at.html
+    # https://anonscm.debian.org/cgit/collab-maint/at.git/tree/
+    SuidFile('/bin/at', owners=('daemon', 'root')),
+    LinkToSuidFile('/bin/atq', '/bin/at', owners=('daemon', 'root')),
+    LinkToSuidFile('/bin/atrm', '/bin/at', owners=('daemon', 'root')),
+
+    # chromium, http://www.chromium.org/Home
+    # https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master
+    SuidFile('/lib/chromium/chrome-sandbox'),
+
+    # cronie, https://fedorahosted.org/cronie/
+    # https://git.fedorahosted.org/git/cronie.git
+    SuidFile('/bin/crontab'),
+
+    # dbus, http://www.freedesktop.org/wiki/Software/dbus/
+    # http://cgit.freedesktop.org/dbus/dbus/tree/
+    SuidFile('/lib(32|64)?/dbus-1(.0)?/dbus-daemon-launch-helper'),
+
+    # fuse, http://fuse.sourceforge.net/
+    # http://sourceforge.net/p/fuse/fuse/ci/master/tree/
+    SuidFile('/bin/fusermount'),
+
+    # glibc, http://www.gnu.org/software/libc/
+    # https://sourceware.org/git/?p=glibc.git;a=tree
+    SuidFile('/lib(exec)?/pt_chown'),
+
+    # iputils, http://www.skbuff.net/iputils/
+    # http://sourceforge.net/p/iputils/code/ci/HEAD/tree/
+    # These files needed SUID before using capabilities
+    SuidFile('/bin/ping'),
+    SuidFile('/bin/ping6'),
+    LinkToSuidFile('/sbin/ping6', '/bin/ping6'),
+
+    # lxc, https://linuxcontainers.org/
+    # https://github.com/lxc/lxc
+    SuidFile('/lib/lxc/lxc-user-nic'),
+
+    # mtr, http://www.bitwizard.nl/mtr/
+    # https://github.com/traviscross/mtr
+    SuidFile('/bin/mtr'),
+
+    # ndisc6, http://www.remlab.net/ndisc6/
+    # http://git.remlab.net/gitweb/?p=ndisc6.git;a=tree
+    SuidFile('/bin/ndisc6'),
+    SuidFile('/bin/rdisc6'),
+    SuidFile('/bin/rltraceroute6'),
+    SuidFile('/bin/traceroute6.iputils'),
+    LinkToSuidFile('/bin/traceroute6', '/bin/rltraceroute6'),
+    LinkToSuidFile('/bin/traceroute6', '/bin/traceroute6.iputils'),
+    LinkToSuidFile('/etc/alternatives/traceroute6', '/bin/rltraceroute6'),
+    LinkToSuidFile('/etc/alternatives/traceroute6', '/bin/traceroute6.iputils'),
+
+    # nfs-utils, http://nfs.sourceforge.net/
+    SuidFile('/s?bin/mount.nfs'),
+    LinkToSuidFile('/s?bin/mount.nfs4', '/s?bin/mount.nfs'),
+    LinkToSuidFile('/s?bin/umount.nfs', '/s?bin/mount.nfs'),
+    LinkToSuidFile('/s?bin/umount.nfs4', '/s?bin/mount.nfs'),
+
+    # nspluginwrapper, http://nspluginwrapper.org/
+    # https://github.com/davidben/nspluginwrapper
+    SuidFile('/lib(32|64)?/nspluginwrapper/plugin-config'),
+
+    # ntfs-3g, http://www.tuxera.com/community/open-source-ntfs-3g/
+    SuidFile('/bin/ntfs-3g'),
+    LinkToSuidFile('/s?bin/mount.ntfs', '/bin/ntfs-3g'),
+    LinkToSuidFile('/s?bin/mount.ntfs-3g', '/bin/ntfs-3g'),
+
+    # openssh, http://www.openssh.com/portable.html
+    SuidFile('/lib/ssh/ssh-keysign'),
+    SuidFile('/lib(exec)?/openssh/ssh-keysign'),
+
+    # pam, http://linux-pam.org/
+    # https://git.fedorahosted.org/cgit/linux-pam.git/tree/
+    SuidFile('/s?bin/pam_timestamp_check'),
+    SuidFile('/s?bin/unix_chkpwd'),
+
+    # polkit, http://www.freedesktop.org/wiki/Software/polkit
+    # http://cgit.freedesktop.org/polkit/
+    SuidFile('/bin/pkexec'),
+    SuidFile('/lib/policykit-1/polkit-agent-helper-1'),
+    SuidFile('/lib(exec)?/polkit-1/polkit-agent-helper-1'),
+
+    # procmail, http://www.procmail.org/
+    SuidFile('/bin/procmail'),
+
+    # qemu, http://wiki.qemu.org/Index.html
+    # http://git.qemu.org/?p=qemu.git;a=tree
+    SuidFile('/lib/qemu/qemu-bridge-helper'),
+
+    # screen, http://www.gnu.org/software/screen/
+    # http://git.savannah.gnu.org/cgit/screen.git/tree/
+    SuidFile('/bin/screen-[0-9.]+'),
+    LinkToSuidFile('/bin/screen', '/bin/screen-[0-9.]+'),
+
+    # shadow, http://pkg-shadow.alioth.debian.org/
+    # http://anonscm.debian.org/cgit/pkg-shadow/shadow.git/tree/
+    SuidFile('/bin/chage'),
+    SuidFile('/bin/chfn'),  # also provided by util-linux
+    SuidFile('/bin/chsh'),  # also provided by util-linux
+    SuidFile('/bin/expiry'),
+    SuidFile('/bin/gpasswd'),
+    SuidFile('/bin/newgidmap'),
+    SuidFile('/bin/newgrp'),  # also provided by util-linux
+    SuidFile('/bin/newuidmap'),
+    SuidFile('/bin/passwd'),
+    SuidFile('/bin/sg'),
+    LinkToSuidFile('/bin/sg', '/bin/newgrp'),
+    SuidFile('/bin/su'),  # also provided by util-linux
+
+    # sudo, https://www.sudo.ws/
+    # https://www.sudo.ws/repos/sudo
+    SuidFile('/bin/sudo'),
+    LinkToSuidFile('/bin/sudoedit', '/bin/sudo'),
+
+    # util-linux, https://www.kernel.org/pub/linux/utils/util-linux/
+    # https://git.kernel.org/cgit/utils/util-linux/util-linux.git/tree/
+    SuidFile('/bin/mount'),
+    SuidFile('/bin/umount'),
+    SuidFile('/s?bin/uuidd', owners=('libuuid',)),
+
+    # virtualbox, https://www.virtualbox.org/
+    # https://www.virtualbox.org/browser/vbox/trunk
+    SuidFile('/lib/virtualbox/VBoxHeadless'),
+    SuidFile('/lib/virtualbox/VBoxNetAdpCtl'),
+    SuidFile('/lib/virtualbox/VBoxNetDHCP'),
+    SuidFile('/lib/virtualbox/VBoxNetNAT'),
+    SuidFile('/lib/virtualbox/VBoxSDL'),
+    SuidFile('/lib/virtualbox/VirtualBox'),
+
+    # weston, http://wayland.freedesktop.org
+    # http://cgit.freedesktop.org/wayland/weston/tree/
+    SuidFile('/bin/weston-launch'),
+
+    # xorg-server, http://www.x.org/wiki/XServer/
+    # http://cgit.freedesktop.org/xorg/xserver/tree/
+    LinkToSuidFile('/bin/X', '/bin/Xorg'),
+    SuidFile('/bin/Xorg'),  # Before rootless X11 server
+    SuidFile('/lib/xorg-server/Xorg.wrap'),
+
+    # xf86-video-intel, http://www.x.org/wiki/
+    # http://cgit.freedesktop.org/xorg/driver/xf86-video-intel/tree/
+    SuidFile('/lib/xf86-video-intel-backlight-helper'),
+)
+
+# Define known but not-so-trusted programs
+# These programs can be installed by packages but a careful system
+# administrator may decide to remove the SUID bit without breaking the entire
+# system, in order to squeeze the attack surface.
+KNOWN_SUID_FILES = (
+    # cifs-utils, https://wiki.samba.org/index.php/LinuxCIFS_utils
+    # https://git.samba.org/?p=cifs-utils.git;a=tree
+    SuidFile('/bin/mount.cifs'),
+
+    # eject, http://www.pobox.com/~tranter/eject.html
+    SuidFile('/lib/eject/dmcrypt-get-device'),
+
+    # initscripts, https://fedorahosted.org/releases/i/n/initscripts/
+    # https://git.fedorahosted.org/cgit/initscripts.git/tree/
+    SuidFile('/s?bin/usernetctl'),
+
+    # krb5, http://web.mit.edu/kerberos/
+    SuidFile('/bin/ksu'),
+
+    # landscape-client, http://www.ubuntu.com/management
+    # http://bazaar.launchpad.net/~landscape/landscape-client/trunk/files
+    SuidFile('/lib/landscape/apt-update'),
+
+    # policycoreutils, https://github.com/SELinuxProject/selinux/wiki
+    # https://github.com/SELinuxProject/selinux/tree/master/policycoreutils
+    SuidFile('/bin/seunshare'),
+
+    # ppp, http://www.samba.org/ppp/
+    # https://github.com/paulusmack/ppp/
+    SuidFile('/s?bin/pppd'),
+
+    # pulseaudio-module-bluetooth, http://www.pulseaudio.org/
+    # http://cgit.freedesktop.org/pulseaudio/pulseaudio/tree/
+    SuidFile('/libexec/pulse/proximity-helper'),
+
+    # systemtap, https://sourceware.org/systemtap/
+    # https://sourceware.org/git/gitweb.cgi?p=systemtap.git;a=tree
+    SuidFile('/bin/staprun'),
+
+    # usermode, https://fedorahosted.org/usermode/
+    # https://fedorahosted.org/usermode/browser
+    SuidFile('/s?bin/userhelper'),
+)
+
+# Define similar things for files with capabilities
+# The text description of capabilities is explained in cap_to_text manpage.
+# The leading "=" indicates that is the capabilities are first reset.
+TRUSTED_CAPS_FILES = (
+    # gnome-keyring, https://www.gnome.org/
+    # https://git.gnome.org/browse/gnome-keyring/tree/
+    CapsFile('/bin/gnome-keyring-daemon', '= cap_ipc_lock+ep'),
+
+    # inetutils, http://www.gnu.org/software/inetutils/
+    # http://git.savannah.gnu.org/cgit/inetutils.git/tree/
+    CapsFile('/bin/rcp', '= cap_net_bind_service+ep'),
+    CapsFile('/bin/rlogin', '= cap_net_bind_service+ep'),
+    CapsFile('/bin/rsh', '= cap_net_bind_service+ep'),
+
+    # iputils, http://www.skbuff.net/iputils/
+    # http://sourceforge.net/p/iputils/code/ci/HEAD/tree/
+    CapsFile('/bin/ping', '= cap_net_raw+ep'),
+    CapsFile('/bin/ping6', '= cap_net_raw+ep'),
+
+    # systemd, http://www.freedesktop.org/wiki/Software/systemd/
+    # https://github.com/systemd/systemd
+    CapsFile('/bin/systemd-detect-virt',
+             '= cap_dac_override,cap_sys_ptrace+ep'),
+
+    # wireshark, https://www.wireshark.org/
+    # https://code.wireshark.org/review/gitweb?p=wireshark.git;a=tree
+    CapsFile('/bin/dumpcap', '= cap_net_admin,cap_net_raw+eip'),
+)
+
+
+# Load the libcap library to read file capabilities
+# Only load the version 2 of the library if there is no global symlink
+try:
+    libcap = ctypes.CDLL('libcap.so')
+except OSError:
+    libcap = ctypes.CDLL('libcap.so.2')
+
+libcap.cap_get_file.argtypes = [ctypes.c_char_p]
+libcap.cap_get_file.restype = ctypes.c_void_p
+libcap.cap_to_text.argtypes = [ctypes.c_void_p,
+                               ctypes.POINTER(ctypes.c_size_t)]
+libcap.cap_to_text.restype = ctypes.c_char_p
+libcap.cap_free.argtypes = [ctypes.c_void_p]
+
+
+def getcap_file(filepath):
+    """Get a string describing the capabalities of a file, if any"""
+    # Encode the filepath to a sequence of bytes, if needed
+    if sys.version_info >= (3, ):
+        filepath = filepath.encode('utf-8', errors='surrogateescape')
+    caps = libcap.cap_get_file(filepath)
+    txt_caps = libcap.cap_to_text(caps, None)
+    libcap.cap_free(caps)
+    if txt_caps is None:
+        return ''
+
+    str_caps = txt_caps.decode('ascii')
+    libcap.cap_free(txt_caps)
+    return str_caps
+
+
+def analyze_suid_file(filepath, realpath, owner):
+    """Analyze a SUID file and return True if it is known, False otherwise"""
+    if filepath == realpath:
+        desc = '%s-suid file %s' % (owner, filepath)
+    else:
+        desc = '%s-suid link %s -> %s' % (owner, filepath, realpath)
+
+    # /usr/lib/debug/.build-id contains symlinks to programs
+    # ... let's consider them as real programs
+    if re.match(r'^(/usr)?/lib/debug/\.build-id/', filepath):
+        filepath = realpath
+
+    # Sometimes there are symlinks from /usr/bin to /bin
+    # ... let's consider this as only the target
+    if filepath.startswith('/usr') and filepath[4:] == realpath:
+        filepath = realpath
+
+    if any(trusted.is_match(filepath, realpath, owner)
+           for trusted in TRUSTED_SUID_FILES):
+        print("Trusted %s" % desc)
+        return True
+    elif any(trusted.is_match(filepath, realpath, owner)
+             for trusted in KNOWN_SUID_FILES):
+        logger.warning("known but no-so-trusted %s", desc)
+        return True
+
+    logger.error("unknown %s", desc)
+    return False
+
+
+def analyze_caps_file(filepath, realpath, caps):
+    """Analyze a file with capabilities and return whether it is trusted"""
+    if filepath == realpath:
+        desc = 'file %s with caps: %s' % (filepath, caps)
+    else:
+        desc = 'link %s -> %s with caps: %s' % (filepath, realpath, caps)
+
+    if any(trusted.is_match(filepath, realpath, caps)
+           for trusted in TRUSTED_CAPS_FILES):
+        print("Trusted %s" % desc)
+        return True
+
+    logger.error("unknown %s", desc)
+    return False
+
+
+def analyze_files_in(dirname, files):
+    """Analyze the files in the specified directory
+
+    Return False if an unknown dangerous file has been found, True otherwise
+    (True means "everything looks fine").
+    """
+    suid_files = set()
+    cap_files = set()
+    for filename in files:
+        filepath = os.path.join(dirname, filename)
+
+        # Resolve symbolic link references
+        try:
+            realpath = os.path.realpath(filepath)
+        except OSError as exc:
+            if exc.errno in (errno.EACCES, errno.ENOENT):
+                # This may happen with /proc/... symlinks, for example
+                # * EACCES when reading information of root task as user
+                # * ENOENT when reading symlinks for a kernel thread
+                if re.match(r'/proc/[0-9]+/', filepath):
+                    continue
+            raise
+
+        if not os.path.exists(realpath):
+            # Ignore broken symbolic links
+            logger.debug("broken symbolic link %s", filepath)
+            continue
+        filestat = os.lstat(realpath)
+        mode = filestat.st_mode
+
+        # Filter-out directories
+        if stat.S_ISDIR(mode):
+            continue
+
+        # Find executable files with SUID bit
+        if mode & stat.S_ISUID and mode & stat.S_IXUSR:
+            userinfo = pwd.getpwuid(filestat.st_uid)
+            suid_files.add((filepath, realpath, userinfo.pw_name))
+
+        # Find regular files with capabilities (cap_get_file() return is
+        # undefined on non-regular file according to its man page)
+        if stat.S_ISREG(mode):
+            caps = getcap_file(realpath)
+            if caps:
+                cap_files.add((filepath, realpath, caps))
+
+    retval = True
+
+    # Analyze SUID files
+    for filepath, realpath, owner in sorted(suid_files):
+        if not analyze_suid_file(filepath, realpath, owner):
+            retval = False
+
+    # Analyze files with capabilities
+    for filepath, realpath, caps in sorted(cap_files):
+        if not analyze_caps_file(filepath, realpath, caps):
+            retval = False
+
+    return retval
+
+
+class ColoredFormatter(logging.Formatter):
+    """Color logs in terminal"""
+    COLORS = {
+        'DEBUG': '\033[37m',  # gray
+        'INFO': '',
+        'WARNING': '\033[1;33m',  # yellow
+        'ERROR': '\033[1;31m',  # red
+        'CRITICAL': '\033[1;31m',  # red
+    }
+    COLORS_RESET = '\033[0m'
+
+    def __init__(self, *args, **kwargs):
+        if sys.version_info >= (2, 7):
+            super(ColoredFormatter, self).__init__(*args, **kwargs)
+        else:
+            logging.Formatter.__init__(self, *args, **kwargs)
+
+    def format(self, record):
+        if sys.version_info >= (2, 7):
+            line = super(ColoredFormatter, self).format(record)
+        else:
+            line = logging.Formatter.format(self, record)
+        levelname = record.levelname
+        if levelname in self.COLORS:
+            line = self.COLORS[levelname] + line + self.COLORS_RESET
+        return line
+
+
+def main(argv=None):
+    parser = optparse.OptionParser(
+        description="List the installed SUID binaries")
+    parser.add_option('-d', '--debug', action='store_true',
+                      help="show debug messages")
+    parser.add_option('-l', '--lib', action='store_true',
+                      help="check the files in library folders")
+    parser.add_option('-p', '--path', action='store_true',
+                      help="check the files in $PATH")
+    parser.add_option('-x', '--xdev', action='store_true',
+                      help="do not cross mountpoints under / and /usr")
+    args, remaining = parser.parse_args(argv)
+    if remaining:
+        parser.error("Unexpected parameter given")
+
+    # Configure the logging
+    log_handler = logging.StreamHandler()
+    log_handler.setFormatter(
+        ColoredFormatter('[%(levelname)s] %(message)s'))
+    root_logger = logging.getLogger()
+    root_logger.addHandler(log_handler)
+    root_logger.setLevel(logging.DEBUG if args.debug else logging.INFO)
+
+    # Find if we specified special directories
+    base_dirs = set()
+    if args.lib:
+        # Add library folders
+        for libdir in ('/lib', '/lib32', '/lib64', '/libexec'):
+            lib_realpath = os.path.realpath(libdir)
+            if os.path.exists(lib_realpath):
+                base_dirs.add(lib_realpath)
+            lib_realpath = os.path.realpath('/usr' + libdir)
+            if os.path.exists(lib_realpath):
+                base_dirs.add(lib_realpath)
+
+    if args.path:
+        # Enumerate every part of $PATH which is a directory (not a symlink)
+        for dir_path in os.environ.get('PATH', '').split(os.pathsep):
+            dir_path = os.path.realpath(dir_path)
+            if not os.path.exists(dir_path):
+                logger.warning("non-existing PATH component %s", dir_path)
+            else:
+                base_dirs.add(dir_path)
+
+    if not base_dirs:
+        # By default, walk / and /usr
+        base_dirs = ('/', '/usr')
+
+    if args.xdev:
+        def filter_out_dir(dirpath):
+            """Filter to walk base_dirs without crossing mountpoints nor other
+            directories
+            """
+            return dirpath in base_dirs or os.path.ismount(dirpath)
+    else:
+        def filter_out_dir(dirpath):
+            """Filter to walk base_dirs without crossing other specified
+            directories"""
+            return dirpath in base_dirs
+
+    exitcode = 0
+    for basedir in sorted(base_dirs):
+        for root, dirs, files in os.walk(basedir, topdown=True):
+            dirs[:] = sorted(
+                dirname for dirname in dirs
+                if not filter_out_dir(os.path.join(root, dirname)))
+            if not analyze_files_in(root, files):
+                exitcode = 1
+    return exitcode
+
+
+if __name__ == '__main__':
+    sys.exit(main())
