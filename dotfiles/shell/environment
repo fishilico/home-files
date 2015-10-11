@@ -45,7 +45,7 @@ export REAL_HOME
 
 # Set email address from .email file, if available
 if [ -r "$REAL_HOME/.email" ] ; then
-    read EMAIL < "$REAL_HOME/.email"
+    read -r EMAIL < "$REAL_HOME/.email"
     export EMAIL
 fi
 

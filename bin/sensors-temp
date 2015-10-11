@@ -29,7 +29,7 @@ sensors | sed -n 's/^\([^:]\+\):\s*+\?\(-\?[0-9.]\+.C\).*$/\1:\2/p' |
 # Make an horizontal array
 TITLES=""
 TEMPS=""
-while read line
+while read -r line
 do
     TITLE=${line%:*}
     TEMP=${line#*:}

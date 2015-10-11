@@ -74,7 +74,7 @@ luksfile_file() {
     then
         # The file was already mounted
         printf %s "Do you want to dismount $LUKS_FILE ? [yN] "
-        while read C < /dev/tty
+        while read -r C < /dev/tty
         do
             case "$C" in
               [yY])
