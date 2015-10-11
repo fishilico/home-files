@@ -360,6 +360,15 @@ if [ -x /usr/bin/which ] ; then
     fi
 fi
 
+# Edit the list of ignored files in SVN (takes a directory as parameter)
+svn_editign() {
+    if [ $# = 0 ] ; then
+        # Use current directory by default
+        set .
+    fi
+    svn propedit svn:ignore "$@"
+}
+
 # Create an archive from the current git repository to the given path
 gitarc() {
     local ARCPATH ARCFILE FORMAT

@@ -291,9 +291,6 @@ if type alias > /dev/null 2>&1 ; then
     # gitk with all branches
     alias gitka='gitk --all'
 
-    # Edit list of ignored files in SVN (takes a directory as parameter)
-    alias svn-editign='svn propedit svn:ignore'
-
     # Dump an SQLite3 database file
     alias sqlite3dump='sqlite3 < /dev/null -bail -batch -cmd .dump'
 
