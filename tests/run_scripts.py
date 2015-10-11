@@ -63,7 +63,7 @@ BIN_SCRIPTS = {
     'errno': 'args[42]',
     'floatenc': 'args[0x42280000]',
     'getaddr': 'args[localhost]',
-    'get-power-rights': 'direct',
+    'get-power-rights': '(dbus-send|gdbus)direct',
     'gsettings-dump': '(gsettings)direct',
     'iptables-stats': '(iptables)direct',
     'launch-gpg-ssh-agent': 'never',
@@ -121,9 +121,11 @@ def build_cmdline_from_spec(prog, spec):
         # Check for dependencies
         closing_paren = spec.index(')')
         deps = spec[1:closing_paren].split(',')
-        for dep in deps:
-            if not is_installed(dep):
-                logger.debug("skip %s because %s is missing", prog, dep)
+        for ordep in deps:
+            choices = ordep.split('|')
+            if not all(is_installed(dep) for dep in choices):
+                logger.debug("skip %s because %s is missing", prog,
+                             " or ".join(choices))
                 return
         spec = spec[closing_paren + 1:]
 
