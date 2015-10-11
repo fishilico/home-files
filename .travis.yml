@@ -23,8 +23,10 @@ install:
 # Install shellcheck, using Travis' cache
   - test -x "$HOME/.cabal/bin/shellcheck" || (cabal update && cabal install shellcheck)
   - PATH="$HOME/.cabal/bin:$PATH"
+  - shellcheck --version
 # Install pep8 for the current version of Python
   - pip install pep8
+  - pep8 --version
 
 script:
 # Run automated tests
