@@ -216,7 +216,7 @@ def main(argv=None):
                         help="architecture to use")
     parser.add_argument('-b', '--browser', action='store_true',
                         help="open the associated man page in a browser")
-    parser.add_argument('-H', '--show_header', action='store_true',
+    parser.add_argument('-H', '--show-header', action='store_true',
                         help="show the used header file")
     parser.add_argument('-l', '--list', action='store_true',
                         help="list the available system calls")
@@ -229,7 +229,7 @@ def main(argv=None):
     if args.list_sorted:
         args.list = True
 
-    if not args.list and not args.syscalls:
+    if not args.list and not args.show_header and not args.syscalls:
         parser.print_help()
         return 0
 
@@ -260,6 +260,10 @@ def main(argv=None):
                              for name in args.syscalls]
         except ValueError as exc:
             parser.error(exc.args[0])
+
+    # Exit if no syscall is to be show
+    if not syscalls_list:
+        return 0
 
     # Show selected syscalls
     nr_format = "{:" + str(len(str(max(syscalls_list)))) + "}"
