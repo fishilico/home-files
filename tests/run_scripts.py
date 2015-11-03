@@ -53,6 +53,7 @@ BIN_SCRIPTS = {
     'data-dir': 'help',
     'dconf-dump': '(dconf)direct',
     'debian-purge-packages': 'never',
+    'denastify-ssh': 'never',
     'detect-distro': 'direct',
     'disable-net-services': 'never',
     'display-proc-maps': 'direct',
