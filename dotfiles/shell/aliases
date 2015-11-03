@@ -243,6 +243,15 @@ if type alias > /dev/null 2>&1 ; then
     # Continued dmesg, if "dmesg -w" is not avalaible
     alias dmesg-w='watch -n 1 dmesg \| tail -n \$\(\(\$\(tput lines\)-2\)\)'
 
+    # Read AVC entries in systemd journal.
+    # Match the following audit message types (/usr/include/linux/audit.h):
+    # * 1400: AVC
+    # * 1300: SYSCALL
+    # * 1327: PROCTITLE
+    # * 1107: USER_AVC
+    # Use with "-f" option to follow the journal
+    alias audit-journal='journalctl -b --identifier=audit _AUDIT_TYPE=1400 _AUDIT_TYPE=1300 _AUDIT_TYPE=1327 _AUDIT_TYPE=1107'
+
     # Use rsync instead of scp
     if which rsync > /dev/null 2>&1 ; then
         # Options: archive, verbose, compress, partial&progress
