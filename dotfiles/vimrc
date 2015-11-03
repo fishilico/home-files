@@ -6,6 +6,7 @@ scriptencoding utf-8
 " https://github.com/tpope/vim-sensible contains some commons vim configuration.
 " http://vimawesome.com/ provides a list of vim plugins but none is used here.
 " http://www.tuppervim.org/ (French) lists some tips and Github projects.
+" http://dougblack.io/words/a-good-vimrc.html an explained vimrc configuration.
 
 " General settings
 set nocompatible " Use Vim defaults instead of 100% vi compatibility
@@ -16,8 +17,6 @@ set autoread " Reload file when modified outside of vim
 set history=500 " keep 500 lines of command history
 set ruler " Show the cursor position all the time
 set rulerformat=%=%h%m%r%w\ %(%c%V%),%l/%L\ %P
-set showmode " Show the current mode on the last line
-set showcmd " Show the number of characters or lines in Visual mode
 let mapleader="," " Use comma as the leader key
 
 set viminfo='20,\"500 " Keep a .viminfo file.
@@ -34,6 +33,12 @@ set ffs=unix,dos,mac " Use <NL>-terminated lines by default, then <CR><NL> and f
 " Theme
 set background=dark
 colorscheme desert
+
+" UI configuration
+set mouse=a " Enable mouse
+set number " Show line numbers
+set showmode " Show the current mode on the last line
+set showcmd " Show the number of characters or lines in Visual mode
 
 " Indentation configuration
 set expandtab " Always use space, no tabs
@@ -66,15 +71,10 @@ if has('gui_running')
   map! <S-Insert> <MiddleMouse>
 endif
 
-" Enable mouse
-set mouse=a
 
 " Don't eval modelines by default. See Gentoo bugs #14088 and #73715.
 set modelines=0
 set nomodeline
-
-" Show line numbers
-set number
 
 " When displaying line numbers, don't use an annoyingly wide number column. This
 " doesn't enable line numbers -- :set number will do that. The value given is a
@@ -241,6 +241,9 @@ nnoremap <LEADER><SPACE> :nohlsearch<CR>
 " Fold/unfold code with space
 nnoremap <SPACE> za
 vnoremap <SPACE> zf
+
+" Escape when inserting "jk"
+inoremap jk <ESC>
 
 " Save with sudo
 command! -nargs=1 Wroot :w !sudo tee <args> > /dev/null
