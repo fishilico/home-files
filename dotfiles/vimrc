@@ -239,8 +239,8 @@ nnoremap <LEADER>l :tabnext<CR>
 nnoremap <LEADER><SPACE> :nohlsearch<CR>
 
 " Fold/unfold code with space
-nnoremap <SPACE> za
-vnoremap <SPACE> zf
+" nnoremap <SPACE> za
+" vnoremap <SPACE> zf
 
 " Escape when inserting "jk"
 inoremap jk <ESC>
