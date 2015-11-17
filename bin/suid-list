@@ -582,6 +582,9 @@ def main(argv=None):
     exitcode = 0
     for basedir in sorted(base_dirs):
         for root, dirs, files in os.walk(basedir, topdown=True):
+            # Always ignore /proc processus files
+            if root == '/proc':
+                dirs[:] = [name for name in dirs if not name.isdigit()]
             dirs[:] = sorted(
                 dirname for dirname in dirs
                 if not filter_out_dir(os.path.join(root, dirname)))
