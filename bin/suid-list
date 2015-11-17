@@ -23,6 +23,13 @@
 
 This program is compatible with Python 2.6, 2.7 and 3.x
 
+By the way, here are some commands to get a root shell on Linux systems:
+* su (using the root password)
+* sudo -s (using the user password or the root one)
+* gksu and gksudo (graphical front-ends for su and sudo)
+* pkexec sh (using root password, with policy kit)
+* machinectl shell (using root password, since systemd 225)
+
 @author: Nicolas Iooss
 @license: MIT
 """
