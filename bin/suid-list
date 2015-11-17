@@ -36,6 +36,7 @@ By the way, here are some commands to get a root shell on Linux systems:
 import optparse
 import errno
 import ctypes
+import grp
 import logging
 import pwd
 import os
@@ -67,7 +68,7 @@ def pathdesc_to_regexp(pathdesc):
 # of special files
 
 class SuidFile(object):
-    """SUID regular executable file
+    """SUID (or SGID) regular executable file
 
     Matches a path to a regular file (realpath = path) against a given pattern.
 
@@ -75,16 +76,21 @@ class SuidFile(object):
     be a set of users.
     """
     # pylint: disable=too-few-public-methods
-    def __init__(self, filepattern, owners=None):
+    def __init__(self, filepattern, owners=None, groups=None):
         self.filepattern = pathdesc_to_regexp(filepattern)
-        self.owners = owners or ('root', )
+        if owners is None and groups is None:
+            # root-suid file by default
+            owners = ('root', )
+        self.owners = owners
+        self.groups = groups
 
-    def is_match(self, path, realpath, owner):
+    def is_match(self, path, realpath, owner, group):
         """Does the given path which resolve to realpath matches the file?"""
         return (
             path == realpath and
             self.filepattern.match(path) and
-            owner in self.owners)
+            (self.owners is None or owner in self.owners) and
+            (self.groups is None or group in self.groups))
 
 
 class LinkToSuidFile(object):
@@ -93,17 +99,21 @@ class LinkToSuidFile(object):
     See SuidFile description.
     """
     # pylint: disable=too-few-public-methods
-    def __init__(self, linkpattern, targetpattern, owners=None):
+    def __init__(self, linkpattern, targetpattern, owners=None, groups=None):
         self.linkpattern = pathdesc_to_regexp(linkpattern)
         self.targetpattern = pathdesc_to_regexp(targetpattern)
-        self.owners = owners or ('root', )
+        if owners is None and groups is None:
+            owners = ('root', )
+        self.owners = owners
+        self.groups = groups
 
-    def is_match(self, path, realpath, owner):
+    def is_match(self, path, realpath, owner, group):
         """Perform the matching"""
         return (
             self.linkpattern.match(path) and
             self.targetpattern.match(realpath) and
-            owner in self.owners)
+            (self.owners is None or owner in self.owners) and
+            (self.groups is None or group in self.groups))
 
 
 class CapsFile(object):
@@ -121,6 +131,22 @@ class CapsFile(object):
             self.caps == caps)
 
 
+class LinkToCapsFile(object):
+    """Symbolic link to a file with capability attributes"""
+    # pylint: disable=too-few-public-methods
+    def __init__(self, linkpattern, targetpattern, caps):
+        self.linkpattern = pathdesc_to_regexp(linkpattern)
+        self.targetpattern = pathdesc_to_regexp(targetpattern)
+        self.caps = caps
+
+    def is_match(self, path, realpath, caps):
+        """Perform the matching"""
+        return (
+            self.linkpattern.match(path) and
+            self.targetpattern.match(realpath) and
+            self.caps == caps)
+
+
 # Define here known and fully trusted SUID programs.
 # These programs are usually installed on regular systems.
 # For each project, an URL to the project is given with an URL to online file
@@ -129,7 +155,7 @@ TRUSTED_SUID_FILES = (
     # abrt-addon-ccpp, https://abrt.readthedocs.org/en/latest/
     # https://github.com/abrt/abrt
     SuidFile('/libexec/abrt-action-install-debuginfo-to-abrt-cache',
-             owners=('abrt',)),
+             owners=('abrt', )),
 
     # apache, http://httpd.apache.org/docs/trunk/suexec.html
     # http://svn.apache.org/repos/asf/httpd/httpd/
@@ -147,7 +173,9 @@ TRUSTED_SUID_FILES = (
 
     # cronie, https://fedorahosted.org/cronie/
     # https://git.fedorahosted.org/git/cronie.git
+    # or http://ftp.isc.org/isc/cron/
     SuidFile('/bin/crontab'),
+    SuidFile('/bin/crontab', groups=('crontab', )),
 
     # dbus, http://www.freedesktop.org/wiki/Software/dbus/
     # http://cgit.freedesktop.org/dbus/dbus/tree/
@@ -161,12 +189,27 @@ TRUSTED_SUID_FILES = (
     # https://sourceware.org/git/?p=glibc.git;a=tree
     SuidFile('/lib(exec)?/pt_chown'),
 
+    # inn2, https://www.eyrie.org/~eagle/software/inn/
+    # https://inn.eyrie.org/trac/browser/trunk
+    SuidFile('/lib/news/bin/innbind'),
+    SuidFile('/lib/news/bin/rnews', owners=('news', )),
+    LinkToSuidFile('/bin/rnews', '/lib/news/bin/rnews', owners=('news', )),
+
     # iputils, http://www.skbuff.net/iputils/
     # http://sourceforge.net/p/iputils/code/ci/HEAD/tree/
     # These files needed SUID before using capabilities
     SuidFile('/bin/ping'),
     SuidFile('/bin/ping6'),
+    SuidFile('/bin/traceroute6.iputils'),
     LinkToSuidFile('/sbin/ping6', '/bin/ping6'),
+    LinkToSuidFile('/bin/traceroute6', '/bin/traceroute6.iputils'),
+    LinkToSuidFile('/etc/alternatives/traceroute6', '/bin/traceroute6.iputils'),
+
+    # lldpd, https://vincentbernat.github.io/lldpd/
+    # https://github.com/vincentbernat/lldpd
+    SuidFile('/s?bin/lldpcli', owners=('_lldpd', )),
+    SuidFile('/s?bin/lldpctl', owners=('_lldpd', )),
+    LinkToSuidFile('/s?bin/lldpctl', '/s?bin/lldpcli', owners=('_lldpd', )),
 
     # lxc, https://linuxcontainers.org/
     # https://github.com/lxc/lxc
@@ -181,11 +224,8 @@ TRUSTED_SUID_FILES = (
     SuidFile('/bin/ndisc6'),
     SuidFile('/bin/rdisc6'),
     SuidFile('/bin/rltraceroute6'),
-    SuidFile('/bin/traceroute6.iputils'),
     LinkToSuidFile('/bin/traceroute6', '/bin/rltraceroute6'),
-    LinkToSuidFile('/bin/traceroute6', '/bin/traceroute6.iputils'),
     LinkToSuidFile('/etc/alternatives/traceroute6', '/bin/rltraceroute6'),
-    LinkToSuidFile('/etc/alternatives/traceroute6', '/bin/traceroute6.iputils'),
 
     # nfs-utils, http://nfs.sourceforge.net/
     SuidFile('/s?bin/mount.nfs'),
@@ -203,13 +243,17 @@ TRUSTED_SUID_FILES = (
     LinkToSuidFile('/s?bin/mount.ntfs-3g', '/bin/ntfs-3g'),
 
     # openssh, http://www.openssh.com/portable.html
+    # https://anongit.mindrot.org/openssh.git/tree/
+    SuidFile('/bin/ssh-agent', groups=('nobody', 'ssh', )),
     SuidFile('/lib/ssh/ssh-keysign'),
     SuidFile('/lib(exec)?/openssh/ssh-keysign'),
+    SuidFile('/lib(exec)?/openssh/ssh-keysign', groups=('ssh_keys', )),
 
     # pam, http://linux-pam.org/
     # https://git.fedorahosted.org/cgit/linux-pam.git/tree/
     SuidFile('/s?bin/pam_timestamp_check'),
     SuidFile('/s?bin/unix_chkpwd'),
+    SuidFile('/s?bin/unix_chkpwd', groups=('shadow', )),
 
     # polkit, http://www.freedesktop.org/wiki/Software/polkit
     # http://cgit.freedesktop.org/polkit/
@@ -218,6 +262,7 @@ TRUSTED_SUID_FILES = (
     SuidFile('/lib(exec)?/polkit-1/polkit-agent-helper-1'),
 
     # procmail, http://www.procmail.org/
+    SuidFile('/bin/lockfile', groups=('mail', )),
     SuidFile('/bin/procmail'),
 
     # qemu, http://wiki.qemu.org/Index.html
@@ -226,15 +271,18 @@ TRUSTED_SUID_FILES = (
 
     # screen, http://www.gnu.org/software/screen/
     # http://git.savannah.gnu.org/cgit/screen.git/tree/
+    SuidFile('/bin/screen', groups=('screen', 'utmp', )),
     SuidFile('/bin/screen-[0-9.]+'),
     LinkToSuidFile('/bin/screen', '/bin/screen-[0-9.]+'),
 
     # shadow, http://pkg-shadow.alioth.debian.org/
     # http://anonscm.debian.org/cgit/pkg-shadow/shadow.git/tree/
     SuidFile('/bin/chage'),
+    SuidFile('/bin/chage', groups=('shadow', )),
     SuidFile('/bin/chfn'),  # also provided by util-linux
     SuidFile('/bin/chsh'),  # also provided by util-linux
     SuidFile('/bin/expiry'),
+    SuidFile('/bin/expiry', groups=('shadow', )),
     SuidFile('/bin/gpasswd'),
     SuidFile('/bin/newgidmap'),
     SuidFile('/bin/newgrp'),  # also provided by util-linux
@@ -244,21 +292,28 @@ TRUSTED_SUID_FILES = (
     LinkToSuidFile('/bin/sg', '/bin/newgrp'),
     SuidFile('/bin/su'),  # also provided by util-linux
 
+    # spice-gtk3, http://spice-space.org
+    SuidFile('/bin/spice-client-glib-usb-acl-helper'),
+
     # sudo, https://www.sudo.ws/
     # https://www.sudo.ws/repos/sudo
     SuidFile('/bin/sudo'),
+    SuidFile('/bin/sudoedit'),
     LinkToSuidFile('/bin/sudoedit', '/bin/sudo'),
 
     # util-linux, https://www.kernel.org/pub/linux/utils/util-linux/
     # https://git.kernel.org/cgit/utils/util-linux/util-linux.git/tree/
     SuidFile('/bin/mount'),
     SuidFile('/bin/umount'),
-    SuidFile('/s?bin/uuidd', owners=('libuuid',)),
+    SuidFile('/s?bin/uuidd', owners=('libuuid', )),
+    SuidFile('/bin/wall', groups=('tty', )),
+    SuidFile('/bin/write', groups=('tty', )),
 
     # virtualbox, https://www.virtualbox.org/
     # https://www.virtualbox.org/browser/vbox/trunk
     SuidFile('/lib/virtualbox/VBoxHeadless'),
     SuidFile('/lib/virtualbox/VBoxNetAdpCtl'),
+    SuidFile('/lib/virtualbox/VBoxManage'),
     SuidFile('/lib/virtualbox/VBoxNetDHCP'),
     SuidFile('/lib/virtualbox/VBoxNetNAT'),
     SuidFile('/lib/virtualbox/VBoxSDL'),
@@ -268,31 +323,139 @@ TRUSTED_SUID_FILES = (
     # http://cgit.freedesktop.org/wayland/weston/tree/
     SuidFile('/bin/weston-launch'),
 
-    # xorg-server, http://www.x.org/wiki/XServer/
-    # http://cgit.freedesktop.org/xorg/xserver/tree/
-    LinkToSuidFile('/bin/X', '/bin/Xorg'),
-    SuidFile('/bin/Xorg'),  # Before rootless X11 server
-    SuidFile('/lib/xorg-server/Xorg.wrap'),
-
     # xf86-video-intel, http://www.x.org/wiki/
     # http://cgit.freedesktop.org/xorg/driver/xf86-video-intel/tree/
     SuidFile('/lib/xf86-video-intel-backlight-helper'),
+
+    # xorg-server, http://www.x.org/wiki/XServer/
+    # http://cgit.freedesktop.org/xorg/xserver/tree/
+    LinkToSuidFile('/bin/X', '/bin/Xorg'),
+    SuidFile('/bin/X'),  # Before rootless X11 server
+    SuidFile('/bin/Xorg'),  # Before rootless X11 server
+    SuidFile('/lib/xorg-server/Xorg.wrap'),
 )
+
+# Define here known and fully trusted SGID programs.
+# Every project that can have both SUID and SGID programs is in the previous
+# list.  Here are only projects with SGID files
+TRUSTED_SGID_FILES = (
+    # bsdmainutils, https://packages.debian.org/sid/bsdmainutils
+    # https://anonscm.debian.org/cgit/bsdmainutils/bsdmainutils.git/tree/
+    SuidFile('/bin/bsd-write', groups=('tty', )),
+    LinkToSuidFile('/bin/write', '/bin/bsd-write', groups=('tty', )),
+    LinkToSuidFile('/etc/alternatives/write', '/bin/bsd-write',
+                   groups=('tty', )),
+
+    # emacs, https://www.gnu.org/software/emacs/
+    # http://git.savannah.gnu.org/cgit/emacs.git/tree/
+    SuidFile('/lib/emacs/[0-9]+.[0-9]+/[-_a-zA-Z0-9]+/movemail',
+             groups=('mail', )),
+
+    # evolution, https://wiki.gnome.org/Apps/Evolution
+    # https://git.gnome.org/browse/evolution-data-server/tree/
+    SuidFile('/lib/evolution/camel-lock-helper-[0-9]+.[0-9]+',
+             groups=('mail', )),
+
+    # kde-runtime, https://www.kde.org/
+    # https://projects.kde.org/projects/frameworks/kdesu/repository
+    SuidFile('/lib/kde4/libexec/kdesud', groups=('nogroup', )),
+
+    # libcgroup, http://libcg.sourceforge.net
+    # http://sourceforge.net/p/libcg/libcg/ci/master/tree/
+    SuidFile('/bin/cgexec', groups=('cgred', )),
+
+    # liblockfile, https://packages.qa.debian.org/libl/liblockfile.html
+    # https://sources.debian.net/src/liblockfile/
+    SuidFile('/bin/dotlockfile', groups=('mail', )),
+
+    # libutempter, ftp://ftp.altlinux.org/pub/people/ldv/utempter
+    # http://git.altlinux.org/people/ldv/packages/?p=libutempter.git;a=tree
+    SuidFile('/lib(exec)?/utempter/utempter', groups=('utmp', )),
+
+    # lockdev, https://alioth.debian.org/projects/lockdev/
+    # https://alioth.debian.org/plugins/scmgit/cgi-bin/gitweb.cgi?p=lockdev/lockdev.git;a=tree
+    SuidFile('/s?bin/lockdev', groups=('lock', )),
+
+    # lockfile-progs, https://packages.qa.debian.org/l/lockfile-progs.html
+    # https://sources.debian.net/src/lockfile-progs/
+    SuidFile('/bin/mail-lock', groups=('mail', )),
+    SuidFile('/bin/mail-touchlock', groups=('mail', )),
+    SuidFile('/bin/mail-unlock', groups=('mail', )),
+
+    # maildrop, http://www.courier-mta.org/maildrop/
+    LinkToSuidFile('/bin/lockmail', '/bin/lockmail.maildrop',
+                   groups=('mail', )),
+    SuidFile('/bin/lockmail.maildrop', groups=('mail', )),
+    SuidFile('/bin/maildrop', groups=('mail', )),
+    LinkToSuidFile('/etc/alternatives/lockmail', '/bin/lockmail.maildrop',
+                   groups=('mail', )),
+
+    # mailman, https://www.gnu.org/software/mailman/
+    # https://gitlab.com/mailman/mailman/tree/master
+    SuidFile('/lib/cgi-bin/mailman/[a-z]+', groups=('list', )),
+    SuidFile('/lib/mailman/mail/mailman', groups=('list', )),
+    LinkToSuidFile('/lib/mailman/mail/wrapper', '/lib/mailman/mail/mailman',
+                   groups=('list', )),
+
+    # mlocate, https://fedorahosted.org/mlocate/
+    # https://fedorahosted.org/mlocate/browser
+    LinkToSuidFile('/bin/locate', '/bin/mlocate', groups=('mlocate', )),
+    SuidFile('/bin/mlocate', groups=('mlocate', )),
+    LinkToSuidFile('/etc/alternatives/locate', '/bin/mlocate',
+                   groups=('mlocate', )),
+
+    # mutt, http://www.mutt.org/
+    # http://dev.mutt.org/hg/mutt/file/tip
+    SuidFile('/bin/mutt_dotlock', groups=('mail', )),
+
+    # postfix, http://www.postfix.org/
+    # https://github.com/vdukhovni/postfix
+    SuidFile('/s?bin/postdrop', groups=('postdrop', )),
+    SuidFile('/s?bin/postqueue', groups=('postdrop', )),
+
+    # rxvt-unicode, http://software.schmorp.de/pkg/rxvt-unicode.html
+    # http://cvs.schmorp.de/rxvt-unicode/
+    LinkToSuidFile('/bin/rxvt', '/bin/urxvt', groups=('utmp', )),
+    LinkToSuidFile('/bin/rxvt-unicode', '/bin/urxvt', groups=('utmp', )),
+    SuidFile('/bin/urxvt', groups=('utmp', )),
+    SuidFile('/bin/urxvtd', groups=('utmp', )),
+    LinkToSuidFile('/etc/alternatives/rxvt', '/bin/urxvt',
+                   groups=('utmp', )),
+
+    # vte, https://developer.gnome.org/vte/
+    # https://github.com/GNOME/vte
+    # Until https://github.com/GNOME/vte/commit/299c700c743c7d5dfd14e3b3a21417d9e9f35818 (0.42.0)
+    SuidFile('/lib/libvte-[-.0-9]+/gnome-pty-helper', groups=('utmp', )),
+    SuidFile('/lib/libvte9/gnome-pty-helper', groups=('utmp', )),
+)
+# Sanity check
+assert all(x.owners is None for x in TRUSTED_SGID_FILES)
 
 # Define known but not-so-trusted programs
 # These programs can be installed by packages but a careful system
 # administrator may decide to remove the SUID bit without breaking the entire
 # system, in order to squeeze the attack surface.
 KNOWN_SUID_FILES = (
+    # authbind, https://www.debian-administration.org/article/386/Running_network_services_as_a_non-root_user.
+    # http://www.chiark.greenend.org.uk/ucgi/~ian/git?p=authbind.git;a=tree
+    SuidFile('/lib/authbind/helper'),
+
     # cifs-utils, https://wiki.samba.org/index.php/LinuxCIFS_utils
     # https://git.samba.org/?p=cifs-utils.git;a=tree
-    SuidFile('/bin/mount.cifs'),
+    SuidFile('/bin/mount.cifs', owners=('root', ), groups=('root', )),
 
     # eject, http://www.pobox.com/~tranter/eject.html
     SuidFile('/lib/eject/dmcrypt-get-device'),
 
+    # inetutils, http://www.gnu.org/software/inetutils/
+    # http://git.savannah.gnu.org/cgit/inetutils.git/tree/
+    SuidFile('/bin/rcp'),
+    SuidFile('/bin/rlogin'),
+    SuidFile('/bin/rsh'),
+
     # initscripts, https://fedorahosted.org/releases/i/n/initscripts/
     # https://git.fedorahosted.org/cgit/initscripts.git/tree/
+    SuidFile('/s?bin/netreport', groups=('root', )),
     SuidFile('/s?bin/usernetctl'),
 
     # krb5, http://web.mit.edu/kerberos/
@@ -301,6 +464,11 @@ KNOWN_SUID_FILES = (
     # landscape-client, http://www.ubuntu.com/management
     # http://bazaar.launchpad.net/~landscape/landscape-client/trunk/files
     SuidFile('/lib/landscape/apt-update'),
+
+    # pmount, https://launchpad.net/pmount
+    # https://bazaar.launchpad.net/~fourmond/pmount/main/files/head:/
+    SuidFile('/bin/pmount'),
+    SuidFile('/bin/pumount'),
 
     # policycoreutils, https://github.com/SELinuxProject/selinux/wiki
     # https://github.com/SELinuxProject/selinux/tree/master/policycoreutils
@@ -327,6 +495,11 @@ KNOWN_SUID_FILES = (
 # The text description of capabilities is explained in cap_to_text manpage.
 # The leading "=" indicates that is the capabilities are first reset.
 TRUSTED_CAPS_FILES = (
+    # fping, http://www.fping.org/
+    # https://github.com/schweikert/fping
+    CapsFile('/bin/fping', '= cap_net_raw+ep'),
+    CapsFile('/bin/fping6', '= cap_net_raw+ep'),
+
     # gnome-keyring, https://www.gnome.org/
     # https://git.gnome.org/browse/gnome-keyring/tree/
     CapsFile('/bin/gnome-keyring-daemon', '= cap_ipc_lock+ep'),
@@ -339,8 +512,25 @@ TRUSTED_CAPS_FILES = (
 
     # iputils, http://www.skbuff.net/iputils/
     # http://sourceforge.net/p/iputils/code/ci/HEAD/tree/
+    CapsFile('/s?bin/arping', '= cap_net_raw+ep'),
+    CapsFile('/s?bin/clockdiff', '= cap_net_raw+ep'),
     CapsFile('/bin/ping', '= cap_net_raw+ep'),
+    CapsFile('/bin/ping', '= cap_net_admin,cap_net_raw+ep'),
     CapsFile('/bin/ping6', '= cap_net_raw+ep'),
+    CapsFile('/bin/ping6', '= cap_net_admin,cap_net_raw+ep'),
+    LinkToCapsFile('/sbin/ping6', '/bin/ping6',
+                   '= cap_net_admin,cap_net_raw+ep'),
+    CapsFile('/bin/traceroute6.iputils', '= cap_net_raw+ep'),
+
+    # monitoring-plugins, https://www.monitoring-plugins.org/
+    # https://github.com/monitoring-plugins/monitoring-plugins
+    CapsFile('/lib/nagios/plugins/check_dhcp',
+             '= cap_net_bind_service,cap_net_raw+ep'),
+    CapsFile('/lib/nagios/plugins/check_icmp', '= cap_net_raw+ep'),
+    LinkToCapsFile('/lib/nagios/plugins/check_host',
+                   '/lib/nagios/plugins/check_icmp', '= cap_net_raw+ep'),
+    LinkToCapsFile('/lib/nagios/plugins/check_rta_multi',
+                   '/lib/nagios/plugins/check_icmp', '= cap_net_raw+ep'),
 
     # systemd, http://www.freedesktop.org/wiki/Software/systemd/
     # https://github.com/systemd/systemd
@@ -384,12 +574,22 @@ def getcap_file(filepath):
     return str_caps
 
 
-def analyze_suid_file(filepath, realpath, owner):
-    """Analyze a SUID file and return True if it is known, False otherwise"""
+def analyze_suid_file(filepath, realpath, owner, group):
+    """Analyze a SUID file and return True if it is known, False otherwise
+
+    owner parameter is only filled when the file is an SUID program
+    group parameter is only filled when the file is an SGID program
+    """
+    descl = []
+    if owner is not None:
+        descl.append(owner + '-suid')
+    if group is not None:
+        descl.append(group + '-sgid')
     if filepath == realpath:
-        desc = '%s-suid file %s' % (owner, filepath)
+        descl.append('file ' + filepath)
     else:
-        desc = '%s-suid link %s -> %s' % (owner, filepath, realpath)
+        descl.append('link ' + filepath + ' -> ' + realpath)
+    desc = ' '.join(descl)
 
     # /usr/lib/debug/.build-id contains symlinks to programs
     # ... let's consider them as real programs
@@ -401,12 +601,16 @@ def analyze_suid_file(filepath, realpath, owner):
     if filepath.startswith('/usr') and filepath[4:] == realpath:
         filepath = realpath
 
-    if any(trusted.is_match(filepath, realpath, owner)
+    if any(trusted.is_match(filepath, realpath, owner, group)
            for trusted in TRUSTED_SUID_FILES):
         print("Trusted %s" % desc)
         return True
-    elif any(trusted.is_match(filepath, realpath, owner)
-             for trusted in KNOWN_SUID_FILES):
+    if any(trusted.is_match(filepath, realpath, owner, group)
+           for trusted in TRUSTED_SGID_FILES):
+        print("Trusted %s" % desc)
+        return True
+    elif any(known.is_match(filepath, realpath, owner, group)
+             for known in KNOWN_SUID_FILES):
         logger.warning("known but no-so-trusted %s", desc)
         return True
 
@@ -465,9 +669,29 @@ def analyze_files_in(dirname, files):
             continue
 
         # Find executable files with SUID bit
+        owner = None
         if mode & stat.S_ISUID and mode & stat.S_IXUSR:
-            userinfo = pwd.getpwuid(filestat.st_uid)
-            suid_files.add((filepath, realpath, userinfo.pw_name))
+            try:
+                userinfo = pwd.getpwuid(filestat.st_uid)
+            except KeyError:
+                # If the UID is unknown, use it directly
+                owner = str(filestat.st_uid)
+            else:
+                owner = userinfo.pw_name
+
+        # Find executable files with SGID bit
+        group = None
+        if mode & stat.S_ISGID and mode & stat.S_IXGRP:
+            try:
+                grpinfo = grp.getgrgid(filestat.st_gid)
+            except KeyError:
+                # If the GID is unknown, use it directly
+                group = str(filestat.st_gid)
+            else:
+                group = grpinfo.gr_name
+
+        if owner is not None or group is not None:
+            suid_files.add((filepath, realpath, owner, group))
 
         # Find regular files with capabilities (cap_get_file() return is
         # undefined on non-regular file according to its man page)
@@ -478,9 +702,9 @@ def analyze_files_in(dirname, files):
 
     retval = True
 
-    # Analyze SUID files
-    for filepath, realpath, owner in sorted(suid_files):
-        if not analyze_suid_file(filepath, realpath, owner):
+    # Analyze SUID (and SGID) files
+    for filepath, realpath, owner, group in sorted(suid_files):
+        if not analyze_suid_file(filepath, realpath, owner, group):
             retval = False
 
     # Analyze files with capabilities
