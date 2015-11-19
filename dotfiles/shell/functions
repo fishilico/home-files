@@ -352,6 +352,11 @@ if [ -x /usr/bin/which ] ; then
         whichpkg() {
             /usr/bin/which "$@" | xargs dpkg --search
         }
+    elif [ -x /usr/bin/qfile ] ; then
+        # Gentoo
+        whichpkg() {
+            /usr/bin/which "$@" | xargs qfile
+        }
     elif [ -x /bin/rpm ] ||  [ -x /usr/bin/rpm ] ; then
         # Redhat
         whichpkg() {
