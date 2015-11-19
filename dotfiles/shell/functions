@@ -306,6 +306,11 @@ dnssort() {
         sed '/\n/!G;s/\([^.]*\)\.\(.*\n\)/&\2.\1/;//D;s/\n//'
 }
 
+# Sort IPv4 addresses
+ipv4sort() {
+    sort -n -t . -k 1,1 -k 2,2 -k 3,3 -k 4,4 "$@"
+}
+
 # Some X-Window functions
 xwinlist() {
     xwininfo -root -tree
