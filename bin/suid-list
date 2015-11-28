@@ -362,6 +362,7 @@ TRUSTED_SGID_FILES = (
 
     # libcgroup, http://libcg.sourceforge.net
     # http://sourceforge.net/p/libcg/libcg/ci/master/tree/
+    SuidFile('/bin/cgclassify', groups=('cgred', )),
     SuidFile('/bin/cgexec', groups=('cgred', )),
 
     # liblockfile, https://packages.qa.debian.org/libl/liblockfile.html
@@ -400,6 +401,7 @@ TRUSTED_SGID_FILES = (
     # mlocate, https://fedorahosted.org/mlocate/
     # https://fedorahosted.org/mlocate/browser
     LinkToSuidFile('/bin/locate', '/bin/mlocate', groups=('mlocate', )),
+    SuidFile('/bin/locate', groups=('slocate', )),
     SuidFile('/bin/mlocate', groups=('mlocate', )),
     LinkToSuidFile('/etc/alternatives/locate', '/bin/mlocate',
                    groups=('mlocate', )),
@@ -427,6 +429,7 @@ TRUSTED_SGID_FILES = (
     # Until https://github.com/GNOME/vte/commit/299c700c743c7d5dfd14e3b3a21417d9e9f35818 (0.42.0)
     SuidFile('/lib/libvte-[-.0-9]+/gnome-pty-helper', groups=('utmp', )),
     SuidFile('/lib/libvte9/gnome-pty-helper', groups=('utmp', )),
+    SuidFile('/lib64/vte/gnome-pty-helper', groups=('utmp', )),
 )
 # Sanity check
 assert all(x.owners is None for x in TRUSTED_SGID_FILES)
