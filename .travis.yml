@@ -11,8 +11,11 @@ sudo: false
 addons:
   apt:
     packages:
+    - ash
+    - busybox
     - cabal-install
     - ghc
+    - zsh
 
 cache:
   directories:

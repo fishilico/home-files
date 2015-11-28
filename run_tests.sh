@@ -28,7 +28,7 @@ cd "$(dirname -- "$0")" || exit $?
 RETVAL=0
 for TEST in tests/*
 do
-    if "./$TEST"
+    if "$TEST"
     then
         echo "[ OK ] $TEST"
     elif [ $? = 2 ]
