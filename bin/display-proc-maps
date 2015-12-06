@@ -35,19 +35,19 @@ import sys
 def human_size(size):
     """Convert a size to a human format"""
     if size < 1024:
-        return '{}B'.format(size)
+        return '{0}B'.format(size)
     elif size < 1024 ** 2:
-        return '{:5g}K'.format(round(float(size) / 1024, 2))
+        return '{0:5g}K'.format(round(float(size) / 1024, 2))
     elif size < 1024 ** 3:
-        return '{:5g}M'.format(round(float(size) / (1024 ** 2), 2))
+        return '{0:5g}M'.format(round(float(size) / (1024 ** 2), 2))
     else:
-        return '{:5g}G'.format(round(float(size) / (1024 ** 3), 2))
+        return '{0:5g}G'.format(round(float(size) / (1024 ** 3), 2))
 
 
 def _display_pmaps_line(addr1, addr2, perms, path):
     """Display a line of a process mapping"""
     size = int(addr2, 16) - int(addr1, 16)
-    print('{:>16s}-{:>16s} ({}, {}){}'.format(
+    print('{0:>16s}-{1:>16s} ({2}, {3}){4}'.format(
         addr1, addr2,
         human_size(size), perms,
         ': ' + path if path is not None else ''))
@@ -56,13 +56,13 @@ def _display_pmaps_line(addr1, addr2, perms, path):
 def display_proc_maps(pid, do_group):
     """Display the memory mapping of a processus"""
     if pid < 0:
-        sys.stderr.write("Invalid PID: {}\n".format(pid))
+        sys.stderr.write("Invalid PID: {0}\n".format(pid))
         return False
     if not pid:
         pid = 'self'
     try:
-        with open('/proc/{}/maps'.format(pid), 'r') as fmaps:
-            print("Memory mapping of process {}:".format(pid))
+        with open('/proc/{0}/maps'.format(pid), 'r') as fmaps:
+            print("Memory mapping of process {0}:".format(pid))
             p_addr1, p_addr2 = None, None
             p_perms, p_path = None, None
             for line in fmaps:
@@ -71,7 +71,7 @@ def display_proc_maps(pid, do_group):
                 perms = sline[1]
                 path = sline[5] if len(sline) >= 6 else None
                 if path is None and sline[3:] != ['00:00', '0']:
-                    path = '[dev {} ino {}]'.format(sline[3], sline[4])
+                    path = '[dev {0[3]} ino {0[4]}]'.format(sline)
 
                 if not do_group:
                     # Just display the line without any smart logic
@@ -94,7 +94,7 @@ def display_proc_maps(pid, do_group):
             if p_addr1 is not None:
                 _display_pmaps_line(p_addr1, p_addr2, p_perms, p_path)
     except IOError as exc:
-        sys.stderr.write("open(/proc/{}/maps): {}\n".format(pid, exc))
+        sys.stderr.write("open(/proc/{0}/maps): {1}\n".format(pid, exc))
         return False
     return True
 

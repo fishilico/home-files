@@ -95,7 +95,7 @@ def get_polynom(polynom=None):
         return POLY_CRC32K
     if polynom == 'Q':
         return POLY_CRC32Q
-    raise ValueError("invalid polynom {}".format(polynom))
+    raise ValueError("invalid polynom {0}".format(polynom))
 
 
 def crc32_idata(polynom, idata, value=0):
@@ -197,7 +197,7 @@ def main(argv=None):
                           reverse=args.reverse)
             if args.cksum:
                 value = cksum(polynom, value, len(data), args.reverse)
-            print(value if args.decimal else '0x{:08x}'.format(value))
+            print(value if args.decimal else '0x{0:08x}'.format(value))
     else:
         stdin = sys.stdin.buffer if sys.version_info >= (3, ) else sys.stdin
         length = 0
@@ -209,7 +209,7 @@ def main(argv=None):
             length += len(data)
         if args.cksum:
             value = cksum(polynom, value, length, reverse=args.reverse)
-        print(value if args.decimal else '0x{:08x}'.format(value))
+        print(value if args.decimal else '0x{0:08x}'.format(value))
 
 
 if __name__ == '__main__':

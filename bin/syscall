@@ -84,7 +84,7 @@ def find_syscall_include(arch=None):
     native_arch = normalize_arch(platform.machine())
     arch = normalize_arch(arch) if arch is not None else native_arch
     if arch not in SC_INCLUDE_LOCATIONS:
-        sys.stderr.write("Unknown architecture {}\n".format(arch))
+        sys.stderr.write("Unknown architecture {0}\n".format(arch))
         return
 
     tried_locations = []
@@ -101,7 +101,7 @@ def find_syscall_include(arch=None):
             tried_locations.append(fullpath)
         elif loctype == 'kernel':
             # Use path to kernel build headers
-            kernel_build = '/lib/modules/{}/build'.format(platform.release())
+            kernel_build = '/lib/modules/{0}/build'.format(platform.release())
             fullpath = os.path.join(kernel_build, path)
             if os.path.exists(fullpath):
                 return fullpath
@@ -112,8 +112,8 @@ def find_syscall_include(arch=None):
                 return fullpath
             tried_locations.append(fullpath)
 
-    sys.stderr.write("Unable to find an include header for {}\n".format(arch))
-    sys.stderr.write("Here are the locations which were tried:\n{}\n".format(
+    sys.stderr.write("Unable to find an include header for {0}\n".format(arch))
+    sys.stderr.write("Here are the locations which were tried:\n{0}\n".format(
         '\n'.join(tried_locations)))
     return
 
@@ -173,7 +173,7 @@ def read_syscalls_from_file(filename):
                     syscalls[name] = int(rawnum[2:], 16)
                 else:
                     sys.stderr.write(
-                        "Invalid syscall number on line: {}\n".format(line))
+                        "Invalid syscall number on line: {0}\n".format(line))
 
     # Put aliases into syscall_list
     for alias, real, offset in syscall_relative:
@@ -200,10 +200,10 @@ def syscall_number(name, syscalls_name2nr, syscalls_nr2name):
     elif name.lower() in syscalls_name2nr:
         num = syscalls_name2nr[name.lower()]
     else:
-        raise ValueError("unknown syscall {}".format(name))
+        raise ValueError("unknown syscall {0}".format(name))
 
     if num not in syscalls_nr2name:
-        raise ValueError("unknown syscall number {}".format(num))
+        raise ValueError("unknown syscall number {0}".format(num))
     return num
 
 
@@ -239,7 +239,7 @@ def main(argv=None):
         return 1
 
     if args.show_header:
-        print("Using {}".format(filename))
+        print("Using {0}".format(filename))
 
     # Parse the file
     name2nr = read_syscalls_from_file(filename)
@@ -266,23 +266,23 @@ def main(argv=None):
         return 0
 
     # Show selected syscalls
-    nr_format = "{:" + str(len(str(max(syscalls_list)))) + "}"
+    nr_format = "{0:" + str(len(str(max(syscalls_list)))) + "}"
     for sc_nr in syscalls_list:
         names = sorted(nr2name[sc_nr])
-        print((nr_format + ": {}").format(sc_nr, ', '.join(names)))
+        print((nr_format + ": {1}").format(sc_nr, ', '.join(names)))
 
     # Open man pages
     if args.browser:
-        url_pattern = 'http://man7.org/linux/man-pages/man2/{}.2.html'
+        url_pattern = 'http://man7.org/linux/man-pages/man2/{0}.2.html'
         for sc_nr in syscalls_list:
             # Take first name of aliases, as man pages are anyway linked
             url = url_pattern.format(sorted(nr2name[sc_nr])[0])
-            print("Opening {}".format(url))
+            print("Opening {0}".format(url))
             webbrowser.open(url)
     elif args.man:
         for sc_nr in syscalls_list:
             name = sorted(nr2name[sc_nr])[0]
-            os.system('man 2 "{}"'.format(name))
+            os.system('man 2 "{0}"'.format(name))
     return 0
 
 if __name__ == '__main__':

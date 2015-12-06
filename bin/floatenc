@@ -83,7 +83,7 @@ class HexValue(object):
     """Represent a value from an hexadecimal text input"""
     def __init__(self, hexval):
         if len(hexval) > 16:
-            raise ValueError("hexadecimal number too big: {}".format(hexval))
+            raise ValueError("hexadecimal number too big: {0}".format(hexval))
 
         try:
             # Prepend with a 0 if the length of the hexadecimal string is odd
@@ -91,7 +91,7 @@ class HexValue(object):
                 hexval = '0' + hexval
             self.value = binascii.unhexlify(hexval)
         except ValueError:
-            raise ValueError("invalid hexadecimal number {}".format(hexval))
+            raise ValueError("invalid hexadecimal number {0}".format(hexval))
 
 
 class FloatValue(object):
@@ -170,7 +170,7 @@ def main(argv=None):
                 structfmt += 'd'
             hexval = struct.pack(structfmt, floatval)
 
-        print('{} = {}'.format(
+        print('{0} = {1}'.format(
             binascii.hexlify(hexval).decode('ascii'), floatval))
 
 

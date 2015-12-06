@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 MYHOST = socket.gethostname()
 MYUSER = os.environ.get('USER', 'root')
-DEFAULT_SENDER = '{}@{}'.format(MYUSER, MYHOST)
+DEFAULT_SENDER = '{0}@{1}'.format(MYUSER, MYHOST)
 
 
 # Python2 compatibility: ConnectionRefusedError doesn't exist
@@ -66,30 +66,30 @@ def connect_tcp(host, port):
             sock.connect(sockaddr)
         except ConnectionRefusedError:
             logger.warning(
-                "Failed to connect to {} port {}: connection refused"
-                .format(sockaddr[0], sockaddr[1]))
+                "Failed to connect to {0[0]} port {0[1]}: connection refused"
+                .format(sockaddr))
             continue
         except socket.error as exc:
             if exc.errno == ECONNREFUSED:
                 logger.warning(
-                    "Failed to connect to {} port {}: connection refused"
-                    .format(sockaddr[0], sockaddr[1]))
+                    "Failed to connect to {0[0]} port {0[1]}: connection refused"
+                    .format(sockaddr))
                 continue
             raise
         else:
             logger.info(
-                "Connected to {} port {}".format(sockaddr[0], sockaddr[1]))
+                "Connected to {0[0]} port {0[1]}".format(sockaddr))
             try:
                 return sock.makefile('rwb')
             finally:
                 sock.close()
-    logger.fatal("Unable to connect to {} port {}".format(host, port))
+    logger.fatal("Unable to connect to {0} port {1}".format(host, port))
     return
 
 
 def ssend(sockfile, message):
     """Send data to the socket and log what is sent"""
-    logger.info("[-->] Send: {}".format(message.strip()))
+    logger.info("[-->] Send: {0}".format(message.strip()))
     if not isinstance(message, bytes):
         message = message.encode('utf-8')
     sockfile.write(message)
@@ -100,7 +100,7 @@ def srecvline(sockfile):
     """Receive a line from the socket and log it"""
     message = sockfile.readline()
     message = message.decode('iso-8859-1', errors='ignore')
-    logger.info("[<--] Rcv: {}".format(message.strip()))
+    logger.info("[<--] Rcv: {0}".format(message.strip()))
     return message
 
 
@@ -112,9 +112,9 @@ def main(argv=None):
     parser.add_argument('-p', '--port', type=int, default=25,
                         help="SMTP port [25]")
     parser.add_argument('-H', '--hostname', default=MYHOST,
-                        help="hostname in HELO message [{}]".format(MYHOST))
+                        help="hostname in HELO message [{0}]".format(MYHOST))
     parser.add_argument('-f', '--mail-from', default=DEFAULT_SENDER,
-                        help="envelope sender [{}]".format(DEFAULT_SENDER))
+                        help="envelope sender [{0}]".format(DEFAULT_SENDER))
     parser.add_argument('-m', '--message', metavar='MSGFILE',
                         help="message to send (use std input if not given)")
     parser.add_argument('recipients', metavar='RCPT', nargs='+',
@@ -128,13 +128,13 @@ def main(argv=None):
     try:
         line = srecvline(sfile)
         if line[0] != '2':
-            logger.fatal("Unexpected welcome: {}".format(line.rstrip()))
+            logger.fatal("Unexpected welcome: {0}".format(line.rstrip()))
             return 1
 
-        ssend(sfile, 'HELO {}\n'.format(args.hostname))
+        ssend(sfile, 'HELO {0}\n'.format(args.hostname))
         line = srecvline(sfile)
         if line[0] != '2':
-            logger.fatal("Failed handshake: {}".format(line.rstrip()))
+            logger.fatal("Failed handshake: {0}".format(line.rstrip()))
             return 1
 
         ssend(sfile, 'MAIL FROM:<{}>\n'.format(args.mail_from))
@@ -144,16 +144,16 @@ def main(argv=None):
             return 1
 
         for recipient in args.recipients:
-            ssend(sfile, 'RCPT TO:<{}>\n'.format(recipient))
+            ssend(sfile, 'RCPT TO:<{0}>\n'.format(recipient))
             line = srecvline(sfile)
             if line[0] != '2':
-                logger.fatal("Rejected recipient: {}".format(line.rstrip()))
+                logger.fatal("Rejected recipient: {0}".format(line.rstrip()))
                 return 1
 
         ssend(sfile, 'DATA\n')
         line = srecvline(sfile)
         if line[0] not in '23':
-            logger.fatal("Rejected data begin: {}".format(line.rstrip()))
+            logger.fatal("Rejected data begin: {0}".format(line.rstrip()))
             return 1
 
         # Read file if given
@@ -175,7 +175,7 @@ def main(argv=None):
         ssend(sfile, '\n.\n')
         line = srecvline(sfile)
         if line[0] != '2':
-            logger.fatal("Rejected message: {}".format(line.rstrip()))
+            logger.fatal("Rejected message: {0}".format(line.rstrip()))
             return 1
         ssend(sfile, 'QUIT\n')
     finally:
