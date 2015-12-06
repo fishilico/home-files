@@ -24,6 +24,7 @@
 @author: Nicolas Iooss
 @license: MIT
 """
+import io
 import re
 import os
 import os.path
@@ -127,7 +128,7 @@ def check_copyright_lines(lines):
 
 def verify_pl(filepath):
     """Verify the header of a perl file"""
-    with open(filepath, 'r') as curfile:
+    with io.open(filepath, 'r', encoding='utf-8') as curfile:
         firstline = curfile.readline().rstrip()
         if not re.match(r'#!(/usr/bin/| )perl( -w)?$', firstline):
             raise CheckError("bad perl shebang: {}".format(firstline))
@@ -135,7 +136,7 @@ def verify_pl(filepath):
 
 def verify_py(filepath):
     """Verify the header of a python file"""
-    with open(filepath, 'r') as curfile:
+    with io.open(filepath, 'r', encoding='utf-8') as curfile:
         firstline = curfile.readline().rstrip()
         if not re.match(r'#!/usr/bin/env python[23]?$', firstline):
             raise CheckError("bad python shebang: {}".format(firstline))
@@ -164,7 +165,7 @@ def verify_py(filepath):
 
 def verify_sh(filepath):
     """Verify the header of a shell file"""
-    with open(filepath, 'r') as curfile:
+    with io.open(filepath, 'r', encoding='utf-8') as curfile:
         # The first line should be a shell shebang
         firstline = curfile.readline().rstrip()
         if not re.match(r'#!/bin/(ba|z)?sh$', firstline):
@@ -198,7 +199,9 @@ def verify_sh(filepath):
 
 def verify_bin(filepath):
     """Verify the header of an executable file with no extension"""
-    with open(filepath, 'r') as curfile:
+    # Use io.open, so that UTF-8 are correctly decoded on systems where LANG
+    # is empty and locales are not configured
+    with io.open(filepath, 'r', encoding='utf-8') as curfile:
         firstline = curfile.readline().rstrip()
 
     # Use the shebang to find out the type of the file
