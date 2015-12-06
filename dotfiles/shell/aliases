@@ -170,7 +170,7 @@ if type alias > /dev/null 2>&1 ; then
     fi
 
     # Find non-ascii characters
-    alias grep-noasc="grep -P '[\x80-\xFF]'"
+    alias grep-noasc="LANG=C grep -P '[\x80-\xFF]'"
 
     # Strip commented lines
     alias stripcom="grep -v -E '^[ \r\t]*(#|;|\$)'"
