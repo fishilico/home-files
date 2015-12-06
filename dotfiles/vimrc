@@ -191,6 +191,9 @@ if has("spell")
   set sps=best,10
 endif
 
+" Remove screen prefix from $TERM as this breaks Ctrl-Left/Right
+let &term=substitute(&term, "^screen\.", "", "")
+
 " Terminal fixes
 if &term ==? "xterm"
   set t_Sb=^[4%dm
