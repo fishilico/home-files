@@ -139,6 +139,9 @@ fi
 PKGGREP="$(LANG=C whichpkg grep)"
 if [ $? = 0 ] ; then
     case "$PKGGREP" in
+        # Alpine Linux with busybox (Docker image)
+        /bin/grep\ symlink\ target\ is\ owned\ by\ busybox-*)
+            ;;
         # Arch Linux
         */bin/grep\ is\ owned\ by\ grep\ *)
             ;;

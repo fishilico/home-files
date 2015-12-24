@@ -45,7 +45,11 @@ then
 fi
 
 # Use files
-if [ -r /etc/arch-release ]
+if [ -r /etc/alpine-release ]
+then
+    echo "alpine"
+    exit
+elif [ -r /etc/arch-release ]
 then
     echo "arch"
     exit

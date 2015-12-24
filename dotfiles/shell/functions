@@ -357,7 +357,12 @@ strace_exec() {
 
 # Find the package which provides an installed command
 if [ -x /usr/bin/which ] ; then
-    if [ -x /usr/bin/pacman ] ; then
+    if [ -x /sbin/apk ] ; then
+        # Alpine Linux
+        whichpkg() {
+            /usr/bin/which "$@" | xargs apk info --who-owns
+        }
+    elif [ -x /usr/bin/pacman ] ; then
         # Arch Linux
         whichpkg() {
             /usr/bin/which "$@" | xargs pacman -Q --owns
