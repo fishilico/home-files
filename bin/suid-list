@@ -167,6 +167,18 @@ TRUSTED_SUID_FILES = (
     LinkToSuidFile('/bin/atq', '/bin/at', owners=('daemon', 'root')),
     LinkToSuidFile('/bin/atrm', '/bin/at', owners=('daemon', 'root')),
 
+    # busybox-suid, https://pkgs.alpinelinux.org/package/main/x86_64/busybox-suid
+    # http://git.alpinelinux.org/cgit/aports/tree/main/busybox/bbsuid.c
+    SuidFile('/bin/bbsuid'),
+    LinkToSuidFile('/bin/crontab', '/bin/bbsuid'),
+    LinkToSuidFile('/bin/mount', '/bin/bbsuid'),
+    LinkToSuidFile('/bin/passwd', '/bin/bbsuid'),
+    LinkToSuidFile('/bin/ping', '/bin/bbsuid'),
+    LinkToSuidFile('/bin/ping6', '/bin/bbsuid'),
+    LinkToSuidFile('/bin/su', '/bin/bbsuid'),
+    LinkToSuidFile('/bin/traceroute', '/bin/bbsuid'),
+    LinkToSuidFile('/bin/umount', '/bin/bbsuid'),
+
     # chromium, http://www.chromium.org/Home
     # https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master
     SuidFile('/lib/chromium/chrome-sandbox'),
@@ -200,6 +212,7 @@ TRUSTED_SUID_FILES = (
     # These files needed SUID before using capabilities
     SuidFile('/bin/ping'),
     SuidFile('/bin/ping6'),
+    SuidFile('/bin/traceroute6'),
     SuidFile('/bin/traceroute6.iputils'),
     LinkToSuidFile('/sbin/ping6', '/bin/ping6'),
     LinkToSuidFile('/bin/traceroute6', '/bin/traceroute6.iputils'),
@@ -268,6 +281,10 @@ TRUSTED_SUID_FILES = (
     # qemu, http://wiki.qemu.org/Index.html
     # http://git.qemu.org/?p=qemu.git;a=tree
     SuidFile('/lib/qemu/qemu-bridge-helper'),
+
+    # s-nail, http://sdaoden.users.sourceforge.net/code.html#s-nail
+    # http://sourceforge.net/p/s-nail/code/ci/master/tree/
+    SuidFile('/lib/mail-privsep'),
 
     # screen, http://www.gnu.org/software/screen/
     # http://git.savannah.gnu.org/cgit/screen.git/tree/
@@ -551,14 +568,18 @@ TRUSTED_CAPS_FILES = (
 try:
     libcap = ctypes.CDLL('libcap.so')
 except OSError:
-    libcap = ctypes.CDLL('libcap.so.2')
+    try:
+        libcap = ctypes.CDLL('libcap.so.2')
+    except OSError:
+        libcap = None
 
-libcap.cap_get_file.argtypes = [ctypes.c_char_p]
-libcap.cap_get_file.restype = ctypes.c_void_p
-libcap.cap_to_text.argtypes = [ctypes.c_void_p,
-                               ctypes.POINTER(ctypes.c_size_t)]
-libcap.cap_to_text.restype = ctypes.c_char_p
-libcap.cap_free.argtypes = [ctypes.c_void_p]
+if libcap is not None:
+    libcap.cap_get_file.argtypes = [ctypes.c_char_p]
+    libcap.cap_get_file.restype = ctypes.c_void_p
+    libcap.cap_to_text.argtypes = [ctypes.c_void_p,
+                                   ctypes.POINTER(ctypes.c_size_t)]
+    libcap.cap_to_text.restype = ctypes.c_char_p
+    libcap.cap_free.argtypes = [ctypes.c_void_p]
 
 
 def getcap_file(filepath):
@@ -698,7 +719,7 @@ def analyze_files_in(dirname, files):
 
         # Find regular files with capabilities (cap_get_file() return is
         # undefined on non-regular file according to its man page)
-        if stat.S_ISREG(mode):
+        if libcap is not None and stat.S_ISREG(mode):
             caps = getcap_file(realpath)
             if caps:
                 cap_files.add((filepath, realpath, caps))
@@ -768,6 +789,11 @@ def main(argv=None):
     root_logger = logging.getLogger()
     root_logger.addHandler(log_handler)
     root_logger.setLevel(logging.DEBUG if args.debug else logging.INFO)
+
+    # Warn here if libcap was not found
+    if libcap is None:
+        logger.warning("libcap.so has not been found, not analyzing file caps")
+        logger.debug("libcap.so is usally installed as a dependency of iputils (ping, ping6...)")
 
     # Find if we specified special directories
     base_dirs = set()
