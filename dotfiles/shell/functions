@@ -134,8 +134,18 @@ date_epoch() {
 }
 # Dump the local timezone file
 tzdump() {
-    if [ -L /etc/localtime ] ; then
-        zdump -v "$(readlink /etc/localtime)"
+    if [ $# -ge 1 ] ; then
+        while [ $# -ge 1 ] ; do
+            if [ -r "/usr/share/zoneinfo/$1" ] ; then
+                zdump -v "/usr/share/zoneinfo/$1"
+            else
+                echo >&2 "Unknown zone info $1."
+                return 1
+            fi
+            shift
+        done
+    elif [ -L /etc/localtime ] ; then
+        zdump -v "$(readlink -f /etc/localtime)"
     elif [ -r /etc/localtime ] ; then
         zdump -v /etc/localtime
     else
