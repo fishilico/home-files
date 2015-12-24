@@ -66,7 +66,7 @@ BIN_SCRIPTS = {
     'getaddr': 'args[localhost]',
     'get-power-rights': '(dbus-send|gdbus)direct',
     'gsettings-dump': '(gsettings)direct',
-    'iptables-stats': '(iptables)direct',
+    'iptables-stats': '(iptables,ip6tables)direct',
     'launch-gpg-ssh-agent': 'never',
     'list-https-ciphers': 'never',
     'list-ipc': 'direct',
