@@ -85,12 +85,21 @@ class SuidFile(object):
         self.groups = groups
 
     def is_match(self, path, realpath, owner, group):
-        """Does the given path which resolve to realpath matches the file?"""
+        """Does the given path which resolve to realpath matches the file?
+
+        Return True if all the following conditions are verified:
+        * the file is not a symlink,
+        * the path matches the given pattern
+        * the file is not a SUID-file, or it is and the owner is known
+        * the file is not a SGID-file, or it is and the group is known
+        """
         return (
             path == realpath and
             self.filepattern.match(path) and
-            (self.owners is None or owner in self.owners) and
-            (self.groups is None or group in self.groups))
+            (owner is None or
+                (self.owners is not None and owner in self.owners)) and
+            (group is None or
+                (self.groups is not None and group in self.groups)))
 
 
 class LinkToSuidFile(object):
@@ -112,8 +121,10 @@ class LinkToSuidFile(object):
         return (
             self.linkpattern.match(path) and
             self.targetpattern.match(realpath) and
-            (self.owners is None or owner in self.owners) and
-            (self.groups is None or group in self.groups))
+            (owner is None or
+                (self.owners is not None and owner in self.owners)) and
+            (group is None or
+                (self.groups is not None and group in self.groups)))
 
 
 class CapsFile(object):
@@ -163,9 +174,11 @@ TRUSTED_SUID_FILES = (
 
     # at, https://packages.qa.debian.org/a/at.html
     # https://anonscm.debian.org/cgit/collab-maint/at.git/tree/
-    SuidFile('/bin/at', owners=('daemon', 'root')),
-    LinkToSuidFile('/bin/atq', '/bin/at', owners=('daemon', 'root')),
-    LinkToSuidFile('/bin/atrm', '/bin/at', owners=('daemon', 'root')),
+    SuidFile('/bin/at', owners=('daemon', 'root'), groups=('daemon', )),
+    LinkToSuidFile('/bin/atq', '/bin/at', owners=('daemon', 'root'),
+                   groups=('daemon', )),
+    LinkToSuidFile('/bin/atrm', '/bin/at', owners=('daemon', 'root'),
+                   groups=('daemon', )),
 
     # busybox-suid, https://pkgs.alpinelinux.org/package/main/x86_64/busybox-suid
     # http://git.alpinelinux.org/cgit/aports/tree/main/busybox/bbsuid.c
@@ -224,6 +237,13 @@ TRUSTED_SUID_FILES = (
     SuidFile('/s?bin/lldpctl', owners=('_lldpd', )),
     LinkToSuidFile('/s?bin/lldpctl', '/s?bin/lldpcli', owners=('_lldpd', )),
 
+    # lpr, https://packages.qa.debian.org/l/lpr.html
+    # https://anonscm.debian.org/cgit/collab-maint/lpr.git/tree/
+    SuidFile('/bin/lpq', owners=('root', ), groups=('lp', )),
+    SuidFile('/bin/lpr', owners=('root', ), groups=('lp', )),
+    SuidFile('/bin/lprm', owners=('root', ), groups=('lp', )),
+    SuidFile('/s?bin/lpc', groups=('lp', )),
+
     # lxc, https://linuxcontainers.org/
     # https://github.com/lxc/lxc
     SuidFile('/lib/lxc/lxc-user-nic'),
@@ -264,9 +284,11 @@ TRUSTED_SUID_FILES = (
 
     # pam, http://linux-pam.org/
     # https://git.fedorahosted.org/cgit/linux-pam.git/tree/
+    # http://archive.ubuntu.com/ubuntu/pool/main/p/pam/pam_1.1.8-3.1ubuntu3.dsc
     SuidFile('/s?bin/pam_timestamp_check'),
-    SuidFile('/s?bin/unix_chkpwd'),
+    SuidFile('/s?bin/unix_chkpwd', owners=('root', ), groups=('root', )),
     SuidFile('/s?bin/unix_chkpwd', groups=('shadow', )),
+    SuidFile('/s?bin/pam_extrausers_chkpwd', groups=('shadow', )),
 
     # polkit, http://www.freedesktop.org/wiki/Software/polkit
     # http://cgit.freedesktop.org/polkit/
@@ -276,7 +298,7 @@ TRUSTED_SUID_FILES = (
 
     # procmail, http://www.procmail.org/
     SuidFile('/bin/lockfile', groups=('mail', )),
-    SuidFile('/bin/procmail'),
+    SuidFile('/bin/procmail', owners=('root', ), groups=('mail', )),
 
     # qemu, http://wiki.qemu.org/Index.html
     # http://git.qemu.org/?p=qemu.git;a=tree
@@ -346,9 +368,10 @@ TRUSTED_SUID_FILES = (
 
     # xorg-server, http://www.x.org/wiki/XServer/
     # http://cgit.freedesktop.org/xorg/xserver/tree/
+    # X was root-suid before rootless X11 server was possible
     LinkToSuidFile('/bin/X', '/bin/Xorg'),
-    SuidFile('/bin/X'),  # Before rootless X11 server
-    SuidFile('/bin/Xorg'),  # Before rootless X11 server
+    SuidFile('/bin/X', owners=('root', ), groups=('root', )),
+    SuidFile('/bin/Xorg'),
     SuidFile('/lib/xorg-server/Xorg.wrap'),
 )
 
