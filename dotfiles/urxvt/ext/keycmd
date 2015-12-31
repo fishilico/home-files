@@ -18,8 +18,17 @@ sub on_user_command {
         if ($shell_pid eq "") {
             $shell_pid = 'self';
         }
-        # Change to the directory referenced by /proc/PID/cwd and launch urxvt
-        system("bash -c 'cd -P /proc/$shell_pid/cwd && (urxvt & disown %)'");
+        # Change to the directory referenced by /proc/PID/cwd close any open
+        # file descriptor and launch urxvt.
+        system(<<"EOF"
+            bash -c '
+                cd -P /proc/$shell_pid/cwd &&
+                for FD in \$(ls -1 /proc/\$\$/fd) ; do
+                    test \"\$FD\" -le 2 || eval \"exec \$FD>&-\" ;
+                done &&
+                (urxvt & disown)'
+EOF
+        );
         return;
     }
 }
