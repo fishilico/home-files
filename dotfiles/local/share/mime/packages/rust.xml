@@ -1,5 +1,5 @@
 <mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
-  <mime-type type="text/x-rust">
+  <mime-type type="text/rust">
     <comment>Rust Source</comment>
     <glob pattern="*.rs"/>
   </mime-type>

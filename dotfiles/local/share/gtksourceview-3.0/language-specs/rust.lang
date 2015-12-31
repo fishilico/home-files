@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
-<!-- Syntax highlighting for the under-development Mozilla Rust language -->
 <!-- Source: https://github.com/rust-lang/gedit-config/blob/master/share/gtksourceview-3.0/language-specs/rust.lang -->
+
+<!--
+Copyright 2013-2015 The Rust Project Developers.
+
+Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+<LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+option. This file may not be copied, modified, or distributed
+except according to those terms.
+-->
+
+<!-- Syntax highlighting for the Rust language -->
 
 <language id="rust" _name="Rust" version="2.0" _section="Sources">
   <metadata>
-    <property name="mimetypes">text/x-rust</property>
+    <property name="mimetypes">text/rust</property>
     <property name="globs">*.rs</property>
     <property name="line-comment-start">//</property>
     <property name="block-comment-start">/*</property>
@@ -37,51 +47,57 @@
     </context>
 
     <context id="keywords" style-ref="keyword">
+		<keyword>abstract</keyword>
+		<keyword>alignof</keyword>
 		<keyword>as</keyword>
-		<keyword>assert</keyword>
-		<keyword>break</keyword>
+		<keyword>become</keyword>
 		<keyword>box</keyword>
+		<keyword>break</keyword>
 		<keyword>const</keyword>
 		<keyword>continue</keyword>
 		<keyword>crate</keyword>
 		<keyword>do</keyword>
-		<keyword>drop</keyword>
 		<keyword>else</keyword>
 		<keyword>enum</keyword>
-		<keyword>export</keyword>
 		<keyword>extern</keyword>
-		<keyword>fail</keyword>
+		<keyword>final</keyword>
 		<keyword>for</keyword>
 		<keyword>if</keyword>
 		<keyword>impl</keyword>
 		<keyword>in</keyword>
 		<keyword>let</keyword>
-		<keyword>log</keyword>
 		<keyword>loop</keyword>
+		<keyword>macro</keyword>
 		<keyword>match</keyword>
 		<keyword>mod</keyword>
 		<keyword>move</keyword>
 		<keyword>mut</keyword>
+		<keyword>offsetof</keyword>
+		<keyword>override</keyword>
 		<keyword>priv</keyword>
+		<keyword>proc</keyword>
 		<keyword>pub</keyword>
 		<keyword>pure</keyword>
 		<keyword>ref</keyword>
 		<keyword>return</keyword>
+		<keyword>sizeof</keyword>
 		<keyword>static</keyword>
 		<keyword>struct</keyword>
+		<keyword>super</keyword>
 		<keyword>trait</keyword>
+		<keyword>typeof</keyword>
 		<keyword>unsafe</keyword>
+		<keyword>unsized</keyword>
 		<keyword>use</keyword>
 		<keyword>virtual</keyword>
 		<keyword>where</keyword>
 		<keyword>while</keyword>
+		<keyword>yield</keyword>
     </context>
 
     <context id="types" style-ref="type">
 		<keyword>bool</keyword>
-		<keyword>int</keyword>
 		<keyword>isize</keyword>
-		<keyword>uint</keyword>
 		<keyword>usize</keyword>
 		<keyword>i8</keyword>
 		<keyword>i16</keyword>
@@ -95,103 +111,16 @@
 		<keyword>f64</keyword>
 		<keyword>char</keyword>
 		<keyword>str</keyword>
-		<keyword>Option</keyword>
-		<keyword>Result</keyword>
-    </context>
-
-    <context id="ctypes" style-ref="type">
-		<keyword>c_float</keyword>
-		<keyword>c_double</keyword>
-		<keyword>c_void</keyword>
-		<keyword>FILE</keyword>
-		<keyword>fpos_t</keyword>
-		<keyword>DIR</keyword>
-		<keyword>dirent</keyword>
-		<keyword>c_char</keyword>
-		<keyword>c_schar</keyword>
-		<keyword>c_uchar</keyword>
-		<keyword>c_short</keyword>
-		<keyword>c_ushort</keyword>
-		<keyword>c_int</keyword>
-		<keyword>c_uint</keyword>
-		<keyword>c_long</keyword>
-		<keyword>c_ulong</keyword>
-		<keyword>size_t</keyword>
-		<keyword>ptrdiff_t</keyword>
-		<keyword>clock_t</keyword>
-		<keyword>time_t</keyword>
-		<keyword>c_longlong</keyword>
-		<keyword>c_ulonglong</keyword>
-		<keyword>intptr_t</keyword>
-		<keyword>uintptr_t</keyword>
-		<keyword>off_t</keyword>
-		<keyword>dev_t</keyword>
-		<keyword>ino_t</keyword>
-		<keyword>pid_t</keyword>
-		<keyword>mode_t</keyword>
-		<keyword>ssize_t</keyword>
     </context>
 
     <context id="self" style-ref="identifier">
+		<keyword>Self</keyword>
 		<keyword>self</keyword>
     </context>
 
     <context id="constants" style-ref="constant">
 		<keyword>true</keyword>
 		<keyword>false</keyword>
-		<keyword>Some</keyword>
-		<keyword>None</keyword>
-		<keyword>Ok</keyword>
-		<keyword>Err</keyword>
-		<keyword>Success</keyword>
-		<keyword>Failure</keyword>
-		<keyword>Cons</keyword>
-		<keyword>Nil</keyword>
-    </context>
-
-    <context id="cconstants" style-ref="constant">
-		<keyword>EXIT_FAILURE</keyword>
-		<keyword>EXIT_SUCCESS</keyword>
-		<keyword>RAND_MAX</keyword>
-		<keyword>EOF</keyword>
-		<keyword>SEEK_SET</keyword>
-		<keyword>SEEK_CUR</keyword>
-		<keyword>SEEK_END</keyword>
-		<keyword>_IOFBF</keyword>
-		<keyword>_IONBF</keyword>
-		<keyword>_IOLBF</keyword>
-		<keyword>BUFSIZ</keyword>
-		<keyword>FOPEN_MAX</keyword>
-		<keyword>FILENAME_MAX</keyword>
-		<keyword>L_tmpnam</keyword>
-		<keyword>TMP_MAX</keyword>
-		<keyword>O_RDONLY</keyword>
-		<keyword>O_WRONLY</keyword>
-		<keyword>O_RDWR</keyword>
-		<keyword>O_APPEND</keyword>
-		<keyword>O_CREAT</keyword>
-		<keyword>O_EXCL</keyword>
-		<keyword>O_TRUNC</keyword>
-		<keyword>S_IFIFO</keyword>
-		<keyword>S_IFCHR</keyword>
-		<keyword>S_IFBLK</keyword>
-		<keyword>S_IFDIR</keyword>
-		<keyword>S_IFREG</keyword>
-		<keyword>S_IFMT</keyword>
-		<keyword>S_IEXEC</keyword>
-		<keyword>S_IWRITE</keyword>
-		<keyword>S_IREAD</keyword>
-		<keyword>S_IRWXU</keyword>
-		<keyword>S_IXUSR</keyword>
-		<keyword>S_IWUSR</keyword>
-		<keyword>S_IRUSR</keyword>
-		<keyword>F_OK</keyword>
-		<keyword>R_OK</keyword>
-		<keyword>W_OK</keyword>
-		<keyword>X_OK</keyword>
-		<keyword>STDIN_FILENO</keyword>
-		<keyword>STDOUT_FILENO</keyword>
-		<keyword>STDERR_FILENO</keyword>
     </context>
 
     <context id="line-comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
@@ -272,18 +201,23 @@
     <define-regex id="common_escape" extended="true">
       '|"|
       \\|n|r|t|0|
-      x\%{hex_digit}{2}|
-      u{\%{hex_digit}{1,6}}|
-      u\%{hex_digit}{4}|
-      U\%{hex_digit}{8}
+      x\%{hex_digit}{2}
+    </define-regex>
+
+    <define-regex id="unicode_escape" extended="true">
+      u{\%{hex_digit}{1,6}}
     </define-regex>
 
     <context id="string_escape" style-ref="def:special-char">
+      <match>\\\%{common_escape}|\\\%{unicode_escape}</match>
+    </context>
+
+    <context id="byte_string_escape" style-ref="def:special-char">
       <match>\\\%{common_escape}</match>
     </context>
 
     <context id="raw-string" style-ref="string" class="string" class-disabled="no-spell-check">
-      <start>r(#*)"</start>
+      <start>b?r(#*)"</start>
       <end>"\%{1@start}</end>
       <include>
         <context ref="def:line-continue"/>
@@ -299,8 +233,21 @@
       </include>
     </context>
 
+    <context id="byte_string" style-ref="string" class="string" class-disabled="no-spell-check">
+      <start>b"</start>
+      <end>"</end>
+      <include>
+        <context ref="byte_string_escape"/>
+        <context ref="def:line-continue"/>
+      </include>
+    </context>
+
     <context id="char" style-ref="char">
-      <match extended="true">'([^\\']|\\\%{common_escape})'</match>
+      <match extended="true">'([^\\']|\\\%{common_escape}|\\\%{unicode_escape})'</match>
+    </context>
+
+    <context id="byte" style-ref="char">
+      <match extended="true">b'([^\\']|\\\%{common_escape})'</match>
     </context>
 
     <context id="attribute" style-ref="attribute" class="attribute">
@@ -319,18 +266,18 @@
         <context ref="type"/>
         <context ref="keywords"/>
         <context ref="types"/>
-        <context ref="ctypes"/>
         <context ref="self"/>
         <context ref="macro"/>
         <context ref="constants"/>
-        <context ref="cconstants"/>
         <context ref="line-comment"/>
         <context ref="block-comment"/>
         <context ref="number"/>
         <context ref="scope"/>
         <context ref="string"/>
+        <context ref="byte_string"/>
         <context ref="raw-string"/>
         <context ref="char"/>
+        <context ref="byte"/>
         <context ref="lifetime"/>
         <context ref="attribute"/>
       </include>
