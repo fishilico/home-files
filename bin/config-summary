@@ -29,10 +29,11 @@ has_command() {
 
 # Copy the input with adding one level of indentation in the output, and
 # blank lines before and after.
+# Optional parameter: indentation to use (4 spaces by default)
 indent_out() {
     echo ''
     # Detect a lack of output to avoid leaving a code block empty
-    (grep '' || echo '[No output]') | sed 's/^/    /'
+    (grep '' || echo '[No output]') | sed "s/^/${1:-    }/"
     echo ''
 }
 
@@ -235,9 +236,7 @@ if [ -r /proc/sys/fs/binfmt_misc/status ] ; then
             *)
                 if [ -r "$FILE" ] ; then
                     echo "  - $FMTNAME::"
-                    echo ''
-                    sed 's/^/      /' < "$FILE"
-                    echo ''
+                    indent_out '      ' < "$FILE"
                 fi
                 ;;
         esac
@@ -247,4 +246,23 @@ fi
 if has_command dmesg ; then
     echo '* dmesg::'
     dmesg 2>&1 | indent_out
+fi
+
+echo ''
+echo 'Keys information'
+echo '----------------'
+echo ''
+if [ -r '/proc/keys' ] ; then
+    echo '* /proc/keys::'
+    fmt -80 -s < '/proc/keys' | indent_out
+else
+    echo '* /proc/keys not readable.'
+fi
+if has_command keyctl ; then
+    echo '* Kernel keyrings:'
+    echo ''
+    for KEYRING in @t @p @s @u @us @g @a ; do
+        echo "  - keyctl show $KEYRING::"
+        keyctl show "$KEYRING" 2>&1 | indent_out '      '
+    done
 fi
