@@ -23,6 +23,7 @@
 	fixup = !sh -c 'git commit --fixup=$1 && git rebase -i --autosquash "$1^"' -
 	last-patch = format-patch HEAD^
 	undo = reset --soft HEAD^
+	single-fixup = !cd "${GIT_PREFIX:-.}" && git-single-fixup
 
 	bl = branch --all
 	rl = remote --verbose
