@@ -259,6 +259,48 @@ if has_command dmesg ; then
 fi
 
 echo ''
+echo 'Operating system information'
+echo '----------------------------'
+echo ''
+for ETCFILE in /etc/os-release /etc/issue /etc/motd ; do
+    if [ -e "$ETCFILE" ] ; then
+        echo "* $ETCFILE::"
+        indent_out < "$ETCFILE"
+    else
+        echo "* $ETCFILE does not exist."
+    fi
+done
+for ETCFILE in /etc/*-release /etc/*_version ; do
+    if [ "$ETCFILE" = /etc/os-release ] ; then
+        continue
+    elif [ -r "$ETCFILE" ] ; then
+        echo "* $ETCFILE::"
+        indent_out < "$ETCFILE"
+    fi
+done
+# Distribution package manager configuration
+for ETCFILE in \
+    /etc/apt/preferences \
+    /etc/apt/preferences.d/* \
+    /etc/apt/sources.list \
+    /etc/apt/sources.list.d/* \
+    /etc/make.conf \
+    /etc/makepkg.conf \
+    /etc/pacman.conf \
+    /etc/portage/make.conf
+do
+    if [ -e "$ETCFILE" ] ; then
+        echo "* $ETCFILE (stripped)::"
+        grep -v -E '^[ \r\t]*(#|$)' "$ETCFILE" | indent_out
+    fi
+done
+# Debian apt-get configuration
+if has_command apt-config ; then
+    echo '* apt-config dump::'
+    apt-config dump 2>&1 | indent_out
+fi
+
+echo ''
 echo 'Keys information'
 echo '----------------'
 echo ''
