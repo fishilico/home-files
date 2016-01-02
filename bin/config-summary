@@ -272,3 +272,23 @@ if has_command keyctl ; then
         keyctl show "$KEYRING" 2>&1 | indent_out '      '
     done
 fi
+
+echo ''
+echo 'X11 information'
+echo '---------------'
+echo ''
+if [ -z "$DISPLAY" ] ; then
+    # Use default screen if a socket is found
+    if [ -e '/tmp/.X11-unix/X0' ] ; then
+        export DISPLAY=':0.0'
+    fi
+fi
+if [ -z "$DISPLAY" ] ; then
+    echo 'No X11 server found.'
+else
+    echo "* \$DISPLAY = $DISPLAY"
+    if has_command setxkbmap ; then
+        echo '* setxkbmap -print::'
+        setxkbmap -print 2>&1 | indent_out
+    fi
+fi
