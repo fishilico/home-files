@@ -58,7 +58,11 @@ if has_command dkpg ; then
 fi
 if has_command gcc ; then
     echo '    $ gcc -dumpmachine'
-    echo "    $(gcc -dumpmachine)"
+    echo "    $(gcc -dumpmachine 2>&1)"
+fi
+if has_command clang ; then
+    echo '    $ clang -dumpmachine'
+    echo "    $(clang -dumpmachine 2>&1)"
 fi
 
 echo ''
