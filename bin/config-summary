@@ -77,6 +77,12 @@ if [ -r /proc/cpuinfo ] ; then
     echo '* /proc/cpuinfo::'
     indent_out < /proc/cpuinfo
 fi
+# DMI information: bios_vendor, board_vendor, chassis_vendor, sys_vendor
+for FILE in /sys/class/dmi/id/*_vendor ; do
+    if [ -r "$FILE" ] ; then
+        echo "* $FILE: $(cat "$FILE")"
+    fi
+done
 
 echo ''
 echo 'Network information'
