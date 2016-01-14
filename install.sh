@@ -103,7 +103,9 @@ validate_gpg_gitlog() {
     DST_FILE="$INSTALL_DIR/.gnupg/gpg.conf"
     if ! [ -e "$DST_FILE" ]
     then
-        mkdir -pv -m 700 "$INSTALL_DIR/.gnupg" && ln -svf "$SRC_FILE" "$DST_FILE"
+        mkdir -pv "$INSTALL_DIR"
+        mkdir -v -m 700 "$INSTALL_DIR/.gnupg"
+        ln -svf "$SRC_FILE" "$DST_FILE"
         if ! [ -e "$DST_FILE" ]
         then
             echo >&2 "[!] Error: unable to create $DST_FILE"
