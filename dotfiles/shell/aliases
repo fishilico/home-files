@@ -50,13 +50,14 @@ if type alias > /dev/null 2>&1 ; then
     alias strings='strings -a'
 
     # Always use /usr/bin/sudo if available to prevent PATH hijacking
+    # Append a space to enable alias expansion
     # sadm alias is for SELinux
     if [ -x /usr/bin/sudo ] ; then
-        alias s='/usr/bin/sudo -s'
-        alias sadm='/usr/bin/sudo -r sysadm_r -t sysadm_t -s'
+        alias s='/usr/bin/sudo -s '
+        alias sadm='/usr/bin/sudo -r sysadm_r -t sysadm_t -s '
     else
-        alias s='sudo -s'
-        alias sadm='sudo -r sysadm_r -t sysadm_t -s'
+        alias s='sudo -s '
+        alias sadm='sudo -r sysadm_r -t sysadm_t -s '
     fi
 
     # Be human !
