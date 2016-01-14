@@ -223,8 +223,8 @@ TRUSTED_SUID_FILES = (
     # iputils, http://www.skbuff.net/iputils/
     # http://sourceforge.net/p/iputils/code/ci/HEAD/tree/
     # These files needed SUID before using capabilities
-    SuidFile('/bin/ping'),
-    SuidFile('/bin/ping6'),
+    SuidFile('/bin/ping', owners=('root', ), groups=('root', )),
+    SuidFile('/bin/ping6', owners=('root', ), groups=('root', )),
     SuidFile('/bin/traceroute6'),
     SuidFile('/bin/traceroute6.iputils'),
     LinkToSuidFile('/sbin/ping6', '/bin/ping6'),
@@ -492,9 +492,9 @@ KNOWN_SUID_FILES = (
 
     # inetutils, http://www.gnu.org/software/inetutils/
     # http://git.savannah.gnu.org/cgit/inetutils.git/tree/
-    SuidFile('/bin/rcp'),
-    SuidFile('/bin/rlogin'),
-    SuidFile('/bin/rsh'),
+    SuidFile('/bin/rcp', owners=('root', ), groups=('root', )),
+    SuidFile('/bin/rlogin', owners=('root', ), groups=('root', )),
+    SuidFile('/bin/rsh', owners=('root', ), groups=('root', )),
 
     # initscripts, https://fedorahosted.org/releases/i/n/initscripts/
     # https://git.fedorahosted.org/cgit/initscripts.git/tree/
