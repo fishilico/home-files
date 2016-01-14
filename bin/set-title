@@ -23,6 +23,9 @@
 # Set the title of the current terminal
 
 case "$TERM" in
+    linux*)
+        # Linux console does not have any title
+        ;;
     xterm*|rxvt*)
         # xterm uses \e]0;title\a or \e]2;title\a
         printf '%b%s%b' '\033]0;' "$*" '\007'
