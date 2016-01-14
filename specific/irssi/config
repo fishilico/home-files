@@ -1,22 +1,24 @@
+# This configuration is a template for an IRSSI configuration.
+# Please edit the "changeme" tokens to customize it.
 servers = (
   {
     address = "irc.rezosup.org";
     chatnet = "RezoSup";
-    port = "6667";
-    use_ssl = "no";
-    #port = "6767";
-    #use_ssl = "yes";
+    #port = "6667";
+    #use_ssl = "no";
+    port = "6767";
+    use_ssl = "yes";
     ssl_verify = "no";
     autoconnect = "yes";
     no_proxy = "yes";
   },
   {
-    address = "irc.freenode.net";
+    address = "chat.freenode.net";
     chatnet = "FreeNode";
-    port = "6667";
+    port = "6697";
     autoconnect = "yes";
-    use_ssl = "no";
-    ssl_verify = "no";
+    use_ssl = "yes";
+    ssl_verify = "yes";
   },
   {
     address = "127.0.0.1";
@@ -32,40 +34,12 @@ chatnets = {
   RezoSup = {
     type = "IRC";
     nick = "changeme";
-    #    autosendcmd = "/^msg nickserv IDENTIFY ******;";
+    # autosendcmd = "/^msg nickserv IDENTIFY ***changme<password>***;";
   };
   FreeNode = { type = "IRC"; nick = "changeme"; };
-  Bitlbee = { type = "IRC"; nick = "moi"; };
+  Bitlbee = { type = "IRC"; nick = "me"; };
 };
 
-channels = (
-  { name = "#x2010"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#platal"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#x"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#faerix"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#federez"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#br"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#br-actif"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#br2010"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#frankiz"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#root-br"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#br-securite"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#epyx"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#binetrobot"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#xtelecom"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#Rezel"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#ragal"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#ccx"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#br-ensta"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#bll"; chatnet = "RezoSup"; autojoin = "yes"; },
-  { name = "#poly.org"; chatnet = "FreeNode"; autojoin = "yes"; },
-  { name = "#platal"; chatnet = "FreeNode"; autojoin = "yes"; },
-  { name = "#django"; chatnet = "FreeNode"; autojoin = "yes"; },
-  { name = "#archlinux"; chatnet = "FreeNode"; autojoin = "yes"; },
-  { name = "#archlinux-fr"; chatnet = "FreeNode"; autojoin = "yes"; },
-  { name = "#gentoo"; chatnet = "FreeNode"; autojoin = "yes"; },
-  { name = "#debian"; chatnet = "FreeNode"; autojoin = "yes"; }
-);
 aliases = {
   J = "join";
   WJOIN = "join -window";
@@ -125,6 +99,7 @@ aliases = {
   aop = "msg chanserv access $C add $0 42; mode $C +o $0";
   ahop = "msg chanserv access $C add $0 4; mode $C -o+h $0 $0";
   jolispetitscoeurs = "eval say \\0032♥ \\0033♥ \\0034♥ \\0035♥ \\0036♥ \\0037♥ \\0038♥ \\0039♥ \\00310♥ \\00311♥ \\00312♥ \\00313♥ \\00314♥ \\00315♥ \\00316♥";
+  music = "say \00311♪♫♪\017 $* \00311♪♫♪";
 };
 statusbar = {
   # formats:
@@ -242,9 +217,9 @@ statusbar = {
 };
 settings = {
   core = {
-    real_name = "Nag";
-    user_name = "ioonag";
-    nick = "IooNag";
+    real_name = "changeme";
+    user_name = "changeme";
+    nick = "changeme";
     recode = "yes";
     recode_autodetect_utf8 = "yes";
     recode_out_default_charset = "UTF-8";
@@ -275,7 +250,7 @@ settings = {
   "irc/core" = { lag_max_before_disconnect = "300"; knockout_time = "5"; };
   "fe-text" = { indent = "8"; actlist_sort = "refnum"; };
   "perl/core/scripts" = {
-    autorejoin_channels = "#x2010 #br2010 #br #x #frankiz #root-br";
+    autorejoin_channels = "";
     nicklist_automode = "screen";
     awl_display_nokey_active = "$Q:$H$C$S";
     awl_display_key = "$Q|$H$C$S";
@@ -293,74 +268,23 @@ hilights = (
     nick = "no";
     word = "yes";
     fullword = "yes";
-    channels = ( "#root-br", "#br-securite" );
+    channels = ( "#changeme<CRIT-channel>" );
   },
-  {
-    text = "br";
-    color = "%Y";
-    nick = "no";
-    word = "yes";
-    fullword = "yes";
-    channels = ( "#federez" );
-  },
-  # { text = "magnan"; nick = "yes"; word = "yes"; fullword = "yes"; },
-  # { text = "2k10"; nick = "yes"; word = "yes"; fullword = "yes"; },
-  # { text = "2010"; nick = "yes"; word = "yes"; fullword = "yes"; }
   {
     text = "root";
     nick = "yes";
     word = "yes";
     fullword = "yes";
-    channels = (
-      "#root-br",
-      "#br-actif",
-      "#br",
-      "#frankiz",
-      "#faerix",
-      "#br-securite",
-      "#poly.org"
-    );
+    channels = ( "#changeme<root-channel>" );
   },
   {
-    text = "fishilico";
+    text = "changeme<Nick>";
     color = "%G";
     act_color = "%B";
     nick = "no";
     word = "no";
     fullword = "yes";
   },
-  {
-    text = "IooNag";
-    color = "%G";
-    act_color = "%B";
-    nick = "no";
-    word = "no";
-    fullword = "yes";
-  },
-  {
-    text = "Nag";
-    color = "%G";
-    act_color = "%B";
-    nick = "no";
-    word = "no";
-    fullword = "yes";
-  },
-  {
-    text = "Ioos+";
-    color = "%G";
-    act_color = "%B";
-    nick = "no";
-    word = "no";
-    regexp = "yes";
-  },
-  {
-    text = "Io+ss+";
-    color = "%G";
-    act_color = "%B";
-    nick = "no";
-    word = "no";
-    regexp = "yes";
-  }
 );
 
 keyboard = (
@@ -421,268 +345,24 @@ logs = { };
 ignores = (
   { level = "JOINS PARTS QUITS MODES"; channels = ( "&bitlbee" ); }
 );
+channels = (
+  { name = "&bitlbee"; chatnet = "Bitlbee"; autojoin = "yes"; },
+  { name = "#grsecurity"; chatnet = "OFTC"; autojoin = "yes"; },
+  {
+    name = "#archlinux-security";
+    chatnet = "FreeNode";
+    autojoin = "yes";
+  },
+  {
+    name = "#gentoo-hardened";
+    chatnet = "FreeNode";
+    autojoin = "yes";
+  },
+  { name = "#x"; chatnet = "RezoSup"; autojoin = "yes"; },
+  { name = "#rust-fr"; chatnet = "Mozilla"; autojoin = "yes"; }
+);
 windows = {
   1 = { immortal = "yes"; name = "(status)"; level = "ALL"; };
   2 = { name = "hilight"; };
-  3 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#x2010";
-        tag = "RezoSup";
-      }
-    );
-  };
-  4 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#platal";
-        tag = "RezoSup";
-      }
-    );
-  };
-  5 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#x";
-        tag = "RezoSup";
-      }
-    );
-  };
-  6 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#faerix";
-        tag = "RezoSup";
-      }
-    );
-  };
-  7 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#federez";
-        tag = "RezoSup";
-      }
-    );
-  };
-  8 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#br";
-        tag = "RezoSup";
-      }
-    );
-  };
-  9 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#br-actif";
-        tag = "RezoSup";
-      }
-    );
-  };
-  10 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#br2010";
-        tag = "RezoSup";
-      }
-    );
-  };
-  11 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#frankiz";
-        tag = "RezoSup";
-      }
-    );
-  };
-  12 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#root-br";
-        tag = "RezoSup";
-      }
-    );
-  };
-  13 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#br-securite";
-        tag = "RezoSup";
-      }
-    );
-  };
-  14 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#epyx";
-        tag = "RezoSup";
-      }
-    );
-  };
-  15 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#binetrobot";
-        tag = "RezoSup";
-      }
-    );
-  };
-  16 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#xtelecom";
-        tag = "RezoSup";
-      }
-    );
-  };
-  17 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#Rezel";
-        tag = "RezoSup";
-      }
-    );
-  };
-  18 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#ragal";
-        tag = "RezoSup";
-      }
-    );
-  };
-  19 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#ccx";
-        tag = "RezoSup";
-      }
-    );
-  };
-  20 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#br-ensta";
-        tag = "RezoSup";
-      }
-    );
-  };
-  21 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#bll";
-        tag = "RezoSup";
-      }
-    );
-  };
-  22 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#poly.org";
-        tag = "FreeNode";
-      }
-    );
-  };
-  23 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#platal";
-        tag = "FreeNode";
-      }
-    );
-  };
-  24 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "&bitlbee";
-        tag = "Bitlbee";
-      }
-    );
-  };
-  23 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#archlinux";
-        tag = "FreeNode";
-      }
-    );
-  };
-  26 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#archlinux-fr";
-        tag = "FreeNode";
-      }
-    );
-  };
-  27 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#gentoo";
-        tag = "FreeNode";
-      }
-    );
-  };
-  28 = {
-    items = (
-      {
-        type = "CHANNEL";
-        chat_type = "IRC";
-        name = "#debian";
-        tag = "FreeNode";
-      }
-    );
-  };
 };
 mainwindows = { 1 = { first_line = "1"; lines = "51"; }; };
