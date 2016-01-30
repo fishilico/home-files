@@ -1,0 +1,15 @@
+<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
+  <mime-type type="text/x-selinux-cil">
+    <comment>SELinux policy CIL module</comment>
+    <glob pattern="*.cil"/>
+  </mime-type>
+  <mime-type type="text/x-selinux-fc">
+    <comment>SELinux policy file contexts</comment>
+    <glob pattern="*.fc"/>
+  </mime-type>
+  <mime-type type="text/x-selinux-te">
+    <comment>SELinux policy module</comment>
+    <glob pattern="*.if"/>
+    <glob pattern="*.te"/>
+  </mime-type>
+</mime-info>

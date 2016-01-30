@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright 2015-2016 Nicolas Iooss
+
+Licensed under the MIT license
+<LICENSE-MIT or http://opensource.org/licenses/MIT>.
+This file may not be copied, modified, or distributed
+except according to those terms.
+-->
+
+<!-- Syntax highlighting for the SELinux policy *.fc files -->
+
+<language id="selinux-fc" _name="SELinux.fc" version="2.0" _section="Sources">
+  <metadata>
+    <property name="mimetypes">text/x-selinux-fc</property>
+    <property name="globs">*.fc;file_contexts*</property>
+    <property name="line-comment-start">#</property>
+  </metadata>
+
+  <styles>
+    <style id="comment" _name="Comment" map-to="def:comment"/>
+    <style id="string" _name="String" map-to="def:string"/>
+    <style id="regexp" _name="Regular expression" map-to="def:special-char"/>
+    <style id="keyword" _name="Keyword" map-to="def:keyword"/>
+    <style id="type" _name="Data Type" map-to="def:type"/>
+    <style id="constant" _name="Constant" map-to="def:constant"/>
+    <style id="identifier" _name="Identifier" map-to="def:identifier"/>
+    <style id="number" _name="Number" map-to="def:number"/>
+    <style id="scope" _name="Scope" map-to="def:preprocessor"/>
+    <style id="m4-preproc" _name="Attribute" map-to="def:preprocessor"/>
+  </styles>
+
+  <definitions>
+    <context id="pattern-regexp" style-ref="regexp" extend-parent="false">
+      <match extended="true">
+        (?:HOME_DIR)|
+        (?:\(/\.[+*]\)\?)|
+        (?:\(\.\*/\)\?)|
+        (?:\.[+*])|
+        (?:\[\^/\][+*])|
+        (?:\([-_/0-9a-zA-Z]+\)\?)|
+        (?:[[:alnum:]]\?)|
+        (?:\[[-0-9a-zA-Z]+\][+*]?)|
+        (?:\\\.)
+      </match>
+    </context>
+
+    <context id="file-type" style-ref="keyword">
+      <match extended="true">
+        (?&lt;=\s)-[-bcdlps](?=\s)
+      </match>
+    </context>
+
+    <context id="label-none" style-ref="keyword">
+      <match extended="true">
+        (?&lt;=\s)&lt;&lt;none&gt;&gt;
+      </match>
+    </context>
+
+    <context id="label-constant" style-ref="constant">
+      <keyword>object_r</keyword>
+      <keyword>mls_systemhigh</keyword>
+      <keyword>s0</keyword>
+      <keyword>system_u</keyword>
+    </context>
+
+    <context id="m4-keywords" style-ref="m4-preproc">
+      <keyword>ifdef</keyword>
+      <keyword>gen_context</keyword>
+    </context>
+
+    <context id="line-comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
+      <start>#</start>
+      <include>
+        <context ref="def:in-line-comment"/>
+      </include>
+    </context>
+
+    <context id="m4-line-comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
+      <start>dnl</start>
+      <include>
+        <context ref="def:in-line-comment"/>
+      </include>
+    </context>
+
+    <context id="m4-single-line-string" style-ref="string" class="string">
+      <match extended="true">
+        `[^\n'`]*'
+      </match>
+    </context>
+
+    <context id="selinux-fc" class="no-spell-check">
+      <include>
+        <context ref="pattern-regexp"/>
+        <context ref="file-type"/>
+        <context ref="label-none"/>
+        <context ref="label-constant"/>
+        <context ref="m4-keywords"/>
+        <context ref="line-comment"/>
+        <context ref="m4-line-comment"/>
+        <context ref="m4-single-line-string"/>
+      </include>
+    </context>
+  </definitions>
+</language>
