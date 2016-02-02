@@ -21,6 +21,8 @@
 # THE SOFTWARE.
 #
 # Setup dumpcap capabilities to use wireshark and tshark as non-root user
+# CAP_NET_RAW and CAP_NET_ADMIN are used for network packet capture
+# CAP_DAC_OVERRIDE is used for USB packet capture
 
 # Find dumpcap
 DUMPCAP=''
@@ -44,9 +46,9 @@ if getcap "$DUMPCAP" | grep cap_net ; then
 fi
 
 # Add capabilities
-echo "Running: setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' \"$DUMPCAP\""
+echo "Running: setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip CAP_DAC_OVERRIDE+eip' \"$DUMPCAP\""
 if [ "$(id -u)" = 0 ] ; then
-    exec setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' "$DUMPCAP"
+    exec setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip CAP_DAC_OVERRIDE+eip' "$DUMPCAP"
 else
-    exec sudo setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' "$DUMPCAP"
+    exec sudo setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip CAP_DAC_OVERRIDE+eip' "$DUMPCAP"
 fi

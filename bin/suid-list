@@ -582,7 +582,9 @@ TRUSTED_CAPS_FILES = (
 
     # wireshark, https://www.wireshark.org/
     # https://code.wireshark.org/review/gitweb?p=wireshark.git;a=tree
+    # cap_dac_override is for usbmon, https://bugs.archlinux.org/task/44465
     CapsFile('/bin/dumpcap', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/dumpcap', '= cap_dac_override,cap_net_admin,cap_net_raw+eip'),
 )
 
 
