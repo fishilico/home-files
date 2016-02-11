@@ -19,20 +19,23 @@ except according to those terms.
 
   <styles>
     <style id="comment" _name="Comment" map-to="def:comment"/>
-    <style id="string" _name="String" map-to="def:string"/>
-    <style id="char" _name="Character" map-to="def:character"/>
+    <style id="escaped-character" _name="Escaped Character" map-to="def:special-char"/>
+    <style id="function" _name="Function" map-to="def:function"/>
     <style id="keyword" _name="Keyword" map-to="def:keyword"/>
+    <style id="string" _name="String" map-to="def:string"/>
     <style id="type" _name="Data Type" map-to="def:type"/>
-    <style id="constant" _name="Constant" map-to="def:constant"/>
     <style id="identifier" _name="Identifier" map-to="def:identifier"/>
-    <style id="number" _name="Number" map-to="def:number"/>
-    <style id="scope" _name="Scope" map-to="def:preprocessor"/>
-    <style id="m4-preproc" _name="Attribute" map-to="def:preprocessor"/>
   </styles>
 
   <definitions>
 
-    <context id="cil-keywords" style-ref="keyword">
+    <context id="functions" style-ref="function">
+      <keyword>block</keyword>
+      <keyword>blockabstract</keyword>
+      <keyword>macro</keyword>
+    </context>
+
+    <context id="keywords" style-ref="keyword">
       <keyword>all</keyword>
       <keyword>allow</keyword>
       <keyword>allowx</keyword>
@@ -40,8 +43,6 @@ except according to those terms.
       <keyword>any</keyword>
       <keyword>auditallow</keyword>
       <keyword>auditallowx</keyword>
-      <keyword>block</keyword>
-      <keyword>blockabstract</keyword>
       <keyword>blockinherit</keyword>
       <keyword>boolean</keyword>
       <keyword>booleanif</keyword>
@@ -88,7 +89,6 @@ except according to those terms.
       <keyword>ipaddr</keyword>
       <keyword>level</keyword>
       <keyword>levelrange</keyword>
-      <keyword>macro</keyword>
       <keyword>mls</keyword>
       <keyword>mlsconstrain</keyword>
       <keyword>mlsvalidatetrans</keyword>
@@ -165,7 +165,7 @@ except according to those terms.
       <keyword>xor</keyword>
     </context>
 
-    <context id="cil-tokens" style-ref="identifier">
+    <context id="tokens" style-ref="identifier">
       <keyword>ARG[0-9]+</keyword>
       <keyword>cil_gen_require</keyword>
       <keyword>h1</keyword>
@@ -179,6 +179,7 @@ except according to those terms.
       <keyword>r1</keyword>
       <keyword>r2</keyword>
       <keyword>r3</keyword>
+      <keyword>systemhigh</keyword>
       <keyword>systemlow</keyword>
       <keyword>t1</keyword>
       <keyword>t2</keyword>
@@ -188,7 +189,7 @@ except according to those terms.
       <keyword>u3</keyword>
     </context>
 
-    <context id="security-classes" style-ref="type">
+    <context id="classes" style-ref="type">
       <keyword>appletalk_socket</keyword>
       <keyword>association</keyword>
       <keyword>binder</keyword>
@@ -284,7 +285,7 @@ except according to those terms.
       <keyword>x_synthetic_event</keyword>
     </context>
 
-    <context id="access-vectors" style-ref="identifier">
+    <context id="permissions" style-ref="identifier">
       <keyword>acceptfrom</keyword>
       <keyword>accept</keyword>
       <keyword>access</keyword>
@@ -685,35 +686,25 @@ except according to those terms.
       </include>
     </context>
 
-    <context id="m4-argument" style-ref="constant">
-      <match extended="true">
-        \$[0-9]+
-      </match>
-    </context>
-
-    <context id="number" style-ref="number">
-      <match extended="true">
-        (?&lt;=\s|^)[0-9]+
-      </match>
-    </context>
-
-    <context id="string" style-ref="string" class="string">
-      <match extended="true">
-        "[^\\\n"]*"
-      </match>
+    <context id="string" end-at-line-end="true" style-ref="string">
+      <start>"</start>
+      <end>"</end>
+      <include>
+        <context id="escape" style-ref="escaped-character">
+        <match>\\.</match>
+        </context>
+      </include>
     </context>
 
     <context id="selinux-cil" class="no-spell-check">
       <include>
-        <context ref="cil-keywords"/>
-        <context ref="cil-tokens"/>
-        <context ref="security-classes"/>
-        <context ref="access-vectors"/>
-        <context ref="complex-access-vectors"/>
-        <context ref="line-comment"/>
-        <context ref="m4-argument"/>
-        <context ref="number"/>
+        <context ref="functions"/>
+        <context ref="keywords"/>
+        <context ref="tokens"/>
+        <context ref="classes"/>
+        <context ref="permissions"/>
         <context ref="string"/>
+        <context ref="line-comment"/>
       </include>
     </context>
   </definitions>
