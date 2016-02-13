@@ -155,7 +155,7 @@ def get_last_cap():
     try:
         with open('/proc/sys/kernel/cap_last_cap', 'r') as flastcap:
             lastcap = int(flastcap.read())
-            if lastcap < len(CAPABILITIES) - 1:
+            if lastcap > len(CAPABILITIES) - 1:
                 print("Warning: the kernel supports newer capabilities!")
             return lastcap
     except IOError:
