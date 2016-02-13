@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 # are written in a comma-separated list in parentheses before the actual type.
 BIN_SCRIPTS = {
     'asciitable': 'direct',
+    'capabilities': 'direct',
     'captive-portal': '(python3)help',
     'check-certificate': 'help',
     'colortable': 'direct',
