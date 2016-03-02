@@ -15,6 +15,7 @@
 	df = diff
 	dc = diff --cached
 	dp = !cd "${GIT_PREFIX:-.}" && git --no-pager -c color.diff=never diff
+	wdiff = diff --word-diff=color --unified=1
 	g = grep --break --heading --line-number
 
 	sup = !git submodule sync && git submodule update --init
@@ -71,6 +72,11 @@
 	# Git is not power-cut-safe by default:
 	# http://marc.info/?l=git&m=143489570403305&w=4
 	fsyncObjectFiles = yes
+# convert binary to text using pandoc, for example with DOCX files.
+# To use this, add a .gitattributes file in the project with:
+#    *.docx diff=pandoc
+[diff "pandoc"]
+	textconv = pandoc --to=markdown
 [grep]
 	lineNumber = true
 [help]
