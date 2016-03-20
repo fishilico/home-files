@@ -223,6 +223,8 @@ TRUSTED_SUID_FILES = (
     # iputils, http://www.skbuff.net/iputils/
     # http://sourceforge.net/p/iputils/code/ci/HEAD/tree/
     # These files needed SUID before using capabilities
+    SuidFile('/bin/arping'),
+    SuidFile('/bin/clockdiff'),
     SuidFile('/bin/ping', owners=('root', ), groups=('root', )),
     SuidFile('/bin/ping6', owners=('root', ), groups=('root', )),
     SuidFile('/bin/traceroute6'),
@@ -247,6 +249,11 @@ TRUSTED_SUID_FILES = (
     # lxc, https://linuxcontainers.org/
     # https://github.com/lxc/lxc
     SuidFile('/lib/lxc/lxc-user-nic'),
+
+    # man-db, http://www.nongnu.org/man-db/
+    # http://git.savannah.gnu.org/cgit/man-db.git/tree/
+    SuidFile('/bin/man', owners=('man', )),
+    SuidFile('/bin/mandb', owners=('man', )),
 
     # mtr, http://www.bitwizard.nl/mtr/
     # https://github.com/traviscross/mtr
@@ -279,6 +286,7 @@ TRUSTED_SUID_FILES = (
     # https://anongit.mindrot.org/openssh.git/tree/
     SuidFile('/bin/ssh-agent', groups=('nobody', 'ssh', )),
     SuidFile('/lib/ssh/ssh-keysign'),
+    SuidFile('/lib64/misc/ssh-keysign'),
     SuidFile('/lib(exec)?/openssh/ssh-keysign'),
     SuidFile('/lib(exec)?/openssh/ssh-keysign', groups=('ssh_keys', )),
 
@@ -411,7 +419,10 @@ TRUSTED_SGID_FILES = (
 
     # libutempter, ftp://ftp.altlinux.org/pub/people/ldv/utempter
     # http://git.altlinux.org/people/ldv/packages/?p=libutempter.git;a=tree
+    LinkToSuidFile('/sbin/utempter', '/lib64/misc/utempter/utempter',
+                   groups=('utmp', )),
     SuidFile('/lib(exec)?/utempter/utempter', groups=('utmp', )),
+    SuidFile('/lib64/misc/utempter/utempter', groups=('utmp', )),
 
     # lockdev, https://alioth.debian.org/projects/lockdev/
     # https://alioth.debian.org/plugins/scmgit/cgi-bin/gitweb.cgi?p=lockdev/lockdev.git;a=tree
@@ -660,7 +671,7 @@ def analyze_suid_file(filepath, realpath, owner, group):
         return True
     elif any(known.is_match(filepath, realpath, owner, group)
              for known in KNOWN_SUID_FILES):
-        logger.warning("known but no-so-trusted %s", desc)
+        logger.warning("known but not-so-trusted %s", desc)
         return True
 
     logger.error("unknown %s", desc)
