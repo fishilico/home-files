@@ -28,13 +28,21 @@ INSTALL_DIR="$HOME"
 cd "$(dirname -- "$0")" || exit $?
 SOURCE_DIR="$(pwd -P)"
 
+# Global variables which hold error state
+# An error happened while installing
+HAS_ERROR=false
+# A file existed and was consequently not installed
+HAS_EXISTING_FILE=false
+
+# Path to the list of files which are not overwritten
+IGNORED_FILES_PATH="$SOURCE_DIR/ignored_files"
+
 # Recursive installation
 # Second parameter if a prefix with a dot for hidden directories
 install_rec() {
     local DST_FILE FILENAME IGNPAT_REF IGNPAT_TEST SRC_FILE
     local SRC_DIR="$1"
     local DST_PREFIX="$2"
-    local RETURN_VAL=0
 
     for SRC_FILE in "$SRC_DIR"/*
     do
@@ -58,14 +66,14 @@ install_rec() {
             mkdir -pv "$DST_FILE"
             if ! [ -d "$DST_FILE" ]
             then
-                echo >&2 "[!] Error: file is not a directory ($DST_FILE)"
-                RETURN_VAL=1
+                echo >&2 "[!] Error: file is not a directory, $DST_FILE"
+                HAS_ERROR=true
             else
                 # Clean-up broken symlinks
                 # shellcheck disable=SC2039
                 find "$DST_FILE/" -maxdepth 1 -xtype l -exec rm -v {} \;
                 # Recursive call into directories
-                install_rec "$SRC_FILE" "$DST_FILE/" || RETURN_VAL=1
+                install_rec "$SRC_FILE" "$DST_FILE/"
             fi
         else
             # Build symlink
@@ -73,18 +81,21 @@ install_rec() {
             [ -e "$DST_FILE" ] || ln -svf "$SRC_FILE" "$DST_FILE"
             if ! [ -L "$DST_FILE" ]
             then
-                echo >&2 "[!] Error: file is not a symlink ($DST_FILE)"
-                RETURN_VAL=1
+                # A real file exists. Show a message if it is not ignored
+                if ! grep -F "$DST_FILE" "$IGNORED_FILES_PATH" > /dev/null 2>&1
+                then
+                    echo >&2 "[-] Warning: file exists and is not a symlink, $DST_FILE"
+                    HAS_EXISTING_FILE=true
+                fi
             elif [ "x$(readlink "$DST_FILE")" != "x$SRC_FILE" ]
             then
-                echo >&2 "[!] Error: wrong target for symlink ($DST_FILE)"
+                echo >&2 "[!] Error: wrong target for symlink $DST_FILE"
                 echo >&2 "[!]   Expected: $SRC_FILE"
                 echo >&2 "[!]   Got: $(readlink "$DST_FILE")"
-                RETURN_VAL=1
+                HAS_ERROR=true
             fi
         fi
     done
-    return $RETURN_VAL
 }
 
 # Check that the git history contains GPG-signed commits
@@ -167,8 +178,6 @@ validate_gpg_gitlog() {
     echo '[+] GPG validation of git history succeeded.'
 }
 
-RETURN_VAL=0
-
 # Validate the history
 validate_gpg_gitlog || exit $?
 
@@ -176,7 +185,7 @@ validate_gpg_gitlog || exit $?
 echo "[ ] Installing dotfiles in $INSTALL_DIR"
 # shellcheck disable=SC2039
 find "$INSTALL_DIR/" -maxdepth 1 -name '.*' -xtype l -exec rm -v {} \;
-install_rec "$SOURCE_DIR/dotfiles" "$INSTALL_DIR/." || RETURN_VAL=1
+install_rec "$SOURCE_DIR/dotfiles" "$INSTALL_DIR/."
 
 # Remove broken symlinks in bin/ and install custom programs
 BIN_INSTALL_DIR="$INSTALL_DIR/bin"
@@ -184,7 +193,16 @@ echo "[ ] Installing bin in $INSTALL_DIR"
 mkdir -pv "$BIN_INSTALL_DIR" || exit 1
 # shellcheck disable=SC2039
 find "$BIN_INSTALL_DIR/" -maxdepth 1 -xtype l -exec rm -v {} \;
-install_rec "$SOURCE_DIR/bin" "$BIN_INSTALL_DIR/" || RETURN_VAL=1
+install_rec "$SOURCE_DIR/bin" "$BIN_INSTALL_DIR/"
 unset BIN_INSTALL_DIR
 
-exit $RETURN_VAL
+# Exit with an error code according to what the script did
+if "$HAS_ERROR"
+then
+    exit 1
+elif "$HAS_EXISTING_FILE"
+then
+    echo >&2 "To remove the previous warnings, you may add the paths to" \
+        "$IGNORED_FILES_PATH"
+    exit 2
+fi

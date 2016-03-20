@@ -228,6 +228,9 @@ def test():
                 if ext in TEXT_EXT:
                     # Skip text files
                     pass
+                elif filename in ('.gitignore', 'ignored_files'):
+                    # Skip special files
+                    pass
                 elif ext == 'swp':
                     # Skip ViM swap filed
                     pass
