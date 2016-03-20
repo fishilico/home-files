@@ -38,16 +38,20 @@ HAS_EXISTING_FILE=false
 IGNORED_FILES_PATH="$SOURCE_DIR/ignored_files"
 
 # Recursive installation
-# Second parameter if a prefix with a dot for hidden directories
+# $1: full path of source file
+# $2: prefix of installation path
+# $3: corresponding prefix in /etc/skel, to be able to compare with skeleton
 install_rec() {
-    local DST_FILE FILENAME IGNPAT_REF IGNPAT_TEST SRC_FILE
+    local DST_FILE FILENAME IGNPAT_REF IGNPAT_TEST SKEL_PREFIX SRC_FILE
     local SRC_DIR="$1"
     local DST_PREFIX="$2"
+    local SKEL_PREFIX="$3"
 
     for SRC_FILE in "$SRC_DIR"/*
     do
         FILENAME="${SRC_FILE##*/}"
         DST_FILE="$DST_PREFIX$FILENAME"
+        SKEL_FILE="$SKEL_PREFIX$FILENAME"
         [ -n "$FILENAME" ] || continue
 
         # Ignore some patterns using built-in functions
@@ -73,12 +77,21 @@ install_rec() {
                 # shellcheck disable=SC2039
                 find "$DST_FILE/" -maxdepth 1 -xtype l -exec rm -v {} \;
                 # Recursive call into directories
-                install_rec "$SRC_FILE" "$DST_FILE/"
+                install_rec "$SRC_FILE" "$DST_FILE/" "$SKEL_FILE/"
             fi
         else
             # Build symlink
             # Note: if symlink is broken, [ -e ... ] returns false and this fix it
             [ -e "$DST_FILE" ] || ln -svf "$SRC_FILE" "$DST_FILE"
+
+            # If the destination is a skeleton file, replace it with a symlink
+            if ! [ -L "$DST_FILE" ] && diff "$DST_FILE" "$SKEL_FILE" > /dev/null 2>&1
+            then
+                rm -v "$DST_FILE"
+                ln -sv "$SRC_FILE" "$DST_FILE"
+            fi
+
+            # Describe the potential issues which remain
             if ! [ -L "$DST_FILE" ]
             then
                 # A real file exists. Show a message if it is not ignored
@@ -115,7 +128,8 @@ validate_gpg_gitlog() {
     if ! [ -e "$DST_FILE" ]
     then
         mkdir -pv "$INSTALL_DIR"
-        mkdir -v -m 700 "$INSTALL_DIR/.gnupg"
+        # shellcheck disable=SC2174
+        mkdir -pv -m 700 "$INSTALL_DIR/.gnupg"
         ln -svf "$SRC_FILE" "$DST_FILE"
         if ! [ -e "$DST_FILE" ]
         then
@@ -185,7 +199,7 @@ validate_gpg_gitlog || exit $?
 echo "[ ] Installing dotfiles in $INSTALL_DIR"
 # shellcheck disable=SC2039
 find "$INSTALL_DIR/" -maxdepth 1 -name '.*' -xtype l -exec rm -v {} \;
-install_rec "$SOURCE_DIR/dotfiles" "$INSTALL_DIR/."
+install_rec "$SOURCE_DIR/dotfiles" "$INSTALL_DIR/." '/etc/skel/.'
 
 # Remove broken symlinks in bin/ and install custom programs
 BIN_INSTALL_DIR="$INSTALL_DIR/bin"
@@ -193,7 +207,7 @@ echo "[ ] Installing bin in $INSTALL_DIR"
 mkdir -pv "$BIN_INSTALL_DIR" || exit 1
 # shellcheck disable=SC2039
 find "$BIN_INSTALL_DIR/" -maxdepth 1 -xtype l -exec rm -v {} \;
-install_rec "$SOURCE_DIR/bin" "$BIN_INSTALL_DIR/"
+install_rec "$SOURCE_DIR/bin" "$BIN_INSTALL_DIR/" '/etc/skel/bin'
 unset BIN_INSTALL_DIR
 
 # Exit with an error code according to what the script did
