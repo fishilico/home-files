@@ -39,6 +39,15 @@ case "$TERM" in
         exit 1
         ;;
     *)
-        echo >&2 "Unsupported terminal: $TERM"
-        exit 1
+        # Test has_status_line (cf. output of "infocmp -L xterm+sl")
+        if tput hs 2> /dev/null
+        then
+            # Use to_status_line and from_status_line
+            tput tsl
+            printf '%s' "$*"
+            tput fsl
+        else
+            echo >&2 "Unsupported terminal: $TERM"
+            exit 1
+        fi
 esac
