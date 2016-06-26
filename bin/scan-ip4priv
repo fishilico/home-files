@@ -72,6 +72,8 @@ def scan_ip4priv(range_id=None):
 
 
 def main(argv=None):
+    global NET_IF
+
     parser = argparse.ArgumentParser(
         description="Scan private address ranges of IPv4")
     parser.add_argument('-i', '--interface', type=str,
