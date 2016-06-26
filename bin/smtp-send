@@ -21,6 +21,27 @@
 # THE SOFTWARE.
 """Send a mail to a SMTP server
 
+It is possible to test this mail sender with a fake Python server
+(documentation: https://muffinresearch.co.uk/fake-smtp-server-with-python/):
+
+    $ python -m smtpd -n -c DebuggingServer localhost:2525
+
+Then, sending a message for example with:
+
+    $ printf 'From: me@localhost\nTo: you@localhost\nSubject: o<\n\nHello!\n' |
+      smtp-send -p 2525 you@localhost
+
+... results in this output in the terminal running the python debug server:
+
+    ---------- MESSAGE FOLLOWS ----------
+    From: me@localhost
+    To: you@localhost
+    Subject: o<
+    X-Peer: ::1
+
+    Hello!
+    ------------ END MESSAGE ------------
+
 @author: Nicolas Iooss
 @license: MIT
 """
@@ -92,7 +113,8 @@ def ssend(sockfile, message):
     logger.info("[-->] Send: {0}".format(message.strip()))
     if not isinstance(message, bytes):
         message = message.encode('utf-8')
-    sockfile.write(message)
+    # Replace \n with \r\n in byte string, but keep \r\n
+    sockfile.write(message.replace(b'\n', b'\r\n').replace(b'\r\r\n', b'\r\n'))
     sockfile.flush()
 
 
@@ -137,10 +159,10 @@ def main(argv=None):
             logger.fatal("Failed handshake: {0}".format(line.rstrip()))
             return 1
 
-        ssend(sfile, 'MAIL FROM:<{}>\n'.format(args.mail_from))
+        ssend(sfile, 'MAIL FROM:<{0}>\n'.format(args.mail_from))
         line = srecvline(sfile)
         if line[0] != '2':
-            logger.fatal("Rejected sender: {}".format(line.rstrip()))
+            logger.fatal("Rejected sender: {0}".format(line.rstrip()))
             return 1
 
         for recipient in args.recipients:
