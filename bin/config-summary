@@ -73,7 +73,7 @@ echo ''
 echo 'Hardware information'
 echo '--------------------'
 echo ''
-for LSCMD in lshw lscpu lspci lsusb ; do
+for LSCMD in lshw lscpu lspci lsusb hwloc-ls ; do
     if has_command "$LSCMD" ; then
         echo "* $LSCMD::"
         "$LSCMD" 2>&1 | indent_out
