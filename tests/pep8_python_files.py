@@ -40,20 +40,30 @@ def test():
     """
     # pep8 option to use lines with more than 80 characters
     maxline_option = '--max-line-length=120'
-    try:
-        pep8_helptext = subprocess.check_output(['pep8', '--help'])
-    except OSError as exc:
-        if exc.errno == errno.ENOENT:
-            print("pep8 not found, aborting test.")
-            return 2
-        raise
-    except subprocess.CalledProcessError:
-        print("pep8 on an empty stream exited with error")
-        return 1
-    else:
-        # Old versions of pep8 does not support --max-line-length
-        if b'--max-line-length' not in pep8_helptext:
-            maxline_option = '--ignore=E501'
+
+    # On Arch Linux, pep8 has been replaced by pycodestyle
+    pep8cmd = None
+    for cmd in ('pep8', 'pycodestyle'):
+        try:
+            pep8_helptext = subprocess.check_output([cmd, '--help'])
+        except OSError as exc:
+            if exc.errno == errno.ENOENT:
+                continue
+            raise
+        except subprocess.CalledProcessError:
+            print("pep8 on an empty stream exited with error")
+            return 1
+        else:
+            # Old versions of pep8 does not support --max-line-length
+            if b'--max-line-length' not in pep8_helptext:
+                maxline_option = '--ignore=E501'
+            # A command has been found
+            pep8cmd = cmd
+            break
+
+    if pep8cmd is None:
+        print("No pep8 command found, aborting test.")
+        return 2
 
     retval = 0
     basedir = os.path.join(os.path.dirname(__file__), os.path.pardir)
@@ -76,7 +86,7 @@ def test():
                 continue
 
             try:
-                subprocess.check_output(['pep8', maxline_option,
+                subprocess.check_output([pep8cmd, maxline_option,
                                          filepath])
             except subprocess.CalledProcessError as exc:
                 print(exc.output.decode('utf-8').rstrip())
