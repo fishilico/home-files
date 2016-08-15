@@ -377,6 +377,7 @@ if type alias > /dev/null 2>&1 ; then
     # /etc/fstab may contain something like this if /tmp is mounted with noexec:
     # $USER.makepkg /tmp/makepkg-$USER tmpfs defaults,auto,nodev,exec,nosuid,gid=$GID,uid=$UID,mode=0700 0 0
     alias makepkgtmp='BUILDDIR="/tmp/makepkg-$(id -nu)" makepkg'
+    alias pacaurtmp='BUILDDIR="/tmp/makepkg-$(id -nu)" pacaur'
     # Do not compress package (useful for large packages)
     alias makepkgtmptar='BUILDDIR="/tmp/makepkg-$(id -nu)" PKGEXT=.tar makepkg'
 fi
