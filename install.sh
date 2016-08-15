@@ -174,7 +174,7 @@ validate_gpg_gitlog() {
     fi
 
     # Check that the last commit is signed with the good GPG key
-    # To do this, grab the key ID which was used and find it among the subkeys
+    # To do this, grab the key ID which was used and find it using gpg
     # Use "git log" instead of "git verify-commit" (git>=2.1.0)
     KEYID="$(LANG=C git log --max-count=1 --show-signature HEAD 2>&1 | \
         sed -n 's/^gpg: Signature .* key ID \([0-9A-F]\+\)$/\1/p' | head -n1)"
@@ -183,7 +183,8 @@ validate_gpg_gitlog() {
         echo >&2 "[!] Error: unable to parse the output of 'git log --show-signature HEAD'"
         return 1
     fi
-    if ! (gpg --list-key "$KEYFP" | grep -q "^sub .*/$KEYID ")
+    KEYFP_FROMID="$(gpg --fingerprint "$KEYID" | sed -n 2p | tr -cd 0-9A-F)"
+    if [ "$KEYFP_FROMID" != "$KEYFP" ]
     then
         echo >&2 "[!] Error: the last commit has been signed with key $KEYID not in $KEYFP"
         return 1

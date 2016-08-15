@@ -72,7 +72,8 @@ else
             echo >&2 "[!] Error: unable to parse the output of 'git log --show-signature origin/master'."
             exit 1
         fi
-        if ! (gpg --list-key "$KEYFP" | grep -q "^sub .*/$KEYID ")
+        KEYFP_FROMID="$(gpg --fingerprint "$KEYID" | sed -n 2p | tr -cd 0-9A-F)"
+        if [ "$KEYFP_FROMID" != "$KEYFP" ]
         then
             echo >&2 "[!] Error: the last commit has been signed with key $KEYID not in $KEYFP."
             exit 1
