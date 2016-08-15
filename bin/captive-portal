@@ -58,6 +58,12 @@ def read_enc_settings():
     return config
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Perform HTTP requests without following HTTP redirects"""
+    def redirect_request(self, req, fp, code, msg, hdrs, newurl):
+        pass
+
+
 def handle_sfrwifi(redirurl):
     """Handle authentication to SFR Wifi hotspot"""
     print("SFR Wifi captive portal detected. Attempting authentication")
@@ -103,12 +109,29 @@ def handle_sfrwifi(redirurl):
         print("Unable to find javascript redirect in response:")
         print(repr(response))
         return False
+    newurl = matches.group(1)
 
-    print("Redirecting to {}".format(matches.group(1)))
-    urlf = urllib.request.urlopen(matches.group(1))
-    response = urlf.read().decode('utf-8', 'ignore')
-    print(response)
+    print("Redirecting to {}".format(newurl))
+    noredir_opener = urllib.request.build_opener(NoRedirect())
+    urllib.request.install_opener(noredir_opener)
+    try:
+        urlf = urllib.request.urlopen(newurl)
+    except urllib.error.HTTPError as exc:
+        # Forward the error code when it is not "HTTP Moded Temporary"
+        if exc.code != 302:
+            raise
 
+        newurl = exc.headers['Location']
+        if newurl.startswith('https://hotspot.wifi.sfr.fr/indexEncryptingChilli.php?res=success&'):
+            print("Successfully authenticated :)")
+            return True
+        if newurl.startswith('https://hotspot.wifi.sfr.fr/indexEncryptingChilli.php?res=failed&'):
+            print("Authentication failed :(")
+            return False
+        print("Redirecting to unknown URL: {}".format(newurl))
+        return False
+
+    print("The connection protocol did not end gracefully.")
     return False
 
 
