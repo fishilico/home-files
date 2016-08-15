@@ -30,6 +30,7 @@ import http.client
 import os
 import os.path
 import re
+import socket
 import subprocess
 import sys
 import urllib.parse
@@ -151,12 +152,22 @@ def main(argv=None):
         domain = domain[len('http://'):]
     domain = domain.split('/', 1)[0]
     conn = http.client.HTTPConnection(domain)
-    conn.request('HEAD', '/')
+    try:
+        # Do not use HEAD as some captive portal implementation (like iciwifi.com)
+        # forward HEAD requests
+        conn.request('GET', '/')
+    except socket.gaierror as exc:
+        # socket.getaddrinfo() failed in HTTP client
+        print("Socket error in the initial HTTP request: {} (errno {})".format(
+            exc.strerror, exc.errno))
+        return 1
     resp = conn.getresponse()
     conn.close()
 
-    # If status if OK or it is a redirect to a Google website, it's fine
-    if resp.status // 100 == 2 or '//www.google.' in resp.headers['location']:
+    # If status if OK or it is a redirect to a Google website, it's fine.
+    # When there is no location header, resp.headers['location'] is None.
+    # Make it an empty string instead.
+    if resp.status // 100 == 2 or '//www.google.' in (resp.headers['location'] or ''):
         print("The web is reachable.")
         return 0
 
