@@ -25,11 +25,91 @@
 @license: MIT
 """
 import argparse
+from configparser import ConfigParser
 import http.client
+import os
+import os.path
+import re
+import subprocess
+import sys
+import urllib.parse
+import urllib.request
 import webbrowser
 
 
 DEFAULT_DOMAIN = 'www.google.com'
+# Example of settings files (encrypted with gpg):
+# [SFRWifi]
+# username=example@sfr.fr
+# password=********
+ENC_SETTINGS = os.path.expanduser('~/.captiveportal.gpg')
+
+
+def read_enc_settings():
+    """Read the encrypted settings"""
+    print("Decrypting {}".format(ENC_SETTINGS))
+    try:
+        output = subprocess.check_output(['gpg', '-d', ENC_SETTINGS])
+    except subprocess.SubprocessError:
+        print("Decryption failed, ignoring")
+        return
+    config = ConfigParser()
+    config.read_string(output.decode('utf8', errors='ignore'))
+    return config
+
+
+def handle_sfrwifi(redirurl):
+    """Handle authentication to SFR Wifi hotspot"""
+    print("SFR Wifi captive portal detected. Attempting authentication")
+
+    urlinfos = urllib.parse.urlparse(redirurl)
+    urlqs = urllib.parse.parse_qs(urlinfos.query)
+
+    # Grab the settings
+    settings = read_enc_settings()
+    if settings is None:
+        return False
+    username = settings['SFRWifi']['username']
+    password = settings['SFRWifi']['password']
+
+    # Fill the submission form
+    form = {
+        'username': username,
+        'password': password,
+        'conditions': 1,
+        'challenge': urlqs['challenge'][0],
+        'username2': username,
+        'accessType': 'neuf',
+        'lang': 'fr',
+        'mode': urlqs['mode'][0],  # 3 by default
+        'userurl': urlqs['userurl'][0],  # 'http://www.google.com' ?
+        'uamip': urlqs['uamip'][0],  # 192.168.2.1 by default
+        'uamport': urlqs['uamport'][0],  # 3990 by default
+        'channel': urlqs['channel'][0],  # 0 by default
+        'mac': urlqs['mac'][0],
+        'connextion': 'CONNEXION',
+    }
+    qdata = urllib.parse.urlencode(form).encode('utf-8')
+
+    # Post the result
+    urlf = urllib.request.urlopen(
+        'https://hotspot.wifi.sfr.fr/nb4_crypt.php',
+        data=qdata)
+    response = urlf.read().decode('utf-8', 'ignore')
+
+    # The response should be a JS redirect
+    matches = re.search(r'window\.location = "([^"]+)"', response)
+    if matches is None:
+        print("Unable to find javascript redirect in response:")
+        print(repr(response))
+        return False
+
+    print("Redirecting to {}".format(matches.group(1)))
+    urlf = urllib.request.urlopen(matches.group(1))
+    response = urlf.read().decode('utf-8', 'ignore')
+    print(response)
+
+    return False
 
 
 def main(argv=None):
@@ -73,6 +153,10 @@ def main(argv=None):
         for key, value in resp.headers.items():
             if key.lower() != 'location':
                 print("  {}: {}".format(key, value))
+
+    if redirurl.startswith('https://hotspot.wifi.sfr.fr/indexEncryptingChilli.php'):
+        if handle_sfrwifi(redirurl):
+            return 0
 
     # Open a web browser with the redirected URL
     if not args.no_browser:
