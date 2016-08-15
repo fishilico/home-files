@@ -31,6 +31,14 @@ has_command() {
     [ -x "/usr/bin/$1" ] || which "$1" > /dev/null 2>&1
 }
 
+# If fmt is not found, replace with a simple cat
+if ! has_command fmt ; then
+    fmt() {
+        cat
+    }
+fi
+
+
 # Copy the input with adding one level of indentation in the output, and
 # blank lines before and after.
 # Optional parameter: indentation to use (4 spaces by default)
