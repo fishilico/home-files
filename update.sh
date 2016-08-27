@@ -66,7 +66,9 @@ else
 
         # Check that the last commit is signed with the good GPG key
         KEYID="$(LANG=C git log --max-count=1 --show-signature origin/master 2>&1 | \
-            sed -n 's/gpg: Signature .* key ID \([0-9A-F]\+\)/\1/p' | head -n1)"
+            sed -n -e 's/^gpg: Signature .* key ID \([0-9A-F]\+\)$/\1/p' \
+                -e 's/^gpg: *using RSA key \([0-9A-F]\+\)$/\1/p' | \
+            head -n1)"
         if [ -z "$KEYID" ]
         then
             echo >&2 "[!] Error: unable to parse the output of 'git log --show-signature origin/master'."
