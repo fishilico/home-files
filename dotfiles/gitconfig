@@ -105,3 +105,7 @@
 	pushInsteadOf = git://gist.github.com/
 [url "git://gist.github.com/"]
 	insteadOf = gist:
+
+# Arch Linux User Repository uses ssh to push commits, and https to fetch
+[url "ssh+git://aur.archlinux.org/"]
+	pushInsteadOf = https://aur.archlinux.org/
