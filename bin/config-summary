@@ -134,6 +134,12 @@ else
     echo 'no network configuration command found.'
     echo ''
 fi
+
+if has_command rfkill ; then
+    echo '* rfkill list::'
+    rfkill list 2>&1 | indent_out
+fi
+
 for ETCFILE in /etc/resolv.conf /etc/hosts ; do
     if [ -r "$ETCFILE" ] ; then
         echo "* $ETCFILE::"
