@@ -29,6 +29,7 @@ By the way, here are some commands to get a root shell on Linux systems:
 * gksu and gksudo (graphical front-ends for su and sudo)
 * pkexec sh (using root password, with policy kit)
 * machinectl shell (using root password, since systemd 225)
+* docker run --rm -v /:/host -ti busybox chroot /host
 
 @author: Nicolas Iooss
 @license: MIT
@@ -490,6 +491,11 @@ assert all(x.owners is None for x in TRUSTED_SGID_FILES)
 # administrator may decide to remove the SUID bit without breaking the entire
 # system, in order to squeeze the attack surface.
 KNOWN_SUID_FILES = (
+    # atop, http://www.atoptool.nl/
+    # http://www.atoptool.nl/downloadnetatop.php
+    SuidFile('/bin/atop'),
+    LinkToSuidFile('/bin/atopsar', '/bin/atop'),
+
     # authbind, https://www.debian-administration.org/article/386/Running_network_services_as_a_non-root_user.
     # http://www.chiark.greenend.org.uk/ucgi/~ian/git?p=authbind.git;a=tree
     SuidFile('/lib/authbind/helper'),
