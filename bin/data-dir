@@ -141,6 +141,8 @@ def main(argv=None):
                         help="remove any permission but the user-related ones")
     parser.add_argument('-n', '--dry-run', action='store_true',
                         help="only print what would be done without doing it")
+    parser.add_argument('-r', '--read-only-dir', action='store_true',
+                        help="make directories read-only")
     parser.add_argument('-w', '--keep-write', action='store_true',
                         help="keep writable files")
     parser.add_argument('directories', metavar='DIRS', nargs='*',
@@ -149,13 +151,15 @@ def main(argv=None):
 
     # Compute file and directory Unix permission flags
     fmode = stat.S_IRUSR
-    dmode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+    dmode = stat.S_IRUSR | stat.S_IXUSR
     if not args.user:
         fmode |= stat.S_IRGRP
         dmode |= stat.S_IRGRP | stat.S_IXGRP
         if not args.group:
             fmode |= stat.S_IROTH
             dmode |= stat.S_IROTH | stat.S_IXOTH
+    if not args.read_only_dir:
+        dmode |= stat.S_IWUSR
     if args.keep_write:
         fmode |= stat.S_IWUSR
 
