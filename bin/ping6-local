@@ -212,4 +212,10 @@ else
 fi
 
 shift
-exec ping6 $OPTIONS "$DEST" "$@"
+# Since iputils s20150815 ping6 has been merged into ping
+if which ping6 > /dev/null 2>&1
+then
+    exec ping6 $OPTIONS "$DEST" "$@"
+else
+    exec ping -6 $OPTIONS "$DEST" "$@"
+fi
