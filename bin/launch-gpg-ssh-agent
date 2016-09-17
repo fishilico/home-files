@@ -24,8 +24,14 @@
 
 if [ -n "$SSH_AUTH_SOCK" ]
 then
-    echo >&2 "ssh agent already exists, its socket is $SSH_AUTH_SOCK"
-    exit 1
+    if [ -e "$SSH_AUTH_SOCK" ]
+    then
+        echo >&2 "ssh agent already exists, its socket is $SSH_AUTH_SOCK"
+        exit 1
+    else
+        echo "\$SSH_AUTH_SOCK is set but does not exist: $SSH_AUTH_SOCK"
+        # continuing...
+    fi
 fi
 
 GPG_AGENT_INFO_PATH="$HOME/.cache/gpg-agent-info"
