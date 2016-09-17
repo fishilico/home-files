@@ -222,7 +222,7 @@ TRUSTED_SUID_FILES = (
     LinkToSuidFile('/bin/rnews', '/lib/news/bin/rnews', owners=('news', )),
 
     # iputils, http://www.skbuff.net/iputils/
-    # http://sourceforge.net/p/iputils/code/ci/HEAD/tree/
+    # https://github.com/iputils/iputils
     # These files needed SUID before using capabilities
     SuidFile('/bin/arping'),
     SuidFile('/bin/clockdiff'),
@@ -571,7 +571,7 @@ TRUSTED_CAPS_FILES = (
     CapsFile('/bin/rsh', '= cap_net_bind_service+ep'),
 
     # iputils, http://www.skbuff.net/iputils/
-    # http://sourceforge.net/p/iputils/code/ci/HEAD/tree/
+    # https://github.com/iputils/iputils
     CapsFile('/s?bin/arping', '= cap_net_raw+ep'),
     CapsFile('/s?bin/clockdiff', '= cap_net_raw+ep'),
     CapsFile('/bin/ping', '= cap_net_raw+ep'),
