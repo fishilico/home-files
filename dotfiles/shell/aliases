@@ -289,6 +289,12 @@ if type alias > /dev/null 2>&1 ; then
     fi
 
     # Generate DNS SSHFP records for the current host
+    # SSHFP A H HASH with:
+    #   A = 1:RSA, 2:DSA, 3:ECDSA, 4:Ed25519
+    #   H = 1:SHA-1, 2:SHA-256
+    #   HASH = 40 hex digits for SHA-1, 64 for SHA-256
+    # e.g. the content of a record of type "SSHFP 2 2" is computed by:
+    #   awk '{print $2}' /etc/ssh/ssh_host_dsa_key.pub |base64 -d |sha256sum
     alias sshfp-here='ssh-keygen -r $(hostname)'
 
     # View mails in hold queue
