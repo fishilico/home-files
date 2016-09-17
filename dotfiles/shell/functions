@@ -329,6 +329,16 @@ xwinpid() {
     xprop _NET_WM_PID | sed 's/.*= *//'
 }
 
+# Open file within a X Desktop environment (see xdg-mime command for configuration)
+xo() {
+    # By default open the current directory
+    if [ $# -eq 0 ] ; then
+        xdg-open .
+    else
+        xdg-open "$@"
+    fi
+}
+
 # Use webcam with mplayer
 mplayer_webcam() {
     mplayer tv:// -tv driver=v4l2:device=/dev/video0:width=640:height=480
