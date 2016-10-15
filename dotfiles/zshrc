@@ -45,3 +45,9 @@ export REPORTTIME='10'
 
 # chdir if typed name is a dir name, e.g ".."
 setopt AUTO_CD
+
+# Import Pew (Python Env Wrapper) shell configuration if the user uses it
+if [ -x /usr/bin/pew ] && [ -d "$HOME/.local/share/virtualenvs" ] ; then
+    # shellcheck source=/dev/null
+    source "$(/usr/bin/pew shell_config)" < /dev/null
+fi
