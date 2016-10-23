@@ -375,6 +375,8 @@ if type alias > /dev/null 2>&1 ; then
 
     # Open xterm in fullscreen
     alias xterm-full='xterm -bg black -fg white -fullscreen'
+    # Open xterm with black-on-white colors
+    alias xterm-bow='xterm -fg black -bg white'
 
     # Make Arch Linux package with a temporary directory
     # /etc/fstab may contain something like this if /tmp is mounted with noexec:
