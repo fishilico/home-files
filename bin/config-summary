@@ -128,6 +128,8 @@ elif has_command ipconfig && has_command route ; then
     # Windows
     echo '* ipconfig::'
     ipconfig 2>&1 | indent_out
+    echo '* ipconfig /all::'
+    ipconfig /all 2>&1 | indent_out
     echo '* route print::'
     route print 2>&1 | indent_out
 else
@@ -330,6 +332,18 @@ done
 if has_command apt-config ; then
     echo '* apt-config dump::'
     apt-config dump 2>&1 | indent_out
+fi
+
+# Windows-specific information
+if has_command net.exe ; then
+    echo '* net user::'
+    net.exe user 2>&1 | indent_out
+    echo '* net view::'
+    net.exe view 2>&1 | indent_out
+    echo '* net view /domain::'
+    net.exe view /domain 2>&1 | indent_out
+    echo '* net start::'
+    net.exe start 2>&1 | indent_out
 fi
 
 echo ''
