@@ -246,11 +246,16 @@ echo '* sysctl::'
 for SYSCTLFILE in \
     /proc/sys/kernel/core_pattern \
     /proc/sys/kernel/dmesg_restrict \
+    /proc/sys/kernel/domainname \
+    /proc/sys/kernel/hostname \
     /proc/sys/kernel/kptr_restrict \
     /proc/sys/kernel/modprobe \
     /proc/sys/kernel/modules_disabled \
+    /proc/sys/kernel/osrelease \
+    /proc/sys/kernel/ostype \
     /proc/sys/kernel/panic_on_oops \
     /proc/sys/kernel/panic \
+    /proc/sys/kernel/perf_event_paranoid \
     /proc/sys/kernel/printk \
     /proc/sys/kernel/randomize_va_space \
     /proc/sys/kernel/sysrq \
