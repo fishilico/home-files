@@ -177,8 +177,8 @@ validate_gpg_gitlog() {
     # To do this, grab the key ID which was used and find it using gpg
     # Use "git log" instead of "git verify-commit" (git>=2.1.0)
     KEYID="$(LANG=C git log --max-count=1 --show-signature HEAD 2>&1 | \
-        sed -n -e 's/^gpg: Signature .* key ID \([0-9A-F]\+\)$/\1/p' \
-            -e 's/^gpg: *using RSA key \([0-9A-F]\+\)$/\1/p' | \
+        sed -n -e 's/^gpg: Signature .* key ID \([x0-9A-F]\+\)$/\1/p' \
+            -e 's/^gpg: *using RSA key \([x0-9A-F]\+\)$/\1/p' | \
         head -n1)"
     if [ -z "$KEYID" ]
     then
