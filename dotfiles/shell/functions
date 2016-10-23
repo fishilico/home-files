@@ -34,6 +34,7 @@ cl() {
 }
 
 # Find broken symlinks
+# shellcheck disable=SC2185
 if find --help 2> /dev/null |grep -q -- -xtype ; then
     find_broken() {
         find "$@" -xtype l -print

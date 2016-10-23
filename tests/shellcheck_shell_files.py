@@ -34,10 +34,11 @@ import subprocess
 # Warnings excluded for every file
 SHELLCHECK_EXCLUDED_WARNS = (
     'SC1091',  # Never follow external sources
-    'SC2018',  # Use '[:lower:]' to support accents and foreign alphabets.
-    'SC2019',  # Use '[:upper:]' to support accents and foreign alphabets.
+    'SC2018',  # Use '[:lower:]' to support accents and foreign alphabets
+    'SC2019',  # Use '[:upper:]' to support accents and foreign alphabets
     'SC2039',  # Use "local" in /bin/sh scripts
     'SC2086',  # Some scripts use the fact that expanded variables change newline to space
+    'SC2181',  # Use 'if [ $? = 0 ]' to check the exit code of a subcommand
 )
 
 # Warnings excluded for specific files
