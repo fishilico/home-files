@@ -73,7 +73,7 @@ BIN_SCRIPTS = {
     'list-https-ciphers': 'never',
     'list-ipc': 'direct',
     'lsofdel': '(lsof)direct',
-    'luksfile': 'never',
+    'luksfile': 'args[-h]',
     'musickbd': 'never',
     'nft-dump': '(nft)direct',
     'ntpd-stats': '(ntpdc)direct',

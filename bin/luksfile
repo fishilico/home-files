@@ -35,6 +35,57 @@
 #     $USER ALL=(root) NOPASSWD: /usr/bin/cryptsetup luksClose /dev/mapper/*
 #     $USER ALL=(root) NOPASSWD: /usr/bin/umount /dev/mapper/luksfile_*
 
+DO_KEEPASS=false
+DO_MOUNT=false
+DO_UMOUNT=false
+DO_XDGOPEN=true
+
+while getopts ':hkmuX' OPT
+do
+    case "$OPT" in
+        h)
+            echo "Usage: $0 [OPTIONS] [FILE [MOUNTPOINT]]"
+            echo "mount/umount LUKS-encrypted file volumes"
+            echo ""
+            echo "Options:"
+            echo "  -h      display this help and exit"
+            echo "  -k      run keepass while the volume is mounted"
+            echo "  -m      mount, do nothing if it is already mounted"
+            echo "  -u      umount, do nothing if it is not mounted"
+            echo "  -X      do not run xdg-open after mounting"
+            exit
+            ;;
+        k)
+            DO_KEEPASS=true
+            DO_XDGOPEN=false
+            ;;
+        m)
+            DO_MOUNT=true
+            ;;
+        u)
+            DO_UMOUNT=true
+            ;;
+        X)
+            DO_XDGOPEN=false
+            ;;
+        \?)
+            echo >&2 "$0: invalid option '$OPTARG'"
+            echo >&2 "Try '$0 -h' for more information."
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+if "$DO_MOUNT" && "$DO_UMOUNT"
+then
+    echo >&2 "$0: conflicting options -m and -u"
+    exit 1
+fi
+if "$DO_KEEPASS" && "$DO_UMOUNT"
+then
+    echo >&2 "$0: conflicting options -k and -u"
+    exit 1
+fi
 
 # Ensure that loop module is loaded
 if [ ! -d /sys/module/loop ]
@@ -57,6 +108,22 @@ find_loopdev() {
     losetup --associated "$1" | sed -n 's/^\([^:]\+\): \[[0-9]*\]:.*/\1/p' | head -n1
 }
 
+# Ask the user to umount a LUKS file
+ask_umount() {
+    printf %s "Do you want to dismount $1 ? [yN] "
+    while read -r C < /dev/tty
+    do
+        case "$C" in
+            [yY])
+                return 0
+                ;;
+            ""|[nN])
+                return 1
+                ;;
+        esac
+    done
+}
+
 luksfile_file() {
     local C LUKS_FILE DEVMAP_BLOCK DEVMAP_PATH MOUNTPOINT
     LUKS_FILE="$1"
@@ -70,38 +137,39 @@ luksfile_file() {
         MOUNTPOINT="$2"
     fi
 
+    # Configure the mapper device
     if [ -b "$DEVMAP_PATH" ]
     then
-        # The file was already mounted
-        printf %s "Do you want to dismount $LUKS_FILE ? [yN] "
-        while read -r C < /dev/tty
-        do
-            case "$C" in
-              [yY])
+        # The file was already mounted, ask to umount it
+        if "$DO_MOUNT"
+        then
+            echo "$LUKS_FILE is already decrypted."
+        elif "$DO_UMOUNT" || ask_umount "$LUKS_FILE"
+        then
+            if grep -q "$DEVMAP_PATH" /proc/self/mountinfo
+            then
+                umount "$DEVMAP_PATH" || sudo_v umount "$DEVMAP_PATH" || exit $?
                 if grep -q "$DEVMAP_PATH" /proc/self/mountinfo
                 then
-                    umount "$DEVMAP_PATH" || sudo_v umount "$DEVMAP_PATH" || exit $?
-                    if grep -q "$DEVMAP_PATH" /proc/self/mountinfo
-                    then
-                        echo >&2 "Error: $DEVMAP_PATH still in /proc/self/mountinfo"
-                        exit 1
-                    fi
-                fi
-                sudo_v cryptsetup luksClose "$DEVMAP_PATH" || exit $?
-                LODEV="$(find_loopdev "$LUKS_FILE")"
-                if [ -z "$LODEV" ]
-                then
-                    echo >&2 "Error: $LUKS_FILE is not associated with any loop device"
+                    echo >&2 "Error: $DEVMAP_PATH still in /proc/self/mountinfo"
                     exit 1
                 fi
-                sudo_v losetup -d "$LODEV" || exit $?
-                exit 0
-                ;;
-              ""|[nN])
-                break
-                ;;
-            esac
-        done
+            fi
+            sudo_v cryptsetup luksClose "$DEVMAP_PATH" || exit $?
+            LODEV="$(find_loopdev "$LUKS_FILE")"
+            if [ -z "$LODEV" ]
+            then
+                echo >&2 "Error: $LUKS_FILE is not associated with any loop device"
+                exit 1
+            fi
+            sudo_v losetup -d "$LODEV" || exit $?
+            return
+        fi
+    elif "$DO_UMOUNT"
+    then
+        # The device mapper does not exist, nothing to do.
+        echo "$LUKS_FILE is not mounted, doing nothing."
+        return
     else
         # Mount the encrypted file, via a loop device
         LODEV="$(find_loopdev "$LUKS_FILE")"
@@ -119,6 +187,7 @@ luksfile_file() {
         sleep .5
     fi
 
+    # Mount the device
     if ! grep -q "$DEVMAP_PATH" /proc/self/mountinfo
     then
         # The device has not been automatically mounted
@@ -136,16 +205,30 @@ luksfile_file() {
             echo "$DEVMAP_PATH $MOUNTPOINT auto defaults,user,nodev,noexec,nosuid,noauto 0 0"
             return
         fi
+    fi
+    if "$DO_XDGOPEN" && which xdg-open > /dev/null 2>&1
+    then
         # Wait a little for the mount to be proceeded through the notification system
         sleep .1
-    fi
-    if which xdg-open > /dev/null 2>&1
-    then
         echo "Opening $MOUNTPOINT"
         xdg-open "$MOUNTPOINT"
     fi
-}
 
+    # Run keepass on the first mount
+    if "$DO_KEEPASS"
+    then
+        keepass
+        # Do not umount if -m has been specified
+        if "$DO_MOUNT"
+        then
+            echo "Keeping $LUKS_FILE mounted."
+        else
+            DO_UMOUNT=true
+            luksfile_file "$LUKS_FILE" "$MOUNTPOINT"
+        fi
+        exit
+    fi
+}
 
 if [ $# -ge 1 ]
 then
