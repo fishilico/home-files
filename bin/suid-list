@@ -324,7 +324,7 @@ TRUSTED_SUID_FILES = (
     LinkToSuidFile('/bin/screen', '/bin/screen-[0-9.]+'),
 
     # shadow, http://pkg-shadow.alioth.debian.org/
-    # http://anonscm.debian.org/cgit/pkg-shadow/shadow.git/tree/
+    # https://github.com/shadow-maint/shadow
     SuidFile('/bin/chage'),
     SuidFile('/bin/chage', groups=('shadow', )),
     SuidFile('/bin/chfn'),  # also provided by util-linux
