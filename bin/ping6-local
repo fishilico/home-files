@@ -22,6 +22,12 @@
 #
 # Issue a ping6 command on a local target
 # This local target can be given by IPv6 link-local, MAC or IPv4 address
+#
+# For information, to do a broadcast ping, the following commands are useful:
+#   ping -I $IFACE -b 255.255.255.255
+#   ping -I $IFACE -b \
+#     $(ip -4 -o addr show dev wlp2s0 |sed -n 's/.* brd \([0-9.]\+\) .*/\1/p')
+#   ping ff02::1%$IFACE
 
 # Convert something to an IPv6 link-local address, whenever possible
 param_to_ip6ll() {
