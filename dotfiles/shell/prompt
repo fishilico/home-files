@@ -26,6 +26,15 @@
 # Arch default: '[\u@\h \W]\$ '
 # Busybox sh: $
 
+# Virtual environments (Python virtualenv, pew...)
+if [ -n "$VIRTUAL_ENV" ] ; then
+    BASH_PROMPT='\[\e[1;34m\]('"${VIRTUAL_ENV##*/}"')\[\e[m\]'
+    ZSH_PROMPT='%B%F{blue}('"${VIRTUAL_ENV##*/}"')%f%b'
+else
+    BASH_PROMPT=""
+    ZSH_PROMPT=""
+fi
+
 # Color rules:
 # * local root: bold red hostname
 # * remote root: bold red hostname with @
@@ -35,15 +44,15 @@
 # * magenta/purple for working directory
 if [ "$(id -u)" -eq 0 ] ; then
     if [ -z "$SSH_CLIENT" ]; then
-        BASH_PROMPT='\[\e[1;31m\]\h\[\e[m\]'
-        ZSH_PROMPT='%B%F{red}%m%f%b'
+        BASH_PROMPT="$BASH_PROMPT"'\[\e[1;31m\]\h\[\e[m\]'
+        ZSH_PROMPT="$ZSH_PROMPT"'%B%F{red}%m%f%b'
     else
-        BASH_PROMPT='\[\e[1;31m\]@\h\[\e[m\]'
-        ZSH_PROMPT='%B%F{red}@%m%f%b'
+        BASH_PROMPT="$BASH_PROMPT"'\[\e[1;31m\]@\h\[\e[m\]'
+        ZSH_PROMPT="$ZSH_PROMPT"'%B%F{red}@%m%f%b'
     fi
 else
-    BASH_PROMPT='\[\e[33m\]\u\[\e[m\]@'
-    ZSH_PROMPT='%F{yellow}%n%f@'
+    BASH_PROMPT="$BASH_PROMPT"'\[\e[33m\]\u\[\e[m\]@'
+    ZSH_PROMPT="$ZSH_PROMPT"'%F{yellow}%n%f@'
 
     if [ -z "$SSH_CLIENT" ]; then
         BASH_PROMPT="$BASH_PROMPT"'\[\e[32m\]\h\[\e[m\]'
