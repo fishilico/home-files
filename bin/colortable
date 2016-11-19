@@ -67,6 +67,7 @@ def build_colors256():
     colors += [0x010101 * i for i in range(8, 239, 10)]
     return colors
 
+
 COLORS256_RGB = build_colors256()
 assert len(COLORS256_RGB) == 256
 

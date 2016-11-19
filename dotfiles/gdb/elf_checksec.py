@@ -143,4 +143,5 @@ class ElfCheckSec(gdb.Command):
         else:
             self.checksec(self.get_filename())
 
+
 ElfCheckSec()

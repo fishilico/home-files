@@ -64,4 +64,5 @@ class ProcMap(gdb.Command):
                 raise gdb.GdbError("No current inferior.")
             self.show(pid)
 
+
 ProcMap()

@@ -285,5 +285,6 @@ def main(argv=None):
             os.system('man 2 "{0}"'.format(name))
     return 0
 
+
 if __name__ == '__main__':
     sys.exit(main())
