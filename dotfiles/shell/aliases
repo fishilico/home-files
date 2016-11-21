@@ -196,6 +196,8 @@ if type alias > /dev/null 2>&1 ; then
     alias openssl-csr='openssl req -noout -text -in'
     # View a x509 certificate
     alias openssl-crt='openssl x509 -noout -text -in'
+    # View a binary (not base64-encoded) x509 certificate (DER format)
+    alias openssl-der='openssl x509 -noout -text -inform DER -in'
     # View a PKCS#12 file (.pfx or .p12)
     alias openssl-p12='openssl pkcs12 -info -in'
     # View a RSA private key file
