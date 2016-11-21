@@ -97,8 +97,11 @@ def clean_data_dir(basedir, fmode, dmode, dry_run=False):
         for dirname in dirnames:
             path = os.path.join(dirpath, dirname)
 
-            # Fix directory mode
+            # Skip symlinks and fix directory mode
             mode = os.lstat(path).st_mode
+            if stat.S_ISLNK(mode):
+                assert stat.S_IMODE(mode) == 0o777
+                continue
             assert stat.S_ISDIR(mode)
             mode = stat.S_IMODE(mode)
             if mode != dmode:
