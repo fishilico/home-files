@@ -275,6 +275,16 @@ if type alias > /dev/null 2>&1 ; then
     }
 fi
 
+# Pretty-print some filetypes
+pretty_json() {
+    # Use json_pp from perl
+    cat "$@" | json_pp
+}
+pretty_xml() {
+    # Use xmllint from libxml2
+    cat "$@" | xmllint --format -
+}
+
 # Convert decimal to hexadecimal and vice-versa
 dechex() {
     (echo 'obase=16' ; print_args_or_stdin "$@") | bc -q | tr 'A-F' 'a-f'
