@@ -114,3 +114,20 @@ export GCC_COLORS=1
 
 # Set man section search order in a "developer-friendly" way
 export MANSECT='2:3:1:8:0:5:4:6:7:9:n:l'
+
+# Warn about dangerous environment
+if [ -s /etc/ld.so.preload ] ; then
+    (tput bold && tput setaf 1) 2> /dev/null
+    echo >&2 'Warning: /etc/ld.so.preload is present on this system!'
+    tput sgr0 2> /dev/null
+fi
+if [ -n "$LD_PRELOAD" ] ; then
+    (tput bold && tput setaf 1) 2> /dev/null
+    echo >&2 'Warning: LD_PRELOAD is set!'
+    tput sgr0 2> /dev/null
+fi
+if [ -n "$LD_LIBRARY_PATH" ] ; then
+    (tput bold && tput setaf 1) 2> /dev/null
+    echo >&2 'Warning: LD_LIBRARY_PATH is set!'
+    tput sgr0 2> /dev/null
+fi
