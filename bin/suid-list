@@ -564,6 +564,10 @@ TRUSTED_CAPS_FILES = (
     # https://git.gnome.org/browse/gnome-keyring/tree/
     CapsFile('/bin/gnome-keyring-daemon', '= cap_ipc_lock+ep'),
 
+    # gstreamer, https://gstreamer.freedesktop.org/
+    # https://cgit.freedesktop.org/gstreamer/gstreamer/tree/
+    CapsFile('/lib/gstreamer-1.0/gst-ptp-helper', '= cap_net_bind_service,cap_net_admin+ep'),
+
     # inetutils, http://www.gnu.org/software/inetutils/
     # http://git.savannah.gnu.org/cgit/inetutils.git/tree/
     CapsFile('/bin/rcp', '= cap_net_bind_service+ep'),
