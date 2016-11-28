@@ -518,6 +518,10 @@ KNOWN_SUID_FILES = (
     SuidFile('/s?bin/netreport', groups=('root', )),
     SuidFile('/s?bin/usernetctl'),
 
+    # kismet, https://www.kismetwireless.net/
+    # https://www.kismetwireless.net/gitweb/?p=kismet.git;a=tree
+    SuidFile('/bin/kismet_capture'),
+
     # krb5, http://web.mit.edu/kerberos/
     SuidFile('/bin/ksu'),
 
