@@ -12,6 +12,9 @@
 *.dll
 *.dylib
 *.exe
+*.gcda
+*.gcno
+*.gcov
 *.ko
 *.la
 *.lo
