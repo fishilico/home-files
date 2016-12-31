@@ -35,16 +35,22 @@ if type alias > /dev/null 2>&1 ; then
     alias cp='cp -iv'
     alias mv='mv -iv'
     # Only show changes, if available
-    if chmod --help 2>&1 |grep -q '^\s*-c' ; then
-        alias chmod='chmod -c'
-    else
-        alias chmod='chmod -v'
-    fi
-    if chown --help 2>&1 |grep -q '^\s*-c' ; then
-        alias chown='chown -c'
-    else
-        alias chown='chown -v'
-    fi
+    case $(chmod --help 2>&1) in
+        -c*|*\ -c*|*$(printf '\t')-c*)
+            alias chmod='chmod -c'
+            ;;
+        *)
+            alias chmod='chmod -v'
+            ;;
+    esac
+    case $(chown --help 2>&1) in
+        -c*|*\ -c*|*$(printf '\t')-c*)
+            alias chown='chown -c'
+            ;;
+        *)
+            alias chown='chown -v'
+            ;;
+    esac
 
     # Make "strings" never treat files as objects (much secure)
     alias strings='strings -a'
@@ -72,22 +78,36 @@ if type alias > /dev/null 2>&1 ; then
     alias :wq='echo "Hey! Thats ${SHELL##*/} and *not* VI(M)!"'
 
     # List files, using available ls options
-    # CFh = columns, classify, human
-    LS_PARAMS='-CFh'
-    # Option: escape non printable chars (not in busybox ash)
-    if ls --help 2>&1 |grep -q -- --escape ; then
-        LS_PARAMS="$LS_PARAMS --escape"
-    fi
-    # Option: use colors
-    if ls --help 2>&1 |grep -q -- --color ; then
-        LS_PARAMS="$LS_PARAMS --color=always"
+    get_ls_parameters() {
+        local LINE COLOR_OPT ESCAPE_OPT TIMESTYLE_OPT
+        # CFh = columns, classify, human
+        printf ' -CFh'
+        # shellcheck disable=SC2012
+        ls --help 2>&1 | (
+            COLOR_OPT=
+            ESCAPE_OPT=
+            TIMESTYLE_OPT=
+            while IFS= read -r LINE ; do
+                case "$LINE" in
+                    *--color*)
+                        COLOR_OPT=' --color=always'
+                        ;;
+                    *--escape*)
+                        ESCAPE_OPT=' --escape'
+                        ;;
+                    *--time-style*)
+                        # the backslashed values get replaced by printf
+                        TIMESTYLE_OPT=' --time-style="+\033[0;35m%%Y-%%m-%%d %%H:%%M\033[0m"'
+                        ;;
+                esac
+            done
+            # shellcheck disable=SC2059
+            printf "$COLOR_OPT$ESCAPE_OPT$TIMESTYLE_OPT"
+        )
+    }
 
-        if ls --help 2>&1 |grep -q -- --time-style ; then
-            LS_PARAMS="$LS_PARAMS --time-style="$(printf '"+\033[0;35m%%Y-%%m-%%d %%H:%%M\033[0m"')
-        fi
-    fi
     # shellcheck disable=SC2139
-    alias ls="ls $LS_PARAMS"
+    alias ls="ls$(get_ls_parameters)"
     alias l='ls'
     alias la='ls -A'
     alias ll='ls -l'
@@ -155,20 +175,31 @@ if type alias > /dev/null 2>&1 ; then
     # Options for grep: highlight results and exclude backup files
     # Do not use GREP_OPTIONS so that directly invoking grep does not enable
     # these options (for example with lgrep alias).
-    GREP_PARAMS=''
-    if grep --help 2> /dev/null |grep -q -- --color ; then
-        GREP_PARAMS="$GREP_PARAMS --color=always"
-    fi
-    if grep --help 2> /dev/null |grep -q -- --exclude ; then
-        GREP_PARAMS="$GREP_PARAMS --exclude='*~'"
-    fi
-    if grep --help 2> /dev/null |grep -q -- --exclude-dir ; then
-        GREP_PARAMS="$GREP_PARAMS --exclude-dir=.git --exclude-dir=.svn"
-    fi
-    if [ -n "$GREP_PARAMS" ] ; then
-        # shellcheck disable=SC2139
-        alias grep="grep$GREP_PARAMS"
-    fi
+    get_grep_parameters() {
+        local LINE COLOR_OPT EXCLUDE_DIR_OPT EXCLUDE_OPT
+        grep --help 2> /dev/null | (
+            COLOR_OPT=
+            EXCLUDE_DIR_OPT=
+            EXCLUDE_OPT=
+            while IFS= read -r LINE ; do
+                case "$LINE" in
+                    *--color*)
+                        COLOR_OPT=' --color=always'
+                        ;;
+                    *--exclude-dir*)
+                        EXCLUDE_DIR_OPT=' --exclude-dir=.git --exclude-dir=.svn'
+                        ;;
+                    *--exclude*)
+                        EXCLUDE_OPT=" --exclude='*~'"
+                        ;;
+                esac
+            done
+            # shellcheck disable=SC2059
+            printf "$COLOR_OPT$EXCLUDE_DIR_OPT$EXCLUDE_OPT"
+        )
+    }
+    # shellcheck disable=SC2139
+    alias grep="grep$(get_grep_parameters)"
 
     # Find non-ascii characters
     alias grep-noasc="LANG=C grep -P '[\x80-\xFF]'"
@@ -178,15 +209,17 @@ if type alias > /dev/null 2>&1 ; then
 
     # Line-buffered grep, useful when selecting output of tail -F
     # Don't use colored output for lgrep
-    if grep --help 2> /dev/null |grep -q -- --line-buffered ; then
-        if [ -x /usr/bin/grep ] ; then
-            alias lgrep='/usr/bin/grep --line-buffered'
-        elif [ -x /bin/grep ] ; then
-            alias lgrep='/bin/grep --line-buffered'
-        else
-            alias lgrep='\grep --line-buffered'
-        fi
-    fi
+    case $(grep --help 2> /dev/null) in
+        *--line-buffered*)
+            if [ -x /usr/bin/grep ] ; then
+                alias lgrep='/usr/bin/grep --line-buffered'
+            elif [ -x /bin/grep ] ; then
+                alias lgrep='/bin/grep --line-buffered'
+            else
+                alias lgrep='\grep --line-buffered'
+            fi
+            ;;
+    esac
 
     # Show 3 months by default with cal
     alias cal='cal -3'
@@ -236,12 +269,15 @@ if type alias > /dev/null 2>&1 ; then
 
     # Colored dmesg
     # "sdmesg" (= sudo dmesg) is needed with /proc/sys/kernel/dmesg_restrict
-    if dmesg --help 2> /dev/null |grep -q -- --color ; then
-        alias dmesg='dmesg --color'
-        alias sdmesg='sudo dmesg --color'
-    else
-        alias sdmesg='sudo dmesg'
-    fi
+    case $(dmesg --help 2> /dev/null) in
+        *--color*)
+            alias dmesg='dmesg --color'
+            alias sdmesg='sudo dmesg --color'
+            ;;
+        *)
+            alias sdmesg='sudo dmesg'
+            ;;
+    esac
 
     # Continued dmesg, if "dmesg -w" is not avalaible
     alias dmesg-w='watch -n 1 dmesg \| tail -n \$\(\(\$\(tput lines\)-2\)\)'
