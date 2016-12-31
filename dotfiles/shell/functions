@@ -35,16 +35,19 @@ cl() {
 
 # Find broken symlinks
 # shellcheck disable=SC2185
-if find --help 2> /dev/null |grep -q -- -xtype ; then
-    find_broken() {
-        find "$@" -xtype l -print
-    }
-else
-    find_broken() {
-        # shellcheck disable=SC2039
-        find "$@" -type l ! -exec test -e {} \; -print
-    }
-fi
+case $(find --help 2> /dev/null) in
+    *-xtype*)
+        find_broken() {
+            find "$@" -xtype l -print
+        }
+        ;;
+    *)
+        find_broken() {
+            # shellcheck disable=SC2039
+            find "$@" -type l ! -exec test -e {} \; -print
+        }
+        ;;
+esac
 
 # Find empty directories
 find_empty() {
@@ -194,28 +197,30 @@ postless() {
 }
 
 # Highlight a pattern, if grep accept colors
-if grep --help 2> /dev/null |grep -q -- --color ; then
-    if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ] ; then
-        # Modern shells support array substitution
-        hl() {
-            \grep -E --color=always -e '' "${@/#/-e}"
-        }
-    else
-        # Same function, with a temporary file
-        hl() {
-            local FILE
-            FILE="$(mktemp)"
-            # shellcheck disable=SC2064
-            trap "/bin/rm -f \"$FILE\"" EXIT HUP INT QUIT TERM
-            while [ $# -ge 1 ] ; do
-                echo "$1" >> "$FILE"
-                shift
-            done
-            \grep -E --color=always -e '' -f "$FILE"
-            /bin/rm "$FILE"
-        }
-    fi
-fi
+case $(grep --help 2> /dev/null) in
+    *--color*)
+        if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ] ; then
+            # Modern shells support array substitution
+            hl() {
+                \grep -E --color=always -e '' "${@/#/-e}"
+            }
+        else
+            # Same function, with a temporary file
+            hl() {
+                local FILE
+                FILE="$(mktemp)"
+                # shellcheck disable=SC2064
+                trap "/bin/rm -f \"$FILE\"" EXIT HUP INT QUIT TERM
+                while [ $# -ge 1 ] ; do
+                    echo "$1" >> "$FILE"
+                    shift
+                done
+                \grep -E --color=always -e '' -f "$FILE"
+                /bin/rm "$FILE"
+            }
+        fi
+        ;;
+esac
 
 # Escape control characters when cat'ing binary streams to a TTY
 # Automaticaly add -v (for --show-nonprinting) to cat parameters.
