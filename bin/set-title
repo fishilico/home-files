@@ -23,7 +23,7 @@
 # Set the title of the current terminal
 
 case "$TERM" in
-    linux*)
+    linux*|vt100)
         # Linux console does not have any title
         ;;
     xterm*|rxvt*)
