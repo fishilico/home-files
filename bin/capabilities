@@ -31,7 +31,9 @@ See also:
 """
 import argparse
 import errno
+import math
 import re
+import sys
 
 
 CAPABILITY_PATH = (
@@ -186,7 +188,11 @@ def main(argv=None):
     last_cap = get_last_cap()
 
     # Find potential new capabilities which are enabled
-    cap_count = max(cap.bit_length() for cap in caps.values())
+    if sys.version_info >= (2, 7):
+        cap_count = max(cap.bit_length() for cap in caps.values())
+    else:
+        print(caps.values())
+        cap_count = max(1 + int(math.log(cap, 2)) if cap else 0 for cap in caps.values())
     for i in range(len(CAPABILITIES), cap_count):
         CAPABILITIES.append(str(i))
 
@@ -207,7 +213,7 @@ def main(argv=None):
     print(line_format.format('', '', capsets, 'description'))
     for icap, name in enumerate(CAPABILITIES):
         capmask = 1 << icap
-        desc = '{:#18x}'.format(capmask)
+        desc = '{0:#18x}'.format(capmask)
 
         # Colors:
         # * bold green of active caps,
