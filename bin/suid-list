@@ -196,6 +196,7 @@ TRUSTED_SUID_FILES = (
     # chromium, http://www.chromium.org/Home
     # https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master
     SuidFile('/lib/chromium/chrome-sandbox'),
+    SuidFile('/opt/google/chrome/chrome-sandbox'),
 
     # cronie, https://fedorahosted.org/cronie/
     # https://git.fedorahosted.org/git/cronie.git
@@ -250,6 +251,7 @@ TRUSTED_SUID_FILES = (
     # lxc, https://linuxcontainers.org/
     # https://github.com/lxc/lxc
     SuidFile('/lib/lxc/lxc-user-nic'),
+    SuidFile('/lib/[a-zA-Z0-9_]+-linux-gnu/lxc/lxc-user-nic'),
 
     # man-db, http://www.nongnu.org/man-db/
     # http://git.savannah.gnu.org/cgit/man-db.git/tree/
@@ -353,7 +355,7 @@ TRUSTED_SUID_FILES = (
     # https://git.kernel.org/cgit/utils/util-linux/util-linux.git/tree/
     SuidFile('/bin/mount'),
     SuidFile('/bin/umount'),
-    SuidFile('/s?bin/uuidd', owners=('libuuid', )),
+    SuidFile('/s?bin/uuidd', owners=('libuuid', ), groups=('libuuid', )),
     SuidFile('/bin/wall', groups=('tty', )),
     SuidFile('/bin/write', groups=('tty', )),
 
@@ -475,6 +477,10 @@ TRUSTED_SGID_FILES = (
     SuidFile('/bin/urxvtd', groups=('utmp', )),
     LinkToSuidFile('/etc/alternatives/rxvt', '/bin/urxvt',
                    groups=('utmp', )),
+
+    # uw-imap, https://www.washington.edu/imap/
+    # https://anonscm.debian.org/cgit/collab-maint/uw-imap.git/tree/
+    SuidFile('/bin/mlock', groups=('mail', )),
 
     # vte, https://developer.gnome.org/vte/
     # https://github.com/GNOME/vte
