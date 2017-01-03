@@ -163,7 +163,7 @@ class LinkToCapsFile(object):
 # These programs are usually installed on regular systems.
 # For each project, an URL to the project is given with an URL to online file
 # tree, is available.
-TRUSTED_SUID_FILES = (
+TRUSTED_SUID_FILES = [
     # abrt-addon-ccpp, https://abrt.readthedocs.org/en/latest/
     # https://github.com/abrt/abrt
     SuidFile('/libexec/abrt-action-install-debuginfo-to-abrt-cache',
@@ -390,12 +390,12 @@ TRUSTED_SUID_FILES = (
     SuidFile('/bin/X', owners=('root', ), groups=('root', )),
     SuidFile('/bin/Xorg'),
     SuidFile('/lib/xorg-server/Xorg.wrap'),
-)
+]
 
 # Define here known and fully trusted SGID programs.
 # Every project that can have both SUID and SGID programs is in the previous
 # list.  Here are only projects with SGID files
-TRUSTED_SGID_FILES = (
+TRUSTED_SGID_FILES = [
     # bsdmainutils, https://packages.debian.org/sid/bsdmainutils
     # https://anonscm.debian.org/cgit/bsdmainutils/bsdmainutils.git/tree/
     SuidFile('/bin/bsd-write', groups=('tty', )),
@@ -494,7 +494,7 @@ TRUSTED_SGID_FILES = (
     SuidFile('/lib/libvte-[-.0-9]+/gnome-pty-helper', groups=('utmp', )),
     SuidFile('/lib/libvte9/gnome-pty-helper', groups=('utmp', )),
     SuidFile('/lib64/vte/gnome-pty-helper', groups=('utmp', )),
-)
+]
 # Sanity check
 assert all(x.owners is None for x in TRUSTED_SGID_FILES)
 
@@ -502,7 +502,7 @@ assert all(x.owners is None for x in TRUSTED_SGID_FILES)
 # These programs can be installed by packages but a careful system
 # administrator may decide to remove the SUID bit without breaking the entire
 # system, in order to squeeze the attack surface.
-KNOWN_SUID_FILES = (
+KNOWN_SUID_FILES = [
     # atop, http://www.atoptool.nl/
     # http://www.atoptool.nl/downloadnetatop.php
     SuidFile('/bin/atop'),
@@ -565,12 +565,12 @@ KNOWN_SUID_FILES = (
     # usermode, https://fedorahosted.org/usermode/
     # https://fedorahosted.org/usermode/browser
     SuidFile('/s?bin/userhelper'),
-)
+]
 
 # Define similar things for files with capabilities
 # The text description of capabilities is explained in cap_to_text manpage.
 # The leading "=" indicates that is the capabilities are first reset.
-TRUSTED_CAPS_FILES = (
+TRUSTED_CAPS_FILES = [
     # fping, http://www.fping.org/
     # https://github.com/schweikert/fping
     CapsFile('/bin/fping', '= cap_net_raw+ep'),
@@ -626,7 +626,26 @@ TRUSTED_CAPS_FILES = (
     # cap_dac_override is for usbmon, https://bugs.archlinux.org/task/44465
     CapsFile('/bin/dumpcap', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/dumpcap', '= cap_dac_override,cap_net_admin,cap_net_raw+eip'),
-)
+]
+
+
+if sys.platform == 'darwin':
+    # Add OSX suid files
+    TRUSTED_SUID_FILES += [
+        SuidFile('/bin/atq'),
+        SuidFile('/bin/atrm'),
+        SuidFile('/bin/batch'),
+        SuidFile('/bin/login'),
+        SuidFile('/bin/ps'),
+        SuidFile('/bin/quota'),
+        SuidFile('/bin/top'),
+        SuidFile('/sbin/traceroute'),
+        SuidFile('/sbin/traceroute6'),
+    ]
+    TRUSTED_SGID_FILES += [
+        SuidFile('/sbin/postdrop', groups=('_postdrop', )),
+        SuidFile('/sbin/postqueue', groups=('_postdrop', )),
+    ]
 
 
 # Load the libcap library to read file capabilities
