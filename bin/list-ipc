@@ -115,17 +115,17 @@ def list_shm():
             shmid = libc.shmctl(i, SHM_STAT, ctypes.pointer(shmseg))
         except OSError as exc:
             if exc.errno == errno.EACCES:
-                print("   SHM {:d}: access denied".format(i))
+                print("   SHM {0:d}: access denied".format(i))
                 continue
             elif exc.errno == errno.EINVAL:
-                print("   SHM {:d}: currently unused".format(i))
+                print("   SHM {0:d}: currently unused".format(i))
                 continue
             raise
         status = 'd' if shmseg.shm_perm.mode & SHM_DEST else '-'
         status += 'l' if shmseg.shm_perm.mode & SHM_LOCKED else '-'
         status += 'h' if shmseg.shm_perm.mode & SHM_HUGETLB else '-'
         status += 'n' if shmseg.shm_perm.mode & SHM_NORESERVE else '-'
-        print("{:10d} 0x{:08x} {:5d}:{:<5d} {:5d}:{:<5d} {:3o} {} {:10d} {:4d} {:5d} {:5d}".format(
+        print("{0:10d} 0x{1:08x} {2:5d}:{3:<5d} {4:5d}:{5:<5d} {6:3o} {7} {8:10d} {9:4d} {10:5d} {11:5d}".format(
             shmid, shmseg.shm_perm.key,
             shmseg.shm_perm.uid, shmseg.shm_perm.gid,
             shmseg.shm_perm.cuid, shmseg.shm_perm.cgid,
@@ -148,13 +148,13 @@ def list_sem():
             semid = libc.semctl(i, 0, SEM_STAT, ctypes.pointer(semary))
         except OSError as exc:
             if exc.errno == errno.EACCES:
-                print("   SEM {:d}: access denied".format(i))
+                print("   SEM {0:d}: access denied".format(i))
                 continue
             elif exc.errno == errno.EINVAL:
-                print("   SEM {:d}: currently unused".format(i))
+                print("   SEM {0:d}: currently unused".format(i))
                 continue
             raise
-        print("{:10d} 0x{:08x} {:5d}:{:<5d} {:5d}:{:<5d} {:3o} {:5d}".format(
+        print("{0:10d} 0x{1:08x} {2:5d}:{3:<5d} {4:5d}:{5:<5d} {6:3o} {7:5d}".format(
             semid, semary.sem_perm.key,
             semary.sem_perm.uid, semary.sem_perm.gid,
             semary.sem_perm.cuid, semary.sem_perm.cgid,
