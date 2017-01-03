@@ -89,7 +89,7 @@ class HexValue(object):
             # Prepend with a 0 if the length of the hexadecimal string is odd
             if len(hexval) % 2:
                 hexval = '0' + hexval
-            self.value = binascii.unhexlify(hexval)
+            self.value = binascii.unhexlify(hexval.encode('ascii'))
         except ValueError:
             raise ValueError("invalid hexadecimal number {0}".format(hexval))
 
