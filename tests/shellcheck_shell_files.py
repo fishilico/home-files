@@ -29,6 +29,7 @@ import os
 import os.path
 import re
 import subprocess
+import sys
 
 
 # Warnings excluded for every file
@@ -77,6 +78,11 @@ def test():
         1 on failure
         2 if shellcheck is not installed
     """
+    # subprocess.check_output() has been introduced in Python 2.7
+    if sys.version_info < (2, 7):
+        print("Python version too old, skipping test.")
+        return 2
+
     try:
         subprocess.check_output(['shellcheck', '--version'])
     except OSError as exc:
@@ -123,5 +129,4 @@ def test():
 
 
 if __name__ == '__main__':
-    import sys
     sys.exit(test())
