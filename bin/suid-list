@@ -235,6 +235,12 @@ TRUSTED_SUID_FILES = (
     LinkToSuidFile('/bin/traceroute6', '/bin/traceroute6.iputils'),
     LinkToSuidFile('/etc/alternatives/traceroute6', '/bin/traceroute6.iputils'),
 
+    # kdelibs, https://www.kde.org/
+    # https://cgit.kde.org/kdelibs.git/tree/?h=KDE/4.14
+    SuidFile('/lib/kde4/libexec/fileshareset'),
+    LinkToSuidFile('/lib/kde4/libexec/filesharelist', '/lib/kde4/libexec/fileshareset'),
+    SuidFile('/lib/kde4/libexec/start_kdeinit'),
+
     # lldpd, https://vincentbernat.github.io/lldpd/
     # https://github.com/vincentbernat/lldpd
     SuidFile('/s?bin/lldpcli', owners=('_lldpd', )),
@@ -408,8 +414,8 @@ TRUSTED_SGID_FILES = (
              groups=('mail', )),
 
     # kde-runtime, https://www.kde.org/
-    # https://projects.kde.org/projects/frameworks/kdesu/repository
-    SuidFile('/lib/kde4/libexec/kdesud', groups=('nogroup', )),
+    # https://cgit.kde.org/kdesu.git/tree/
+    SuidFile('/lib/kde4/libexec/kdesud', groups=('nobody', 'nogroup', )),
 
     # libcgroup, http://libcg.sourceforge.net
     # http://sourceforge.net/p/libcg/libcg/ci/master/tree/
@@ -605,6 +611,10 @@ TRUSTED_CAPS_FILES = (
                    '/lib/nagios/plugins/check_icmp', '= cap_net_raw+ep'),
     LinkToCapsFile('/lib/nagios/plugins/check_rta_multi',
                    '/lib/nagios/plugins/check_icmp', '= cap_net_raw+ep'),
+
+    # mtr, http://www.bitwizard.nl/mtr/
+    # https://github.com/traviscross/mtr
+    CapsFile('/bin/mtr', '= cap_net_raw+ep'),
 
     # systemd, http://www.freedesktop.org/wiki/Software/systemd/
     # https://github.com/systemd/systemd
