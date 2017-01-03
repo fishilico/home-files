@@ -57,3 +57,11 @@ Some commands
 
 .. image:: https://travis-ci.org/fishilico/home-files.png?branch=master
   :target: https://travis-ci.org/fishilico/home-files
+
+`Circle-CI`_ status
+-------------------
+
+.. _Circle-CI: https://circleci.com/
+
+.. image:: https://circleci.com/gh/fishilico/home-files.png?style=shield
+  :target: https://circleci.com/gh/fishilico/home-files

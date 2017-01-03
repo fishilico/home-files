@@ -1,0 +1,34 @@
+# Configuration file for https://circleci.com/
+
+machine:
+  python:
+    version: 3.5-dev
+
+dependencies:
+  cache_directories:
+    - "~/.cabal"
+  pre:
+    - sudo apt-get update -qq
+    - sudo apt-get install -qq ash busybox cabal-install pep8 zsh
+
+    # Install shellcheck, using cabal cache
+    - test -x "$HOME/.cabal/bin/shellcheck" || (cabal update && cabal install shellcheck)
+    - ln -s "$HOME/.cabal/bin/shellcheck" "$HOME/bin/shellcheck"
+    - shellcheck --version
+
+    # Fix crontab group (it is sgid with syslog instead of crontab group)
+    - ls -l /usr/bin/crontab && sudo chgrp crontab /usr/bin/crontab && sudo chmod -c g+s /usr/bin/crontab
+
+test:
+  override:
+    # Run automated tests
+    - ./run_tests.sh
+    # Install the files after removing conflicting local files
+    - rm -f ~/.bash_profile ~/.bash_logout ~/.bashrc ~/.gitconfig ~/.gnupg/gpg.conf ~/.profile ~/.zshrc
+    - ./install.sh
+    # Test updating branch master of the project
+    - git remote set-branches origin master
+    - git fetch origin
+    - ./update.sh
+    # Finish with a dump of the configuration
+    - bin/config-summary
