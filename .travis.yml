@@ -1,10 +1,39 @@
 # Use http://lint.travis-ci.org/ to check the syntax of this file
 
 language: python
-python:
-  - "2.7"
-  - "3.3"
-  - "3.4"
+
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      python: "3.5"
+    - os: linux
+      dist: trusty
+      python: "3.4"
+    - os: linux
+      dist: trusty
+      python: "3.3"
+    - os: linux
+      dist: trusty
+      python: "3.2"
+    - os: linux
+      dist: trusty
+      python: "2.7"
+    - os: linux
+      dist: trusty
+      python: "2.6"
+    - os: linux
+      dist: precise
+      python: "3.5"
+    - os: linux
+      dist: precise
+      python: "2.7"
+    - os: osx
+      language: generic
+
+  # OS X test still fails
+  allow_failures:
+    - os: osx
 
 sudo: false
 
@@ -16,6 +45,7 @@ addons:
     - cabal-install
     - ghc
     - python-pip
+    - tcpdump
     - zsh
 
 cache:
@@ -23,11 +53,26 @@ cache:
     - $HOME/.cabal
     - $HOME/.cache/pip
 
+before_install:
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+    brew update && brew install gnupg python3 shellcheck ;
+    fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+    virtualenv "$HOME/venv" -p python3 && source "$HOME/venv/bin/activate";
+    fi
+
 install:
-# Install shellcheck, using Travis' cache
-  - test -x "$HOME/.cabal/bin/shellcheck" || (cabal update && cabal install 'transformers<0.5' shellcheck)
-  - PATH="$HOME/.cabal/bin:$PATH"
-  - shellcheck --version
+# Install shellcheck, using Travis' cache, but not on Precise as it is buggy
+  - if [ "$TRAVIS_OS_NAME" = "linux" ] &&
+    ! grep -q 'VERSION=.*Precise Pangolin' /etc/os-release &&
+    ! test -x "$HOME/.cabal/bin/shellcheck"; then
+    cabal update && cabal install shellcheck ;
+    fi
+# Show shellcheck version if it comes from the cache
+  - if test -x "$HOME/.cabal/bin/shellcheck"; then
+    PATH="$HOME/.cabal/bin:$PATH" ;
+    shellcheck --version ;
+    fi
 # Install pep8 for the current version of Python
   - pip install pep8
   - pep8 --version
@@ -36,7 +81,7 @@ script:
 # Run automated tests
   - ./run_tests.sh
 # Install the files after removing conflicting local files
-  - rm -f ~/.bash_logout ~/.bashrc ~/.gitconfig ~/.gnupg/gpg.conf ~/.profile ~/.zshrc
+  - rm -f ~/.bash_profile ~/.bash_logout ~/.bashrc ~/.gitconfig ~/.gnupg/gpg.conf ~/.profile ~/.zshrc
   - ./install.sh
 # Test updating branch master of the project
   - git remote set-branches origin master
@@ -44,6 +89,8 @@ script:
   - test "$TRAVIS_BRANCH" = "master" || git checkout origin/master -b master
   - git checkout "$TRAVIS_BRANCH"
   - ./update.sh
+# Finish with a dump of the configuration
+  - bin/config-summary
 
 notifications:
   email: false
