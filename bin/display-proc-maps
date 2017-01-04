@@ -21,7 +21,8 @@
 # THE SOFTWARE.
 """Display the memory mapping of some processes
 
-This displays similar information as "pmap" tool from procps-ng.
+This displays similar information as "pmap" tool from procps-ng and "vmmap" on
+OS X
 
 @author: Nicolas Iooss
 @license: MIT

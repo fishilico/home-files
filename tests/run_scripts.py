@@ -44,20 +44,20 @@ logger = logging.getLogger(__name__)
 # are written in a comma-separated list in parentheses before the actual type.
 BIN_SCRIPTS = {
     'asciitable': 'direct',
-    'capabilities': 'direct',
+    'capabilities': '(/proc)direct',
     'captive-portal': '(python3)help',
     'check-certificate': 'help',
     'colortable': 'direct',
-    'compile-netbpf': '(tcpdump)direct',
+    'compile-netbpf': '(tcpdump,/proc)direct',
     'config-summary': 'direct',
     'crc32': 'args[Hello, world!]',
     'data-dir': 'help',
     'dconf-dump': '(dconf)direct',
     'debian-purge-packages': 'never',
     'denastify-ssh': 'args[-h]',
-    'detect-distro': 'direct',
+    'detect-distro': '(/usr/include/linux)direct',
     'disable-net-services': 'never',
-    'display-proc-maps': 'direct',
+    'display-proc-maps': '(/proc)direct',
     'docker-purge': 'never',
     'dump-arch': 'direct',
     'dxrandr': 'never',
@@ -88,7 +88,7 @@ BIN_SCRIPTS = {
     'setup-dumpcap': 'never',
     'smtp-send': 'help',
     'suid-list': 'args[-p]',
-    'syscall': 'args[-l]',
+    'syscall': '(/usr/include/asm|/usr/include/linux|/usr/src/linux)args[-l]',
     'systemd-analyze-plot': 'never',
     'tab2space': 'never',
     'update-packages': 'never',
@@ -108,7 +108,12 @@ class CheckError(Exception):
 
 
 def is_installed(program):
-    """Check whether the specified program is accessible in the PATH"""
+    """Check whether the specified program is accessible in the PATH
+
+    If program is an absolute PATH, check that is path exists
+    """
+    if program.startswith('/'):
+        return os.path.exists(program)
     for pathdir in os.environ.get('PATH', '').split(os.pathsep):
         if os.path.exists(os.path.join(pathdir, program)):
             return True
