@@ -351,6 +351,18 @@ if has_command net.exe ; then
     net.exe start 2>&1 | indent_out
 fi
 
+# OS X-specific information
+if has_command sw_vers ; then
+    echo '* sw_vers::'
+    sw_vers 2>&1 | indent_out
+fi
+if has_command brew ; then
+    echo '* brew --repository::'
+    brew --repository 2>&1 | indent_out
+    echo '* brew config::'
+    brew config 2>&1 | indent_out
+fi
+
 echo ''
 echo 'Keys information'
 echo '----------------'
