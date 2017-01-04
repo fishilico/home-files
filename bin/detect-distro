@@ -23,7 +23,11 @@
 # Detect which Linux distribution is running
 
 # Only Linux is supported
-[ "$(uname -s)" = "Linux" ] || exit
+if [ "$(uname -s)" != "Linux" ]
+then
+    echo >&2 "Only Linux is supported by this script, not $(uname -s)."
+    exit 1
+fi
 
 # Use LSB release
 LSB_ID=$(lsb_release --id --short 2> /dev/null)
