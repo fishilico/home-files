@@ -403,6 +403,11 @@ if [ -x /usr/bin/which ] ; then
         whichpkg() {
             /usr/bin/which "$@" | xargs qfile
         }
+    elif [ -x /usr/local/bin/brew ] ; then
+        # Mac OS X files are symlinks to /usr/local/Cellar/PKGNAME/...
+        whichpkg() {
+            /usr/bin/which "$@" | xargs realpath
+        }
     elif [ -x /bin/rpm ] ||  [ -x /usr/bin/rpm ] ; then
         # Redhat
         whichpkg() {

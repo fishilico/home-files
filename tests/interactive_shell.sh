@@ -151,6 +151,9 @@ if [ $? = 0 ] ; then
         # Gentoo
         sys-apps/grep\ \(/bin/grep\))
             ;;
+        # Mac OS X
+        /usr/bin/grep)
+            ;;
         # Redhat
         grep-*$(uname -m))
             ;;
