@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 # Some programs requires other commands to exist, in which case these commands
 # are written in a comma-separated list in parentheses before the actual type.
 BIN_SCRIPTS = {
+    'afl-sysctl-config': 'never',
     'asciitable': 'direct',
     'capabilities': '(/proc)direct',
     'captive-portal': '(python3)help',
