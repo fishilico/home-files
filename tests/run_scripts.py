@@ -72,7 +72,7 @@ BIN_SCRIPTS = {
     'iptables-stats': '(iptables,ip6tables)direct',
     'launch-gpg-ssh-agent': 'never',
     'list-https-ciphers': 'never',
-    'list-ipc': 'direct',
+    'list-ipc': '(/proc)direct',
     'lsofdel': '(lsof)direct',
     'luksfile': 'args[-h]',
     'musickbd': 'never',
