@@ -99,6 +99,8 @@ install_rec() {
                 then
                     echo >&2 "[-] Warning: file exists and is not a symlink, $DST_FILE"
                     HAS_EXISTING_FILE=true
+                else
+                    echo "[ ] ... Ignoring existing file $DST_FILE"
                 fi
             elif [ "x$(readlink "$DST_FILE")" != "x$SRC_FILE" ]
             then
