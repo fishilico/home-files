@@ -348,6 +348,10 @@ TRUSTED_SUID_FILES = [
     LinkToSuidFile('/bin/sg', '/bin/newgrp'),
     SuidFile('/bin/su'),  # also provided by util-linux
 
+    # snappy (snap-confine), http://snapcraft.io/
+    # https://github.com/snapcore/snapd
+    SuidFile('/bin/ubuntu-core-launcher'),
+
     # spice-gtk3, http://spice-space.org
     SuidFile('/bin/spice-client-glib-usb-acl-helper'),
 
@@ -432,6 +436,7 @@ TRUSTED_SGID_FILES = [
                    groups=('utmp', )),
     SuidFile('/lib(exec)?/utempter/utempter', groups=('utmp', )),
     SuidFile('/lib64/misc/utempter/utempter', groups=('utmp', )),
+    SuidFile('/lib/[a-zA-Z0-9_]+-linux-gnu/utempter/utempter', groups=('utmp', )),
 
     # lockdev, https://alioth.debian.org/projects/lockdev/
     # https://alioth.debian.org/plugins/scmgit/cgi-bin/gitweb.cgi?p=lockdev/lockdev.git;a=tree
@@ -583,6 +588,8 @@ TRUSTED_CAPS_FILES = [
     # gstreamer, https://gstreamer.freedesktop.org/
     # https://cgit.freedesktop.org/gstreamer/gstreamer/tree/
     CapsFile('/lib/gstreamer-1.0/gst-ptp-helper', '= cap_net_bind_service,cap_net_admin+ep'),
+    CapsFile('/lib/[a-zA-Z0-9_]+-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-ptp-helper',
+             '= cap_net_bind_service,cap_net_admin+ep'),
 
     # inetutils, http://www.gnu.org/software/inetutils/
     # http://git.savannah.gnu.org/cgit/inetutils.git/tree/
@@ -601,6 +608,10 @@ TRUSTED_CAPS_FILES = [
     LinkToCapsFile('/sbin/ping6', '/bin/ping6',
                    '= cap_net_admin,cap_net_raw+ep'),
     CapsFile('/bin/traceroute6.iputils', '= cap_net_raw+ep'),
+    LinkToCapsFile('/bin/traceroute6', '/bin/traceroute6.iputils',
+                   '= cap_net_raw+ep'),
+    LinkToCapsFile('/etc/alternatives/traceroute6', '/bin/traceroute6.iputils',
+                   '= cap_net_raw+ep'),
 
     # monitoring-plugins, https://www.monitoring-plugins.org/
     # https://github.com/monitoring-plugins/monitoring-plugins
