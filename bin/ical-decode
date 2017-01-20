@@ -1,0 +1,177 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2017 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Decode the content of an icalendar file
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+import argparse
+import base64
+import datetime
+import sys
+
+try:
+    import icalendar
+except ImportError:
+    sys.stderr.write('Error: icalendar module is not installed\n')
+    icalendar = None
+
+
+def stringify(value):
+    """Convert an object value to a string"""
+    if hasattr(value, 'strip'):
+        # String
+        return value.strip()
+    if hasattr(value, 'dt'):
+        # datetime or timedelta
+        if isinstance(value.dt, datetime.datetime):
+            return value.dt.strftime('%Y-%m-%d %H:%M:%S')
+        if isinstance(value.dt, datetime.timedelta):
+            if value.dt < datetime.timedelta(0):
+                return '-' + str(-value.dt)
+            return str(value.dt)
+    # Integer or other type
+    return str(value)
+
+
+def ical_show_raw(data, verbose=False):
+    """Display iCalendar binary data in a human-readable way"""
+    cal = icalendar.cal.Calendar.from_ical(data)
+    for event in cal.walk('VEVENT'):
+        # Grab known properties
+        known_properties = (
+            'SUMMARY',
+            'DTSTART',
+            'DTEND',
+            'STATUS',
+            'LOCATION',
+            'ORGANIZER',
+            'DESCRIPTION',
+            'ATTENDEE',
+        )
+        properties = {}
+        for key, value in event.items():
+            if key in ('DTSTART', 'DTEND'):
+                if key not in properties:
+                    properties[key] = value.dt
+                else:
+                    print("Warning: multiple definitions of {0}".format(key))
+            elif key in known_properties or verbose:
+                if key not in properties:
+                    properties[key] = []
+                if isinstance(value, list):
+                    for valueitem in value:
+                        properties[key].append(stringify(valueitem))
+                else:
+                    properties[key].append(stringify(value))
+
+        start_date = end_date = '?'
+        start_time = end_time = '?'
+        if 'DTSTART' in properties:
+            start_date = properties['DTSTART'].strftime('%Y-%m-%d (%a %e %b)')
+            start_time = properties['DTSTART'].strftime('%H:%M:%S')
+        if 'DTEND' in properties:
+            end_date = properties['DTEND'].strftime('%Y-%m-%d (%a %e %b)')
+            end_time = properties['DTEND'].strftime('%H:%M:%S')
+
+        if start_time.endswith(':00') and end_time.endswith(':00'):
+            # Remove seconds from times if they are not useful
+            start_time = start_time[:-3]
+            end_time = end_time[:-3]
+
+        if start_date == end_date:
+            date = '{0} {1} - {2}'.format(start_date, start_time, end_time)
+        else:
+            date = '{0} {1} - {2} {3}'.format(
+                start_date, start_time, end_date, end_time)
+
+        summ = '?'
+        if 'SUMMARY' in properties:
+            summ = '    '.join(properties['SUMMARY'])
+        print("**** {0} ****".format(summ))
+        print("  Date: {0}".format(date))
+        for key in ('STATUS', 'LOCATION', 'ORGANIZER', 'DESCRIPTION'):
+            if key in properties:
+                text = '\n    '.join(properties[key]).strip()
+                if text:
+                    key = key[:1] + key[1:].lower()
+                    print("  {0}: {1}".format(key, text))
+        if 'ATTENDEE' in properties:
+            print("  Attendees:")
+            for attendee in properties['ATTENDEE']:
+                print("    {0}".format(attendee))
+
+        if verbose:
+            print("")
+            for key in sorted(properties.keys()):
+                if key not in known_properties:
+                    value = properties[key]
+                    text = '\n    '.join(properties[key]).strip()
+                    if text:
+                        key = key[:1] + key[1:].lower()
+                        print("  {0}: {1}".format(key, text))
+            for comp in event.subcomponents:
+                print("  [{0}]".format(comp.name))
+                for key in sorted(comp.keys()):
+                    text = stringify(comp[key])
+                    if text:
+                        key = key[:1] + key[1:].lower()
+                        print("    {0}: {1}".format(key, text))
+
+
+def ical_show_b64(data, is_base64=False, verbose=False):
+    """Decode iCalendar data which is possibly Base64-encoded"""
+    if is_base64:
+        data = base64.b64decode(data)
+    ical_show_raw(data, verbose)
+
+
+def main(argv=None):
+    """Program entry point"""
+    parser = argparse.ArgumentParser(
+        description="Decode the content of an icalendar file")
+    parser.add_argument('files', nargs='*',
+                        help="iCalendar files (default: standard input)")
+    parser.add_argument('-b', '--base64', action='store_true',
+                        help="The input files are Base64-encoded")
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help="Be more verbose in the outputed values")
+    args = parser.parse_args(argv)
+
+    # Allow using --help without icalendar module
+    if icalendar is None:
+        return 1
+
+    if args.files:
+        for filename in args.files:
+            with open(filename, 'rb') as icalfd:
+                print("{0}:".format(filename))
+                ical_show_b64(icalfd.read(), args.base64, args.verbose)
+    else:
+        stdin = sys.stdin.buffer if sys.version_info >= (3, ) else sys.stdin
+        ical_data = stdin.read()
+        ical_show_b64(ical_data, args.base64, args.verbose)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

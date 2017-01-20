@@ -69,6 +69,7 @@ BIN_SCRIPTS = {
     'get-power-rights': '(dbus-send|gdbus)direct',
     'git-single-fixup': 'args[-h]',
     'gsettings-dump': '(gsettings)direct',
+    'ical-decode': 'help',
     'iptables-rev': 'args[-A INPUT -j DROP]',
     'iptables-stats': '(iptables,ip6tables)direct',
     'launch-gpg-ssh-agent': 'never',
