@@ -517,6 +517,16 @@ KNOWN_SUID_FILES = [
     # http://www.chiark.greenend.org.uk/ucgi/~ian/git?p=authbind.git;a=tree
     SuidFile('/lib/authbind/helper'),
 
+    # cdrtools, http://cdrtools.sourceforge.net/private/cdrecord.html
+    # https://sourceforge.net/projects/cdrtools/files/alpha/
+    SuidFile('/bin/cdda2wav'),
+    SuidFile('/bin/cdrecord'),
+    LinkToSuidFile('/bin/icedax', '/bin/cdda2wav'),
+    SuidFile('/bin/readcd'),
+    LinkToSuidFile('/bin/readom', '/bin/readcd'),
+    SuidFile('/bin/rscsi'),
+    LinkToSuidFile('/bin/wodim', '/bin/cdrecord'),
+
     # cifs-utils, https://wiki.samba.org/index.php/LinuxCIFS_utils
     # https://git.samba.org/?p=cifs-utils.git;a=tree
     SuidFile('/bin/mount.cifs', owners=('root', ), groups=('root', )),
