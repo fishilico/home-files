@@ -75,7 +75,7 @@ BIN_SCRIPTS = {
     'launch-gpg-ssh-agent': 'never',
     'list-https-ciphers': 'never',
     'list-ipc': '(/proc)direct',
-    'list-namespaces': '(python3,/proc)direct',
+    'list-namespaces': '(/proc)direct',
     'lsofdel': '(lsof)direct',
     'luksfile': 'args[-h]',
     'musickbd': 'never',

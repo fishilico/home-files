@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright (c) 2017 Nicolas Iooss
 #
@@ -33,6 +33,7 @@ The currently active namespaces can also be seen with command lsns.
 @license: MIT
 """
 import argparse
+import errno
 import os
 import pwd
 import re
@@ -84,9 +85,10 @@ def gather_namespaces():
         procpath = '/proc/' + pidname
         try:
             uid = os.lstat(procpath).st_uid
-        except FileNotFoundError:
-            # The process disapeared between the initial listdir and now
-            continue
+        except OSError as exc:
+            if exc.errno == errno.ENOENT:
+                # The process disappeared between the initial listdir and now
+                continue
 
         # Read process command
         with open(procpath + '/comm', 'rb') as fcomm:
@@ -111,19 +113,19 @@ def gather_namespaces():
                 nspath = procpath + '/' + namespace
                 try:
                     link = os.readlink(nspath)
-                except FileNotFoundError:
+                except OSError as exc:
                     # Zombie processes only have PID and user namespaces
-                    continue
-                except PermissionError:
-                    continue
+                    if exc.errno in (errno.EACCES, errno.EPERM, errno.ENOENT):
+                        continue
                 match = re.match(r'([a-z]+):\[([0-9]+)\]$', link)
                 if match is None or match.group(1) != namespace:
                     sys.stderr.write("Invalid namespace link: {0} -> {1}\n"
                                      .format(nspath, link))
                     continue
                 namespaces[namespace] = int(match.group(2))
-        except PermissionError:
-            continue
+        except OSError as exc:
+            if exc.errno in (errno.EACCES, errno.EPERM):
+                continue
 
         result[pid] = {
             'uid': uid,
