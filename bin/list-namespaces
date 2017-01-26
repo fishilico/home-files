@@ -1,0 +1,313 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Copyright (c) 2017 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""List all namespaces for all processes
+
+Output information similar to this ps command, but with some tweaks which are
+specific to the running system (eg. it removes empty columns/unsupported
+namespaces, show namespaces with pretty names instead of inode numbers, etc.)
+
+    ps -eo user,pid,ppid,ipcns,mntns,netns,pidns,userns,utsns,comm
+
+The currently active namespaces can also be seen with command lsns.
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+import argparse
+import os
+import pwd
+import re
+import sys
+
+# Use memoization on Python >=3.2
+if sys.version_info >= (3, 2):
+    from functools import lru_cache
+else:
+    def lru_cache():
+        return lambda f: f
+
+
+# Gather initial namespace inode numbers from Linux source
+# (include/linux/proc_ns.h)
+KERNEL_INIT_INODES = {
+    0xefffffff: 'ipc',  # PROC_IPC_INIT_INO
+    0xeffffffe: 'uts',  # PROC_UTS_INIT_INO
+    0xeffffffd: 'user',  # PROC_USER_INIT_INO
+    0xeffffffc: 'pid',  # PROC_PID_INIT_INO
+    0xeffffffb: 'cgroup',  # PROC_CGROUP_INIT_INO
+    0xf0000000: 'mnt',  # PROC_DYNAMIC_FIRST
+}
+
+
+def gather_namespaces():
+    """Gather information about namespaces in /proc
+
+    Return a dictionary with the following structure:
+    * PID:
+        + 'uid': user ID
+        + 'ppid': parent process PID
+        + 'command': process command
+        + 'ns':
+            + 'ipc': IPC namespace
+            + 'mnt': mount namespace
+            + 'net': network namespace
+            + 'pid': process namespace
+            + 'user': user namespace
+            + 'uts': UTS namespace (hostname)
+    """
+    result = {}
+    for pidname in os.listdir('/proc'):
+        if not re.match(r'[0-9]+$', pidname):
+            continue
+        pid = int(pidname)
+
+        # Get process UID from stat
+        procpath = '/proc/' + pidname
+        try:
+            uid = os.lstat(procpath).st_uid
+        except FileNotFoundError:
+            # The process disapeared between the initial listdir and now
+            continue
+
+        # Read process command
+        with open(procpath + '/comm', 'rb') as fcomm:
+            command = fcomm.read()
+            if command[-1:] == b'\n':
+                command = command[:-1]
+
+        # Read PPID
+        ppid = 0
+        with open(procpath + '/status', 'r') as fstatus:
+            for line in fstatus:
+                matches = re.match(r'PPid:\s*([0-9]+)', line)
+                if matches is not None:
+                    ppid = int(matches.group(1))
+                    break
+
+        # Read all namespaces
+        procpath += '/ns'
+        namespaces = {}
+        try:
+            for namespace in os.listdir(procpath):
+                nspath = procpath + '/' + namespace
+                try:
+                    link = os.readlink(nspath)
+                except FileNotFoundError:
+                    # Zombie processes only have PID and user namespaces
+                    continue
+                except PermissionError:
+                    continue
+                match = re.match(r'([a-z]+):\[([0-9]+)\]$', link)
+                if match is None or match.group(1) != namespace:
+                    sys.stderr.write("Invalid namespace link: {0} -> {1}\n"
+                                     .format(nspath, link))
+                    continue
+                namespaces[namespace] = int(match.group(2))
+        except PermissionError:
+            continue
+
+        result[pid] = {
+            'uid': uid,
+            'ppid': ppid,
+            'comm': command,
+            'ns': namespaces,
+        }
+    return result
+
+
+def get_upper_letters(num):
+    """Get uppercase letters association with the given number:
+    0 -> A
+    1 -> B
+    2 -> C
+    ....
+    25 -> Z
+    26 -> AA
+    27 -> AB
+    ...
+    """
+    res = []
+    while num >= 0:
+        res.append('ABCDEFGHIJKLMNOPQRSTUVWXYZ'[num % 26])
+        num = (num // 26) - 1
+    return ''.join(res[::-1])
+
+
+def create_labels_from_info(all_proc_info):
+    """Create an nstype->inode->label from gathered namespaces"""
+    known_namespaces = {}
+    for proc_info in all_proc_info.values():
+        for nstype, ino in proc_info['ns'].items():
+            if nstype not in known_namespaces:
+                known_namespaces[nstype] = set()
+            known_namespaces[nstype].add(ino)
+
+    result = {}
+    for nstype, inodes in known_namespaces.items():
+        ino_labels = {}
+        for idx, ino in enumerate(sorted(inodes)):
+            if KERNEL_INIT_INODES.get(ino) == nstype:
+                # Show initial PID namespace with "I_pid"
+                ino_labels[ino] = 'I_' + nstype
+            else:
+                ino_labels[ino] = nstype + get_upper_letters(idx)
+        result[nstype] = ino_labels
+
+    return result
+
+
+def sort_processtree(all_proc_info):
+    """Build a process tree from the collected information
+    Return the sorted process IDs and the related depths
+    """
+    # Build process->children list
+    process_children = dict((pid, set()) for pid in all_proc_info)
+    root_processes = set()
+    for pid, proc_info in all_proc_info.items():
+        ppid = proc_info['ppid']
+        if ppid in process_children:
+            process_children[ppid].add(pid)
+        else:
+            root_processes.add(ppid)
+            process_children[ppid] = set((pid, ))
+
+    pid_list = []
+    proc_depth = dict((pid, None) for pid in all_proc_info)
+
+    def walk_ptree(pid, depth):
+        children = sorted(process_children[pid])
+        # Reverse the order of (init, kthreadd) processes
+        if pid == 0 and children == [1, 2]:
+            children = [2, 1]
+        for child in children:
+            pid_list.append(child)
+            assert proc_depth[child] is None
+            proc_depth[child] = depth
+            walk_ptree(child, depth + 1)
+
+    for root_pid in sorted(root_processes):
+        walk_ptree(root_pid, 0)
+
+    # Post-recursion sanity checks
+    assert len(pid_list) == len(proc_depth) == len(all_proc_info)
+    return pid_list, proc_depth
+
+
+@lru_cache()
+def get_user_name(uid):
+    """Get the user name associated with a user ID"""
+    try:
+        return pwd.getpwuid(uid).pw_name
+    except KeyError:
+        return str(uid)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="List all namespaces")
+    parser.add_argument('-c', '--nocolor', action='store_true',
+                        help="uncolorize the output")
+    parser.add_argument('-H', '--hierarchy', action='store_true',
+                        help="show process hierarchy")
+    parser.add_argument('-u', '--uid', action='store_true',
+                        help="show user ID instead of user names")
+    args = parser.parse_args(argv)
+
+    # Gather information
+    all_proc_info = gather_namespaces()
+
+    # Create human-readable labels
+    labels = create_labels_from_info(all_proc_info)
+    nstypes = sorted(labels)
+
+    # Show processes in colored columns
+    header = (['UID' if args.uid else 'USER', 'PID', 'PPID'] +
+              [n.upper() for n in nstypes] +
+              ['COMMAND'])
+    color_header = [''] * len(header)
+    lines = [(header, color_header)]
+    # Sort PIDs according to process hierarchy
+    if args.hierarchy:
+        pid_list, proc_depth = sort_processtree(all_proc_info)
+    else:
+        pid_list = sorted(all_proc_info)
+
+    for pid in pid_list:
+        proc_info = all_proc_info[pid]
+        uid = proc_info['uid']
+        columns = [
+            str(uid) if args.uid else get_user_name(uid),
+            str(pid),
+            str(proc_info['ppid']),
+        ]
+        color_columns = [
+            '31' if uid == 0 else '',  # red for root
+            '',
+            ''
+        ]
+        for nstype in nstypes:
+            ino = proc_info['ns'].get(nstype)
+            if ino is None:
+                columns.append('-')
+                # red for unknown namespaces (an error happened)
+                color_columns.append('31')
+            else:
+                label = labels[nstype][ino]
+                columns.append(label)
+                if ino in KERNEL_INIT_INODES:
+                    # dark cyan for init namespace
+                    color_columns.append('36')
+                elif label == nstype + 'A':
+                    # dark cyan too for root namespace of current context
+                    color_columns.append('36')
+                else:
+                    color_columns.append('')
+
+        comm = proc_info['comm'].decode('ascii', 'replace')
+        color_comm = ''
+        if args.hierarchy:
+            depth = proc_depth[pid]
+            comm = '  ' * depth + comm
+            if depth == 0:
+                # yellow for root processes
+                color_comm = 33
+        columns.append(comm)
+        color_columns.append(color_comm)
+        lines.append((columns, color_columns))
+
+    num_cols = 4 + len(nstypes)
+    assert all(len(l[0]) == len(l[1]) == num_cols for l in lines)
+    cols_format = [
+        '{{0[{0}]:{1}{2}}}'.format(c, '>' if 1 <= c <= 2 else '',
+                                   max(len(l[0][c]) for l in lines))
+        for c in range(num_cols)]
+    if not args.nocolor:
+        line_format = '  '.join(
+            '\033[{{1[{0}]}}m{1}\033[m'.format(c, cols_format[c])
+            for c in range(num_cols))
+    else:
+        line_format = '  '.join(cols_format)
+    for line in lines:
+        print(line_format.format(line[0], line[1]))
+
+
+if __name__ == '__main__':
+    main()
