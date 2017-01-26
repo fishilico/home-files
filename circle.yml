@@ -1,8 +1,11 @@
 # Configuration file for https://circleci.com/
 
-machine:
-  python:
-    version: 3.5-dev
+# In order not to use a broken python3 program which only displays:
+#   pyenv: python3: command not found
+#   The `python3' command exists in these Python versions:
+#      ...
+# configure $PATH in the prohect environment variables to:
+#   /home/ubuntu/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 dependencies:
   cache_directories:
