@@ -31,10 +31,6 @@ matrix:
     - os: osx
       language: generic
 
-  # OS X test still fails
-  allow_failures:
-    - os: osx
-
 sudo: false
 
 addons:
