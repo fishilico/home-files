@@ -40,20 +40,23 @@ SC_INCLUDE_LOCATIONS = {
     'arm': (
         ('natinc', 'asm/unistd.h'),
         ('inc', 'arm-linux-gnueabihf/asm/unistd.h'),
+        ('kernel', 'arch/arm/tools/syscall.tbl'),
         ('kernel', 'arch/arm/include/uapi/asm/unistd.h'),
     ),
     'x86_32': (
         ('natinc', 'asm/unistd_32.h'),
         ('inc', 'i386-linux-gnu/asm/unistd_32.h'),
         ('inc', 'x86_64-linux-gnu/asm/unistd_32.h'),
-        # Kernel header generated from arch/x86/syscalls/syscall_32.tbl
+        ('kernel', 'arch/x86/entry/syscalls/syscall_32.tbl'),
+        # Kernel header generated from arch/x86/entry/syscalls/syscall_32.tbl
         ('kernel', 'arch/x86/include/generated/uapi/asm/unistd_32.h'),
     ),
     'x86_64': (
         ('natinc', 'asm/unistd_64.h'),
         ('inc', 'x86_64-linux-gnu/asm/unistd_64.h'),
         ('inc', 'i386-linux-gnu/asm/unistd_64.h'),
-        # Kernel header generated from arch/x86/syscalls/syscall_64.tbl
+        ('kernel', 'arch/x86/entry/syscalls/syscall_64.tbl'),
+        # Kernel header generated from arch/x86/entry/syscalls/syscall_64.tbl
         ('kernel', 'arch/x86/include/generated/uapi/asm/unistd_64.h'),
     ),
 }
@@ -118,7 +121,7 @@ def find_syscall_include(arch=None):
     return
 
 
-def read_syscalls_from_file(filename):
+def read_syscalls_from_header_file(filename):
     """Build a syscall dictionary from the given C header file"""
     syscalls = {}
     syscall_relative = []
@@ -177,8 +180,60 @@ def read_syscalls_from_file(filename):
 
     # Put aliases into syscall_list
     for alias, real, offset in syscall_relative:
-        syscalls[alias] = syscalls[real] + offset
+        if real in syscalls:
+            syscalls[alias] = syscalls[real] + offset
+        else:
+            sys.stderr.write("Undefined relative syscall {0} = {1} + {2}\n"
+                             .format(alias, real, offset))
     return syscalls
+
+
+def read_syscalls_from_table_file(filename):
+    """Build a syscall dictionary from the given table file"""
+    syscalls = {}
+    # White-list the ABI identifiers which are used
+    if re.search(r'arch/arm/.*/syscall\.tbl', filename):
+        used_abis = frozenset(['common', 'eabi', 'oabi'])
+        unused_abis = frozenset()
+    elif re.search(r'arch/x86/.*/syscall_32\.tbl', filename):
+        used_abis = frozenset(['i386'])
+        unused_abis = frozenset()
+    elif re.search(r'arch/x86/.*/syscall_64\.tbl', filename):
+        used_abis = frozenset(['common', '64'])
+        unused_abis = frozenset(['x32'])
+    else:
+        raise RuntimeError("Unimplemented table {0}".format(filename))
+    with open(filename, 'r') as headerfile:
+        for line in headerfile:
+            matches = re.match(r'([0-9]+)\s+(\S+)\s+(\S+)', line)
+            if matches is not None:
+                rawnum, abi, name = matches.groups()
+
+                if abi in unused_abis:
+                    continue
+                elif abi not in used_abis:
+                    sys.stderr.write("Unknown ABI: {0}\n".format(abi))
+                    continue
+
+                # Check unicity
+                assert name not in syscalls
+                syscalls[name] = int(rawnum)
+            else:
+                line = line.split('#', 1)[0].strip()
+                if line:
+                    sys.stderr.write(
+                        "Invalid line in table: {0}\n".format(line))
+    return syscalls
+
+
+def read_syscalls_from_file(filename):
+    """Build a syscall dictionary from a file"""
+    if filename.endswith('.h'):
+        return read_syscalls_from_header_file(filename)
+    if filename.endswith('.tbl'):
+        return read_syscalls_from_table_file(filename)
+    # This is an internal error in SC_INCLUDE_LOCATIONS
+    raise RuntimeError("Unknwon file extenstion of {0}".format(filename))
 
 
 def syscall_number(name, syscalls_name2nr, syscalls_nr2name):
