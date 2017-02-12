@@ -164,8 +164,17 @@ def get_last_cap():
         return len(CAPABILITIES) - 1
 
 
+def hex_number(value):
+    """Decode an hexadecimal integer value"""
+    if value.startswith(('0x', '0X')):
+        return int(value[2:], 16)
+    return int(value, 16)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Display my capabilities")
+    parser.add_argument('caps', metavar='CAPS', nargs='?', type=hex_number,
+                        help="capability mask to use instead of the current one")
     parser.add_argument('-C', '--no-color', action='store_true',
                         help="do not color the output")
     parser.add_argument('-l', '--list', action='store_true',
@@ -180,12 +189,18 @@ def main(argv=None):
         list_new_caps(args.list_sorted)
         return
 
-    caps = read_caps_from_proc(args.pid)
-    active_mask = caps.get('Eff', 0) | caps.get('Prm', 0)
-    inheritable_mask = caps.get('Inh', 0) | caps.get('Amb', 0)
-    bounded_mask = caps.get('Bnd', 0)
-
     last_cap = get_last_cap()
+
+    if args.caps is not None:
+        active_mask = args.caps
+        inheritable_mask = 0
+        bounded_mask = (1 << (last_cap + 1)) - 1
+        caps = {'arg': active_mask}
+    else:
+        caps = read_caps_from_proc(args.pid)
+        active_mask = caps.get('Eff', 0) | caps.get('Prm', 0)
+        inheritable_mask = caps.get('Inh', 0) | caps.get('Amb', 0)
+        bounded_mask = caps.get('Bnd', 0)
 
     # Find potential new capabilities which are enabled
     if sys.version_info >= (2, 7):
