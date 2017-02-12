@@ -38,6 +38,7 @@ TEXT_EXT = (
     'ini',
     'lang',
     'lua',
+    'pa',
     'properties',
     'rst',
     'theme',

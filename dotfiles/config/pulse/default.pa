@@ -1,0 +1,10 @@
+# Load some pulse-audio modules
+
+# Use system-wide configuration
+.include /etc/pulse/default.pa
+
+# Load the equalizer module (controlled through qpaeq) if it is installed
+.ifexists module-equalizer-sink.so
+load-module module-equalizer-sink
+load-module module-dbus-protocol
+.endif
