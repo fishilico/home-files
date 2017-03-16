@@ -105,6 +105,8 @@ def main(argv=None):
     parser.add_argument('--port', action='store',
                         type=int, default=None,
                         help="port number (default 0)")
+    parser.add_argument('--passive', action='store_true',
+                        help="resolve a passive address (AI_PASSIVE)")
 
     group = parser.add_argument_group('address family')
     group.add_argument('-f', '--family', action='store',
@@ -153,9 +155,21 @@ def main(argv=None):
 
     for host in args.hosts:
         try:
+            gai_flags = 0
+            if args.passive:
+                gai_flags |= socket.AI_PASSIVE
+            if host:
+                gai_flags |= socket.AI_CANONNAME
+            else:
+                # getaddrinfo expects host=None when not using AI_CANONNAME
+                # and it fails when both host and port are None:
+                #     [Errno -2] Name or service not known
+                host = None
+                if args.port is None:
+                    args.port = 0
             addressinfos = socket.getaddrinfo(host, args.port,
                                               args.family, args.socktype,
-                                              args.proto, socket.AI_CANONNAME)
+                                              args.proto, gai_flags)
         except socket.gaierror as exc:
             sys.stderr.write("getaddrinfo error: {}\n".format(exc))
             sys.exit(1)
@@ -180,7 +194,7 @@ def main(argv=None):
                 except socket.herror:
                     pass
 
-            line = host + " " + address
+            line = (host or '<empty>') + " " + address
             if port:
                 line += " port " + str(port)
             line += " " + known_af.get(family, "family-" + str(family))
