@@ -28,11 +28,11 @@ case "$TERM" in
         ;;
     xterm*|rxvt*)
         # xterm uses \e]0;title\a or \e]2;title\a
-        printf '%b%s%b' '\033]0;' "$*" '\007'
+        printf '\033]0;%s\007' "$*"
         ;;
     screen*)
         # screen uses \ektitle\e\\
-        printf '%b%s%b' '\033k' "$*" '\033\\'
+        printf '\033k%s\033\134' "$*"
         ;;
     '')
         echo >&2 "Error: \$TERM is not set"
