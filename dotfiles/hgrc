@@ -1,5 +1,17 @@
 [extensions]
-hgk=
+color =
+hgk =
+highlight =
+histedit =
+pager =
+purge =
+rebase =
+strip =
 
 [ui]
 username = Nicolas Iooss
+
+[alias]
+blame = blame --user --number --date --quiet
+glog = log --graph
+last = log --patch --rev .
