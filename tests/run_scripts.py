@@ -96,6 +96,7 @@ BIN_SCRIPTS = {
     'systemd-analyze-plot': 'never',
     'tab2space': 'never',
     'update-packages': 'never',
+    'vagrant-wireshark': 'args[-h]',
     'xfconf-dump': '(xfconf-query)direct',
 }
 

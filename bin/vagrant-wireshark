@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# Copyright (c) 2013-2017 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Analyze the network traffic inside a Vagrant virtual machine with Wireshark
+#
+# dumpcap (from wireshark-cli) or tcpdump need to be installed in the VM
+#
+# Documentation:
+#   https://wiki.wireshark.org/CaptureSetup/Pipes#Remote_Capture
+
+# Abort on error
+set -e
+
+MACHINE=
+IFACE=any
+
+while getopts ":hi:v:" OPT
+do
+    case "$OPT" in
+        h)
+            echo "Usage: $0 [OPTION]"
+            echo "Analyze in Wireshark the network traffic of a Vagrant VM"
+            echo ""
+            echo "Options:"
+            echo "  -i IFACE    use this network interface (default: any)"
+            echo "  -v MACHINE  use this machine"
+            exit
+            ;;
+        i)
+            IFACE="$OPTARG"
+            ;;
+        v)
+            MACHINE="$OPTARG"
+            ;;
+        \?)
+            echo >&2 "$0: invalid option '$OPTARG'"
+            echo >&2 "Try '$0 -h' for more information."
+            exit 1
+            ;;
+    esac
+done
+
+# Dump the ssh config into a temporary file
+SSHCONFIG=$(mktemp --tmpdir vagrant-ssh.XXXXXXXXXX.conf)
+trap 'rm -f "$SSHCONFIG"' EXIT HUP INT QUIT TERM
+vagrant ssh-config > "$SSHCONFIG"
+
+# Get the machine
+if [ -z "$MACHINE" ]
+then
+    MACHINE="$(sed -n 's/^Host //p' "$SSHCONFIG" | sed -n 1p)"
+fi
+
+if ssh -F "$SSHCONFIG" "$MACHINE" dumpcap --version > /dev/null 2>&1
+then
+    # Use tshark
+    ssh -F "$SSHCONFIG" "$MACHINE" dumpcap -P -i "$IFACE" -w - -f "'not tcp port 22'" | \
+        wireshark-gtk -k -i -
+elif ssh -F "$SSHCONFIG" "$MACHINE" sudo tcpdump --version > /dev/null 2>&1
+then
+    # Use tcpdump (packet-buffered output, default snaplen)
+    ssh -F "$SSHCONFIG" "$MACHINE" sudo tcpdump -U -s0 -i "$IFACE" -w - 'not tcp port 22' | \
+        wireshark-gtk -k -i -
+else
+    echo >&2 "Error: unable to find tshark or tcpdump on the virtual machine."
+    exit 1
+fi
