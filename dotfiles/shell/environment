@@ -115,6 +115,14 @@ export GCC_COLORS=1
 # Set man section search order in a "developer-friendly" way
 export MANSECT='2:3:1:8:0:5:4:6:7:9:n:l'
 
+# Force using GPG agent for SSH, if the agent is launched
+DIR="$(gpgconf --list-dirs agent-ssh-socket)"
+if [ -e "$DIR" ] ; then
+    export SSH_AUTH_SOCK="$DIR"
+    unset SSH_AGENT_PID
+fi
+unset DIR
+
 # Warn about dangerous environment
 if [ -s /etc/ld.so.preload ] ; then
     (tput bold && tput setaf 1) 2> /dev/null

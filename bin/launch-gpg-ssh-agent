@@ -35,6 +35,22 @@ then
 fi
 
 GPG_AGENT_INFO_PATH="$HOME/.cache/gpg-agent-info"
+
+# GnuPG 2.1 changed the way gpg-agent exposes its SSH socket.
+# It also introduced a --launch option to launch the agent.
+# The ssh socket is "/run/user/$(id -u)/gnupg/S.gpg-agent.ssh" on Linux.
+if gpgconf --launch gpg-agent
+then
+    # Write compatibility information
+    cat > "$GPG_AGENT_INFO_PATH" << EOF
+GPG_AGENT_INFO=$(gpgconf --list-dirs agent-socket)
+SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
+EOF
+    echo "gpg>=2.1 is used. SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)"
+    echo "For compatibility, you can source $GPG_AGENT_INFO_PATH"
+    exit
+fi
+
 if [ -r "$GPG_AGENT_INFO_PATH" ]
 then
     echo >&2 "Found GPG agent info file: $GPG_AGENT_INFO_PATH"
