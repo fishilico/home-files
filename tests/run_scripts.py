@@ -78,6 +78,7 @@ BIN_SCRIPTS = {
     'list-namespaces': '(/proc)direct',
     'lsofdel': '(lsof)direct',
     'luksfile': 'args[-h]',
+    'makecleanpkg': 'never',
     'musickbd': 'never',
     'nft-dump': '(nft)direct',
     'ntpd-stats': '(ntpdc)direct',

@@ -1,0 +1,183 @@
+#!/bin/sh
+#
+# Copyright (c) 2017 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Build an Arch Linux package in a clean fake-chroot-ed environment
+#
+# Usage in a directory containing a PKGBUILD file:
+#     makecleanpkg
+#
+# When some dependencies are unofficial packages:
+#     makecleanpkg -I unofficial-package.pkg.tar.xz
+#
+# Dependencies (Arch Linux and AUR packages): devtools fakechroot fakeroot proot
+#
+# Tips: to update the package cache of base and base-devel packages, run:
+#    sudo pacman --noconfirm -Sw base base-devel
+#
+# makechrootpkg documentation:
+#    https://wiki.archlinux.org/index.php/DeveloperWiki:Building_in_a_Clean_Chroot
+#
+# Similar project: https://fsquillace.github.io/junest-site/
+#   "The Arch Linux based distro that runs upon any Linux distros without root access"
+
+# Exit if a command fails
+set -e
+
+# Check dependencies
+if [ ! -x /usr/bin/mkarchroot ] ; then
+    echo >&2 "Arch Linux devtools needs to be installed"
+    exit 1
+fi
+for CMD in fakechroot fakeroot proot ; do
+    if ! "$CMD" --version > /dev/null ; then
+        echo >&2 "$CMD needs to be installed"
+        exit 1
+    fi
+done
+
+if ! fakechroot chroot / true ; then
+    echo >&2 "fakechroot does not seem to work"
+    exit 1
+fi
+if [ "$(fakeroot id -u)" != 0 ] ; then
+    echo >&2 "fakeroot does not seem to work"
+    exit 1
+fi
+
+# proot<=5.1.0 is not compatible with Linux >= 4.9 because of a change in the
+# way ptrace and seccomp interracts
+# https://github.com/proot-me/PRoot/issues/106
+# https://github.com/proot-me/PRoot/pull/115
+PROOT_VERSION="$(pacman -Q proot | cut -d' ' -f2)"
+if [ -z "$PROOT_VERSION" ] ; then
+    echo >&2 "proot is not installed"
+    exit 1
+elif [ "$(vercmp "${PROOT_VERSION%-*}" '5.1.0')" -le 0 ] && [ "$(vercmp "$(uname -r)" '4.8')" -gt 0 ] ; then
+    export PROOT_NO_SECCOMP=1
+    EXPORT_PROOT_NO_SECCOMP_CMD='export PROOT_NO_SECCOMP=1'
+fi
+if ! proot true ; then
+    echo >&2 "proot does not seem to work"
+    exit 1
+fi
+
+# Helper function to create an executable script from standard input
+cat_script() {
+    cat > "$1"
+    chmod +x "$1"
+}
+
+# Find the configured BUILDDIR
+if [ -z "$BUILDDIR" ] ; then
+    BUILDDIR="$(bash -c 'shopt -u extglob ; source /etc/makepkg.conf ; echo $BUILDDIR')"
+    if [ -z "$BUILDDIR" ] ; then
+        BUILDDIR='.'
+    fi
+fi
+
+PKGNAME="$(bash -c 'shopt -u extglob ; source ./PKGBUILD ; echo "${pkgbase:-$pkgname}"')"
+if [ -z "$PKGNAME" ] ; then
+    echo >&2 "Unable to find the current package name"
+    exit 1
+fi
+
+# Set-up a temporary directory with fakers
+CHROOTDIR="$BUILDDIR/makecleanpkg-$PKGNAME"
+mkdir -p "$CHROOTDIR/bin"
+
+# Redirect systemd-nspawn to proot
+cat_script "$CHROOTDIR/bin/systemd-nspawn" << EOF
+#!/bin/bash
+# Fake systemd-nspawn with proot
+$EXPORT_PROOT_NO_SECCOMP_CMD
+proot_options=()
+while [ \$# -ge 1 ] ; do
+    case "\$1" in
+        -D)
+            proot_options+=(-R "\$2")
+            shift
+            ;;
+        --bind=*|--bind-ro=*)
+            proot_options+=(-b "\${1#*=}")
+            ;;
+        -q|--register=no)
+            ;;
+        locale-gen)
+            # Skip locale-gen as it crashes with proot 5.1.0
+            exit
+            ;;
+        *)
+            break
+            ;;
+    esac
+    shift
+done
+echo "Running proot \${proot_options[*]} \$*"
+exec proot "\${proot_options[@]}" "\$@"
+EOF
+
+# Redirect mount and umount to no-ops
+echo '#!/bin/true' | cat_script "$CHROOTDIR/bin/mount"
+echo '#!/bin/true' | cat_script "$CHROOTDIR/bin/umount"
+
+export PATH="$CHROOTDIR/bin:$PATH"
+
+# Create a chroot directory if needed
+# (it may have been left over after a previous execution failed)
+if ! [ -e "$CHROOTDIR/root/.arch-chroot" ] ; then
+    fakeroot fakechroot mkarchroot "$CHROOTDIR/root" base-devel
+    fakeroot fakechroot chroot "$CHROOTDIR/root" locale-gen
+fi
+
+# Fake sudo for "sudo -iu builduser makepkg"
+cat_script "$CHROOTDIR/root/etc/profile.d/fakesudo.sh" << EOF
+#!/bin/sh
+sudo() {
+    if [ "\$1" = '-u' ] || [ "\$1" = '-iu' ] ; then
+        shift 2
+    fi
+    # Disable fakeroot
+    unset LD_PRELOAD
+    unset LD_LIBRARY_PATH
+    unset FAKEROOTKEY
+    "\$@"
+}
+EOF
+
+# Use fakeroot when makepkg wants to use sudo to install packages
+cat_script "$CHROOTDIR/root/usr/share/makepkg/fakesudo.sh" << EOF
+#!/bin/sh
+sudo() {
+    fakeroot "\$@"
+}
+EOF
+
+# Fake sudo environment for makechrootpkg
+SUDO_UID="$(id -u)"
+SUDO_USER="$(id -nu)"
+export SUDO_UID SUDO_USER
+
+# Finally run makechrootpkg!
+fakeroot makechrootpkg -r "$CHROOTDIR" "$@"
+
+# All right, let's clean everything up!
+rm -rf "${CHROOTDIR:?}"
