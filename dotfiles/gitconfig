@@ -77,6 +77,15 @@
 #    *.docx diff=pandoc
 [diff "pandoc"]
 	textconv = pandoc --to=markdown
+# Decompress files when diffing them, if a .gitattributes file has been set up
+[diff "bz2"]
+	textconv = bzcat
+[diff "gz"]
+	textconv = zcat
+[diff "lz"]
+	textconv = lzcat
+[diff "xz"]
+	textconv = xzcat
 [grep]
 	lineNumber = true
 [help]
