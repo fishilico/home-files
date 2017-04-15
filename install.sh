@@ -140,8 +140,8 @@ validate_gpg_gitlog() {
         fi
     fi
 
-    # Retrieve key fingerprint
-    KEYFP="$(sed -n 's/^[ \t]*signingkey[ ]*=[ ]*//p' dotfiles/gitconfig | \
+    # Retrieve the key fingerprint from git config
+    KEYFP="$(sed -n 's/^[[:space:]]*signingkey[ ]*=[ ]*//p' dotfiles/gitconfig | \
         head -n1 | tr -d ' ')"
 
     # Import the key if it is not found
@@ -179,8 +179,8 @@ validate_gpg_gitlog() {
     # To do this, grab the key ID which was used and find it using gpg
     # Use "git log" instead of "git verify-commit" (git>=2.1.0)
     KEYID="$(LANG=C git log --max-count=1 --show-signature HEAD 2>&1 | \
-        sed -n -e 's/^gpg: Signature .* key ID \([x0-9A-F]\+\)$/\1/p' \
-            -e 's/^gpg: *using RSA key \([x0-9A-F]\+\)$/\1/p' | \
+        sed -n -e 's/^gpg: Signature .* key ID \([x0-9A-F]*\)$/\1/p' \
+            -e 's/^gpg:[[:space:]]*using RSA key \([x0-9A-F]*\)$/\1/p' | \
         head -n1)"
     if [ -z "$KEYID" ]
     then

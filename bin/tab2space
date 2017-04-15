@@ -52,7 +52,7 @@ do
     if grep -q -E " +\$" < "$file"
     then
         echo "[eol] $file"
-        sed -i --follow-symlinks "s/ \+\$//" "$file"
+        sed -i --follow-symlinks "s/  *\$//" "$file"
     fi
 
     # Remove non-breakable spaces

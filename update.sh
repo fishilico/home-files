@@ -35,7 +35,7 @@ then
     echo "[-] Warning: gnupg is not installed. Skipping signature validation."
 else
     # Retrieve the key fingerprint from git config and check it is installed
-    KEYFP="$(sed -n 's/^[ \t]*signingkey[ ]*=[ ]*//p' dotfiles/gitconfig | \
+    KEYFP="$(sed -n 's/^[[:space:]]*signingkey[ ]*=[ ]*//p' dotfiles/gitconfig | \
         head -n1 | tr -d ' ')"
     if ! gpg --list-key "$KEYFP" > /dev/null
     then
@@ -66,8 +66,8 @@ else
 
         # Check that the last commit is signed with the good GPG key
         KEYID="$(LANG=C git log --max-count=1 --show-signature origin/master 2>&1 | \
-            sed -n -e 's/^gpg: Signature .* key ID \([x0-9A-F]\+\)$/\1/p' \
-                -e 's/^gpg: *using RSA key \([x0-9A-F]\+\)$/\1/p' | \
+            sed -n -e 's/^gpg: Signature .* key ID \([x0-9A-F]*\)$/\1/p' \
+                -e 's/^gpg:[[:space:]]*using RSA key \([x0-9A-F]*\)$/\1/p' | \
             head -n1)"
         if [ -z "$KEYID" ]
         then

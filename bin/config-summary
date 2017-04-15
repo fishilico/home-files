@@ -226,7 +226,7 @@ for CC in gcc clang ; do
             "$CC" -march=native -E -v - < /dev/null 2>&1 > /dev/null || \
             echo " Error $? in cc1 $CC -march=native -E -v - < /dev/null" \
         ) | \
-            sed -n 's/ /  /g;s/ -[Ev]\? / /g;s/ \+/ /g;s/^ *.*cc1\(.*\)$/\1/p' | \
+            sed -n 's/ /  /g;s/ -[Ev]\? / /g;s/  */ /g;s/^ *.*cc1\(.*\)$/\1/p' | \
             fmt -80 | \
             indent_out
     else

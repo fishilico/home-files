@@ -32,6 +32,6 @@ fi
 if [ -x /usr/bin/gcc ] || which gcc > /dev/null 2>&1 ; then
     echo "gcc target triple: $(gcc -dumpmachine)"
     GCC_FLAGS="$(gcc -march=native -E -v - < /dev/null 2>&1 > /dev/null | \
-        sed -n 's/ /  /g;s/ -[Ev]\? / /g;s/ \+/ /g;s/^ *.*cc1 \(.*\)$/\1/p')"
+        sed -n 's/ /  /g;s/ -[Ev]\? / /g;s/  */ /g;s/^ *.*cc1 \(.*\)$/\1/p')"
     echo "gcc -march=native flags: $GCC_FLAGS"
 fi
