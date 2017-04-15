@@ -1,0 +1,5 @@
+<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
+  <mime-type type="application/x-shellscript">
+    <glob pattern="PKGBUILD"/>
+  </mime-type>
+</mime-info>
