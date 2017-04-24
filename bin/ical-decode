@@ -34,6 +34,14 @@ try:
 except ImportError:
     sys.stderr.write('Error: icalendar module is not installed\n')
     icalendar = None
+else:
+    import pytz
+
+
+# Which timezone is used when displaying time
+USE_TZ_LOCAL = 1
+USE_TZ_UTC = 2
+USE_TZ_GIVEN = 3
 
 
 def stringify(value):
@@ -44,7 +52,7 @@ def stringify(value):
     if hasattr(value, 'dt'):
         # datetime or timedelta
         if isinstance(value.dt, datetime.datetime):
-            return value.dt.strftime('%Y-%m-%d %H:%M:%S')
+            return value.dt.strftime('%Y-%m-%d %H:%M:%S %Z')
         if isinstance(value.dt, datetime.timedelta):
             if value.dt < datetime.timedelta(0):
                 return '-' + str(-value.dt)
@@ -53,7 +61,7 @@ def stringify(value):
     return str(value)
 
 
-def ical_show_raw(data, verbose=False):
+def ical_show_raw(data, used_tz, verbose=False):
     """Display iCalendar binary data in a human-readable way"""
     cal = icalendar.cal.Calendar.from_ical(data)
     for event in cal.walk('VEVENT'):
@@ -72,7 +80,13 @@ def ical_show_raw(data, verbose=False):
         for key, value in event.items():
             if key in ('DTSTART', 'DTEND'):
                 if key not in properties:
-                    properties[key] = value.dt
+                    dtval = value.dt
+                    # Convert dtval to the displayed timezone
+                    if used_tz == USE_TZ_LOCAL:
+                        dtval = dtval.astimezone()
+                    elif used_tz == USE_TZ_UTC:
+                        dtval = dtval.astimezone(pytz.utc)
+                    properties[key] = dtval
                 else:
                     print("Warning: multiple definitions of {0}".format(key))
             elif key in known_properties or verbose:
@@ -89,14 +103,21 @@ def ical_show_raw(data, verbose=False):
         if 'DTSTART' in properties:
             start_date = properties['DTSTART'].strftime('%Y-%m-%d (%a %e %b)')
             start_time = properties['DTSTART'].strftime('%H:%M:%S')
+            start_tz = properties['DTSTART'].strftime('%Z')
         if 'DTEND' in properties:
             end_date = properties['DTEND'].strftime('%Y-%m-%d (%a %e %b)')
             end_time = properties['DTEND'].strftime('%H:%M:%S')
+            end_tz = properties['DTEND'].strftime('%Z')
 
         if start_time.endswith(':00') and end_time.endswith(':00'):
             # Remove seconds from times if they are not useful
             start_time = start_time[:-3]
             end_time = end_time[:-3]
+
+        # Add timezone to both times if they differ, otherwise only to end_time
+        if start_tz != end_tz:
+            start_time += ' ' + start_tz
+        end_time += ' ' + end_tz
 
         if start_date == end_date:
             date = '{0} {1} - {2}'.format(start_date, start_time, end_time)
@@ -138,11 +159,11 @@ def ical_show_raw(data, verbose=False):
                         print("    {0}: {1}".format(key, text))
 
 
-def ical_show_b64(data, is_base64=False, verbose=False):
+def ical_show_b64(data, used_tz, is_base64=False, verbose=False):
     """Decode iCalendar data which is possibly Base64-encoded"""
     if is_base64:
         data = base64.b64decode(data)
-    ical_show_raw(data, verbose)
+    ical_show_raw(data, used_tz, verbose)
 
 
 def main(argv=None):
@@ -153,9 +174,22 @@ def main(argv=None):
                         help="iCalendar files (default: standard input)")
     parser.add_argument('-b', '--base64', action='store_true',
                         help="The input files are Base64-encoded")
+    parser.add_argument('-t', '--timezone', action='store_true',
+                        help="Display time using the ical-specified timezone")
+    parser.add_argument('-u', '--utc', action='store_true',
+                        help="Use UTC time")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="Be more verbose in the outputed values")
     args = parser.parse_args(argv)
+
+    if args.timezone:
+        if args.utc:
+            parser.error("options --utc and --timezone are exclusive")
+        used_tz = USE_TZ_GIVEN
+    elif args.utc:
+        used_tz = USE_TZ_UTC
+    else:
+        used_tz = USE_TZ_LOCAL
 
     # Allow using --help without icalendar module
     if icalendar is None:
@@ -165,11 +199,11 @@ def main(argv=None):
         for filename in args.files:
             with open(filename, 'rb') as icalfd:
                 print("{0}:".format(filename))
-                ical_show_b64(icalfd.read(), args.base64, args.verbose)
+                ical_show_b64(icalfd.read(), used_tz, args.base64, args.verbose)
     else:
         stdin = sys.stdin.buffer if sys.version_info >= (3, ) else sys.stdin
         ical_data = stdin.read()
-        ical_show_b64(ical_data, args.base64, args.verbose)
+        ical_show_b64(ical_data, used_tz, args.base64, args.verbose)
     return 0
 
 
