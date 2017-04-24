@@ -116,7 +116,7 @@ export GCC_COLORS=1
 export MANSECT='2:3:1:8:0:5:4:6:7:9:n:l'
 
 # Force using GPG agent for SSH, if the agent is launched
-DIR="$(gpgconf --list-dirs agent-ssh-socket)"
+DIR="$(gpgconf --list-dirs agent-ssh-socket 2> /dev/null)"
 if [ -e "$DIR" ] ; then
     export SSH_AUTH_SOCK="$DIR"
     unset SSH_AGENT_PID
