@@ -48,6 +48,7 @@ BIN_SCRIPTS = {
     'capabilities': '(/proc)direct',
     'captive-portal': '(python3)help',
     'check-certificate': 'help',
+    'clean-pdf': 'never',
     'colortable': 'direct',
     'compile-netbpf': '(tcpdump,/proc)direct',
     'config-summary': 'direct',
