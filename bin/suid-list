@@ -543,7 +543,7 @@ KNOWN_SUID_FILES = [
 
     # cifs-utils, https://wiki.samba.org/index.php/LinuxCIFS_utils
     # https://git.samba.org/?p=cifs-utils.git;a=tree
-    SuidFile('/bin/mount.cifs', owners=('root', ), groups=('root', )),
+    SuidFile('/s?bin/mount.cifs', owners=('root', ), groups=('root', )),
 
     # eject, http://www.pobox.com/~tranter/eject.html
     SuidFile('/lib/eject/dmcrypt-get-device'),
