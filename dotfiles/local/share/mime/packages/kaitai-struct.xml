@@ -1,0 +1,6 @@
+<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
+  <mime-type type="application/x-yaml">
+    <comment>Kaitai Struct YAML</comment>
+    <glob pattern="*.ksy"/>
+  </mime-type>
+</mime-info>
