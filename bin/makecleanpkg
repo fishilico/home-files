@@ -109,7 +109,8 @@ cat_script "$CHROOTDIR/bin/systemd-nspawn" << EOF
 #!/bin/bash
 # Fake systemd-nspawn with proot
 $EXPORT_PROOT_NO_SECCOMP_CMD
-proot_options=()
+# Allow fakechroot in the proot'ed environment
+proot_options=(--cwd=/ -b /usr/lib/libfakeroot/fakechroot -b /usr/bin/fakechroot)
 while [ \$# -ge 1 ] ; do
     case "\$1" in
         -D)
@@ -124,6 +125,12 @@ while [ \$# -ge 1 ] ; do
         locale-gen)
             # Skip locale-gen as it crashes with proot 5.1.0
             exit
+            ;;
+        pacman)
+            # Encapsulate a call to pacman into a fakechroot in order to run
+            # install scripts in chroots
+            proot_options+=(fakechroot)
+            break
             ;;
         *)
             break
@@ -148,28 +155,27 @@ if ! [ -e "$CHROOTDIR/root/.arch-chroot" ] ; then
     fakeroot fakechroot chroot "$CHROOTDIR/root" locale-gen
 fi
 
-# Fake sudo for "sudo -iu builduser makepkg"
+# Fake sudo for "sudo -iu builduser makepkg" and when makepkg wants to use sudo
+# to install packages
 cat_script "$CHROOTDIR/root/etc/profile.d/fakesudo.sh" << EOF
 #!/bin/sh
 sudo() {
     if [ "\$1" = '-u' ] || [ "\$1" = '-iu' ] ; then
         shift 2
+
+        # Disable fakeroot
+        unset LD_PRELOAD
+        unset LD_LIBRARY_PATH
+        unset FAKEROOTKEY
+        "\$@"
+    else
+        # Use fakeroot and allow chroot
+        fakechroot fakeroot "\$@"
     fi
-    # Disable fakeroot
-    unset LD_PRELOAD
-    unset LD_LIBRARY_PATH
-    unset FAKEROOTKEY
-    "\$@"
 }
 EOF
 
-# Use fakeroot when makepkg wants to use sudo to install packages
-cat_script "$CHROOTDIR/root/usr/share/makepkg/fakesudo.sh" << EOF
-#!/bin/sh
-sudo() {
-    fakeroot "\$@"
-}
-EOF
+ln -sf ../../../etc/profile.d/fakesudo.sh "$CHROOTDIR/root/usr/share/makepkg/fakesudo.sh"
 
 # Fake sudo environment for makechrootpkg
 SUDO_UID="$(id -u)"
