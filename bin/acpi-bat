@@ -1,0 +1,304 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2017 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Follow battery discharging on a laptop using acpi command"""
+import argparse
+import datetime
+import os
+import re
+import subprocess
+import sys
+import time
+
+
+def format_delta(delta):
+    """Format a timedelta in a human-friendly form"""
+    secs = delta.total_seconds()
+    sign = ''
+    if secs < 0:
+        sign = '-'
+        secs = -secs
+    secs = int(secs)
+    if secs < 3600:
+        return '{0}{1:d}:{2:02d}'.format(sign, secs // 60, secs % 60)
+    elif secs < 86400:
+        return '{0}{1:d}:{2:02d}:{3:02d}'.format(
+            sign, secs // 3600, (secs // 60) % 60, secs % 60)
+    return '{0}{1:d}:{2:02d}:{3:02d}:{4:02d}'.format(
+        sign, secs // 86400, (secs // 3600) % 24, (secs // 60) % 60, secs % 60)
+
+
+class BatteryFullState(object):
+    """Represent a battery which is full"""
+
+    def __init__(self):
+        self.percent = 100
+
+    def __str__(self):
+        return "Full (100%)"
+
+
+class BatteryDischargingState(object):
+    """Represent a battery which is discharging"""
+
+    def __init__(self, percent, secs_to_empty):
+        self.percent = percent
+        self.secs_to_empty = secs_to_empty
+        self.now = datetime.datetime.now()
+        if secs_to_empty:
+            self.delta = datetime.timedelta(seconds=secs_to_empty)
+            self.end_date = self.now + self.delta
+        else:
+            self.delta = None
+            self.end_date = None
+        self.end_mean = None
+
+    def __str__(self):
+        res = "Discharging, {0}%".format(self.percent)
+        if self.secs_to_empty:
+            res += " ({0} remaining, empty {1})".format(
+                format_delta(self.delta), self.end_date.strftime('%T'))
+            if self.end_mean is not None:
+                res += ', mean {0} ({1} remaining)'.format(
+                    self.end_mean.strftime('%T'),
+                    format_delta(self.end_mean - self.now))
+        return res
+
+
+class BatteryChargingState(object):
+    """Represent a battery which is charging"""
+
+    def __init__(self, percent, secs_to_full):
+        self.percent = percent
+        self.secs_to_full = secs_to_full
+        self.now = datetime.datetime.now()
+        if secs_to_full:
+            self.delta = datetime.timedelta(seconds=secs_to_full)
+            self.end_date = self.now + self.delta
+        else:
+            self.delta = None
+            self.end_date = None
+        self.end_mean = None
+
+    def __str__(self):
+        res = "Charging, {0}%".format(self.percent)
+        if self.secs_to_full:
+            res += " ({0} remaining, full {1})".format(
+                format_delta(self.delta), self.end_date.strftime('%T'))
+            if self.end_mean is not None:
+                res += ', mean {0} ({1} remaining)'.format(
+                    self.end_mean.strftime('%T'),
+                    format_delta(self.end_mean - self.now))
+        return res
+
+
+class BatteryUnknownState(object):
+    """Represent a battery which is full"""
+
+    def __init__(self, percent):
+        self.percent = percent
+
+    def __str__(self):
+        return "Unknown, {0}%".format(self.percent)
+
+
+class LastAcpiStates(object):
+    """Last results of ACPI command in order to compute a mean time"""
+
+    def __init__(self, window):
+        self.window = window
+        self.states = {}
+        self.cur_type = {}
+
+    def add_result(self, acpi_result):
+        """Add the result of an acpi command"""
+        if self.window <= 1:
+            return
+        for name, state in acpi_result:
+            if isinstance(state, (BatteryFullState, BatteryUnknownState)):
+                # Reset results when battery is full or unknown
+                if name in self.states:
+                    del self.states[name]
+                    del self.cur_type[name]
+                continue
+
+            if state.end_date is None:
+                # Ignore states without an estimated end date
+                continue
+
+            if name not in self.states or not isinstance(state, self.cur_type[name]):
+                # Reset results when switching between discharging and charging
+                self.states[name] = [state]
+                self.cur_type[name] = type(state)
+                continue
+
+            # Every item of results_for_mean shares the same type. Add the new one
+            states_list = self.states[name]
+            states_list.append(state)
+            if len(states_list) >= self.window:
+                states_list = states_list[-self.window:]
+            self.states[name] = states_list
+
+            # Sanity checks
+            assert 1 <= len(states_list) <= self.window
+            assert isinstance(state, (BatteryChargingState, BatteryDischargingState))
+            assert all(isinstance(res, self.cur_type[name]) for res in states_list)
+
+            # Collect all dates, diff with last one, compute mean, and add
+            base_time = state.end_date
+            sum_diff = sum((s.end_date - base_time).total_seconds() for s in states_list)
+            mean_diff = datetime.timedelta(seconds=sum_diff / len(states_list))
+            # Directly update the state object
+            state.end_mean = base_time + mean_diff
+
+
+def run_acpi(name_filter=None):
+    """Run acpi and return a parsed output"""
+    output = subprocess.check_output(['acpi', '--battery'])
+    result = []
+    for line in output.decode('utf8', errors='ignore').splitlines():
+        name, all_states = line.split(':', 1)
+        if name_filter and name not in (name_filter, 'Battery ' + name_filter):
+            continue
+
+        parts = all_states.strip().split(', ')
+        if len(parts) < 2:
+            raise ValueError("invalid acpi output for battery {0}".format(name))
+        status = parts[0]
+
+        matches = re.match(r'([0-9]+)%$', parts[1])
+        if matches is None:
+            raise ValueError("unable to parse percent {0}".format(parts[1]))
+        percent = int(matches.group(1))
+
+        if status == 'Full':
+            if percent != 100:
+                raise ValueError("Full battery with non-100 percent?")
+            result.append((name, BatteryFullState()))
+        elif status == 'Discharging':
+            if len(parts) < 3:
+                raise ValueError("invalid acpi output for battery {0}".format(name))
+            if parts[2] == 'rate information unavailable':
+                remaining = None
+            else:
+                matches = re.match(r'([0-9]+):([0-9]+):([0-9]+) remaining$', parts[2])
+                if matches is None:
+                    raise ValueError("unable to parse remaining time: {0}".format(parts[2]))
+                hours, minutes, seconds = matches.groups()
+                remaining = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
+            result.append((name, BatteryDischargingState(percent, remaining)))
+        elif status == 'Charging':
+            if len(parts) < 3:
+                raise ValueError("invalid acpi output for battery {0}".format(name))
+            if parts[2] in ('rate information unavailable', ' until charged'):
+                remaining = None
+            else:
+                matches = re.match(r'([0-9]+):([0-9]+):([0-9]+) until charged$', parts[2])
+                if matches is None:
+                    raise ValueError("unable to parse remaining time: {0}".format(parts[2]))
+                hours, minutes, seconds = matches.groups()
+                remaining = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
+            result.append((name, BatteryChargingState(percent, remaining)))
+        elif status == 'Unknown':
+            result.append((name, BatteryUnknownState(percent)))
+        else:
+            raise ValueError("Unknown battery state {0}".format(status))
+    return result
+
+
+def set_title(title, term=None):
+    """Set the terminal title"""
+    if not term:
+        term = os.getenv('TERM')
+    if not term:
+        raise ValueError("$TERM is not set")
+
+    if term.startswith(('linux', 'vt100')):
+        # Linux console does not have any title
+        pass
+    elif term.startswith(('xterm', 'rxvt')):
+        # xterm uses \e]0;title\a or \e]2;title\a
+        sys.stdout.write('\033]0;{0}\007'.format(title))
+    elif term.startswith('screen'):
+        # screen uses \ektitle\e\\
+        sys.stdout.write('\033k{0}\033\134'.format(title))
+    else:
+        raise ValueError("unsupported terminal {0}".format(term))
+    sys.stdout.flush()
+
+
+def show_results(acpi_result, show_title, term):
+    """Display the results of command acpi"""
+    if not acpi_result:
+        print("The battery has disappeared")
+        return
+
+    # If there is only one battery, no need to display its name
+    if len(acpi_result) == 1:
+        print("{0}".format(acpi_result[0][1]))
+    else:
+        for name, state in acpi_result:
+            print('{0}: {1}'.format(name, state))
+
+    if show_title:
+        set_title("{0}%".format(acpi_result[0][1].percent), term)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Follow battery discharging")
+    parser.add_argument('-n', '--name', type=str,
+                        help="name of battery to use")
+    parser.add_argument('-o', '--one-shot', action='store_true',
+                        help="do not follow acpi status")
+    parser.add_argument('-s', '--sleep', metavar="SECS", type=float, default=60,
+                        help="number of seconds to sleep between acpi calls")
+    parser.add_argument('-t', '--title', action='store_true',
+                        help="show the battery percentage in the window title")
+    parser.add_argument('-T', '--term', type=str,
+                        help="type of terminal to use (default: $TERM)")
+    parser.add_argument('-w', '--window', type=int, default=30,
+                        help="sliding window to use to compute a mean time")
+    args = parser.parse_args(argv)
+
+    acpi_result = run_acpi(args.name)
+    if not acpi_result:
+        if args.name:
+            print("Battery {0} does not exist".format(repr(args.name)))
+        else:
+            print("No battery found here")
+        return
+    show_results(acpi_result, args.title, args.term)
+
+    if args.one_shot:
+        return
+
+    # Follow acpi results in a loop
+    mean_states = LastAcpiStates(args.window)
+    mean_states.add_result(acpi_result)
+    while True:
+        time.sleep(args.sleep)
+        acpi_result = run_acpi(args.name)
+        mean_states.add_result(acpi_result)
+        show_results(acpi_result, args.title, args.term)
+
+
+if __name__ == '__main__':
+    main()
