@@ -303,6 +303,13 @@ if type alias > /dev/null 2>&1 ; then
         alias xbell-on='xset b on'
     fi
 
+    # Colored "ip" command, since iproute2 4.1.0
+    case $(ip --help 2>&1) in
+        *-c\[olor\]*)
+            alias ip='ip -color'
+            ;;
+    esac
+
     # DNSSEC validation with drill (from ldns package) or dig
     if which drill > /dev/null 2>&1 ; then
         if [ -r '/etc/trusted-key.key' ] ; then
