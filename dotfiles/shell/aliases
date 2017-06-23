@@ -140,6 +140,9 @@ if type alias > /dev/null 2>&1 ; then
     alias ..='cd ..'
     alias ...='cd ../..'
 
+    # Cut lines with space delimiter
+    alias cuts='cut -d" "'
+
     # Get file attributes, not restricted to "^user\\."
     alias getextattr='getfattr -m - -d'
 
