@@ -62,6 +62,7 @@ BIN_SCRIPTS = {
     'disable-net-services': 'never',
     'display-proc-maps': '(/proc)direct',
     'docker-purge': 'never',
+    'docker-update': 'never',
     'dump-arch': 'direct',
     'dxrandr': 'never',
     'enter-container': 'never',
