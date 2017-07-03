@@ -83,6 +83,11 @@ fi
 # Please read grep man page for further information.
 export GREP_COLORS='ne'
 
+# Define $COLORFGBG to "dark background" when it is not defined
+if [ -z "$COLORFGBG" ] ; then
+    export COLORFGBG='default;0'
+fi
+
 # Use Vim
 if [ -x /usr/bin/vim ] || which vim > /dev/null 2>&1 ; then
     export EDITOR=vim
