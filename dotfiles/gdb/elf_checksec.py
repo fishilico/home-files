@@ -23,6 +23,7 @@
 
 See also checksec script:
 http://www.trapkit.de/tools/checksec.html (.sh to download the script)
+https://github.com/slimm609/checksec.sh : updated version
 
 @author: Nicolas Iooss
 @license: MIT
