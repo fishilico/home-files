@@ -101,6 +101,8 @@ if [ -x /usr/bin/less ] || which less > /dev/null 2>&1 ; then
     export PAGER='less -R'
     # -R = --quit-if-one-screen, -X = --no-init
     export GIT_PAGER='less -RFX'
+    # Do not use .lesshst
+    export LESSHISTFILE='/dev/null'
 fi
 
 # Make less more friendly for non-text input files, see lesspipe(1)
