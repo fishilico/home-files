@@ -32,7 +32,7 @@ git checkout "$GITBRANCH" "$MYGPGKEY" || exit $?
 git reset --quiet "$MYGPGKEY" || exit $?
 
 # Grab its fingerprint and compare it with the one used by git
-KEYFP="$(LANG=C gpg --dry-run --with-fingerprint "$MYGPGKEY" | \
+KEYFP="$(LANG=C gpg --dry-run --keyid-format 0xlong --with-fingerprint "$MYGPGKEY" | \
     sed 's/.*=//' | sed -n 2p | tr -cd 0-9A-F)"
 GITKEYFP="$(sed -n 's/^[ \t]*signingkey[ ]*=[ ]*//p' dotfiles/gitconfig | \
     head -n1 | tr -d ' ')"
