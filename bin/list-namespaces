@@ -59,6 +59,13 @@ KERNEL_INIT_INODES = {
 }
 
 
+def get_ns_type_from_name(nsname):
+    """Get the type of namespace from its name in /proc/PID/ns/"""
+    if nsname == 'pid_for_children':
+        return 'pid'
+    return nsname
+
+
 def gather_namespaces():
     """Gather information about namespaces in /proc
 
@@ -72,6 +79,7 @@ def gather_namespaces():
             + 'mnt': mount namespace
             + 'net': network namespace
             + 'pid': process namespace
+            + 'pid_for_children': process namespace
             + 'user': user namespace
             + 'uts': UTS namespace (hostname)
     """
@@ -117,8 +125,9 @@ def gather_namespaces():
                     # Zombie processes only have PID and user namespaces
                     if exc.errno in (errno.EACCES, errno.EPERM, errno.ENOENT):
                         continue
+                nstype = get_ns_type_from_name(namespace)
                 match = re.match(r'([a-z]+):\[([0-9]+)\]$', link)
-                if match is None or match.group(1) != namespace:
+                if match is None or match.group(1) != nstype:
                     sys.stderr.write("Invalid namespace link: {0} -> {1}\n"
                                      .format(nspath, link))
                     continue
@@ -155,16 +164,17 @@ def get_upper_letters(num):
 
 
 def create_labels_from_info(all_proc_info):
-    """Create an nstype->inode->label from gathered namespaces"""
+    """Create a dict nsname->inode->label from gathered namespaces"""
     known_namespaces = {}
     for proc_info in all_proc_info.values():
-        for nstype, ino in proc_info['ns'].items():
-            if nstype not in known_namespaces:
-                known_namespaces[nstype] = set()
-            known_namespaces[nstype].add(ino)
+        for nsname, ino in proc_info['ns'].items():
+            if nsname not in known_namespaces:
+                known_namespaces[nsname] = set()
+            known_namespaces[nsname].add(ino)
 
     result = {}
-    for nstype, inodes in known_namespaces.items():
+    for nsname, inodes in known_namespaces.items():
+        nstype = get_ns_type_from_name(nsname)
         ino_labels = {}
         for idx, ino in enumerate(sorted(inodes)):
             if KERNEL_INIT_INODES.get(ino) == nstype:
@@ -172,7 +182,7 @@ def create_labels_from_info(all_proc_info):
                 ino_labels[ino] = 'I_' + nstype
             else:
                 ino_labels[ino] = nstype + get_upper_letters(idx)
-        result[nstype] = ino_labels
+        result[nsname] = ino_labels
 
     return result
 
@@ -238,11 +248,11 @@ def main(argv=None):
 
     # Create human-readable labels
     labels = create_labels_from_info(all_proc_info)
-    nstypes = sorted(labels)
+    nsnames = sorted(labels)
 
     # Show processes in colored columns
     header = (['UID' if args.uid else 'USER', 'PID', 'PPID'] +
-              [n.upper() for n in nstypes] +
+              [n.upper() for n in nsnames] +
               ['COMMAND'])
     color_header = [''] * len(header)
     lines = [(header, color_header)]
@@ -265,15 +275,16 @@ def main(argv=None):
             '',
             ''
         ]
-        for nstype in nstypes:
-            ino = proc_info['ns'].get(nstype)
+        for nsname in nsnames:
+            ino = proc_info['ns'].get(nsname)
             if ino is None:
                 columns.append('-')
                 # red for unknown namespaces (an error happened)
                 color_columns.append('31')
             else:
-                label = labels[nstype][ino]
+                label = labels[nsname][ino]
                 columns.append(label)
+                nstype = get_ns_type_from_name(nsname)
                 if ino in KERNEL_INIT_INODES:
                     # dark cyan for init namespace
                     color_columns.append('36')
@@ -295,7 +306,7 @@ def main(argv=None):
         color_columns.append(color_comm)
         lines.append((columns, color_columns))
 
-    num_cols = 4 + len(nstypes)
+    num_cols = 4 + len(nsnames)
     assert all(len(l[0]) == len(l[1]) == num_cols for l in lines)
     cols_format = [
         '{{0[{0}]:{1}{2}}}'.format(c, '>' if 1 <= c <= 2 else '',
