@@ -43,6 +43,11 @@ SC_INCLUDE_LOCATIONS = {
         ('kernel', 'arch/arm/tools/syscall.tbl'),
         ('kernel', 'arch/arm/include/uapi/asm/unistd.h'),
     ),
+    'arm64': (
+        ('natinc', 'asm-generic/unistd.h'),
+        ('inc', 'aarch64-linux-gnu/asm-generic/unistd.h'),
+        ('kernel', 'include/uapi/asm-generic/unistd.h'),
+    ),
     'x86_32': (
         ('natinc', 'asm/unistd_32.h'),
         ('inc', 'i386-linux-gnu/asm/unistd_32.h'),
@@ -72,6 +77,8 @@ def normalize_arch(arch):
     arch = arch.lower()
     if re.match(r'^armv[1-9]+l$', arch):
         return 'arm'
+    if arch == 'aarch64':
+        return 'arm64'
     if re.match(r'^i[3-6]86$', arch):
         return 'x86_32'
     if arch in ('amd64', 'x86-64'):
@@ -100,19 +107,19 @@ def find_syscall_include(arch=None):
         if loctype == 'inc':
             fullpath = os.path.join('/usr/include', path)
             if os.path.exists(fullpath):
-                return fullpath
+                return fullpath, arch
             tried_locations.append(fullpath)
         elif loctype == 'kernel':
             # Use path to kernel build headers
             kernel_build = '/lib/modules/{0}/build'.format(platform.release())
             fullpath = os.path.join(kernel_build, path)
             if os.path.exists(fullpath):
-                return fullpath
+                return fullpath, arch
 
             # Kernel source checkout directory
             fullpath = os.path.join('/usr/src/linux', path)
             if os.path.exists(fullpath):
-                return fullpath
+                return fullpath, arch
             tried_locations.append(fullpath)
 
     sys.stderr.write("Unable to find an include header for {0}\n".format(arch))
@@ -121,16 +128,170 @@ def find_syscall_include(arch=None):
     return
 
 
-def read_syscalls_from_header_file(filename):
+def is_ifcondition_enabled(arch, if_cond):
+    """Test the #if condition for the specified architecture"""
+    if_cond_orig = if_cond
+
+    # Replace every defined(...) with 0 and 1
+    known_defined = {
+        '__ARCH_NOMMU': False,
+        '__ARCH_WANT_RENAMEAT': False,
+        '__ARCH_WANT_SYSCALL_DEPRECATED': False,
+        '__ARCH_WANT_SYSCALL_OFF_T': False,
+        '__ARCH_WANT_SYSCALL_NO_AT': False,
+        '__ARCH_WANT_SYSCALL_NO_FLAGS': False,
+        '__ARCH_WANT_SYNC_FILE_RANGE2': False,
+        '__SYSCALL': False,
+        '__SYSCALL_COMPAT': False,
+        'CONFIG_MMU': True,
+
+        # Header guards
+        '_ASM_X86_UNISTD_32_H': False,
+        '_ASM_X86_UNISTD_64_H': False,
+        '_UAPI__ASM_ARM_UNISTD_H': False,
+    }
+    if arch == 'arm64':
+        # arch/arm64/include/uapi/asm/unistd.h defines __ARCH_WANT_RENAMEAT
+        known_defined['__ARCH_WANT_RENAMEAT'] = True
+    known_defined['__NR3264_stat'] = known_defined['__ARCH_WANT_SYSCALL_NO_AT']
+
+    while True:
+        matches = re.match(r'^(.*)\bdefined\s*\(\s*(\w+)\s*\)(.*)$', if_cond)
+        if matches is None:
+            break
+        prefix, name, suffix = matches.groups()
+        value = known_defined.get(name)
+        if value is None:
+            # Default value is "False"
+            sys.stderr.write("Unknown preprocessor variable: {0}\n".format(name))
+        if_cond = prefix + ('1' if value else '0') + suffix
+
+    # Replace __BITS_PER_LONG
+    if '__BITS_PER_LONG' in if_cond:
+        bits_per_long_value = None
+        if arch in ('arm', 'x86_32'):
+            bits_per_long_value = 32
+        elif arch in ('arm64', 'x86_64'):
+            bits_per_long_value = 64
+        assert bits_per_long_value is not None, "Unknown __BITS_PER_LONG value for {0}".format(arch)
+        if_cond = re.sub(r'\b__BITS_PER_LONG\b', str(bits_per_long_value), if_cond)
+
+    # Implement simple substitution patterns to simplify expressions
+    while True:
+        if_cond = if_cond.strip()
+        if if_cond in ('0', '1'):
+            return if_cond == '1'
+        matches = re.match(r'^(.*)!([0-9]+)(.*)$', if_cond)
+        if matches is not None:
+            prefix, value, suffix = matches.groups()
+            if_cond = prefix + ('1' if not int(value) else '0') + suffix
+            continue
+        matches = re.match(r'^(.*)\(\s*([0-9]+)\s*\)(.*)$', if_cond)
+        if matches is not None:
+            prefix, value, suffix = matches.groups()
+            if_cond = prefix + ' ' + value + ' ' + suffix
+            continue
+        matches = re.match(r'^(.*)\b([0-9]+)\s*==\s*([0-9]+)\b(.*)$', if_cond)
+        if matches is not None:
+            prefix, val1, val2, suffix = matches.groups()
+            if_cond = prefix + ('1' if int(val1) == int(val2) else '0') + suffix
+            continue
+        matches = re.match(r'^(.*)\b([0-9]+)\s*\|\|\s*([0-9]+)\b(.*)$', if_cond)
+        if matches is not None:
+            prefix, val1, val2, suffix = matches.groups()
+            if_cond = prefix + ('1' if int(val1) or int(val2) else '0') + suffix
+            continue
+        matches = re.match(r'^(.*)\b([0-9]+)\s*&&\s*([0-9]+)\b(.*)$', if_cond)
+        if matches is not None:
+            prefix, val1, val2, suffix = matches.groups()
+            if_cond = prefix + ('1' if int(val1) and int(val2) else '0') + suffix
+            continue
+        break
+    raise RuntimeError("Unable to evaluation condition {0} from {1}".format(
+        if_cond, if_cond_orig))
+
+
+def read_syscalls_from_header_file(filename, arch):
     """Build a syscall dictionary from the given C header file"""
     syscalls = {}
     syscall_relative = []
     special_names = (
         'OABI_SYSCALL_BASE',
         'SYSCALL_BASE',
+        'syscalls',
     )
+    other_macros = {}
+    # Stack of #if statements:
+    #   0 if disabled #if,
+    #   1 if enabled #if,
+    #   2 if #else after a successful #if (it never succeeds)
+    #   3 if #if block in a disabled block
+    if_stack = [1]
+    current_if_statement = None
+    current_if_statement_type = None
     with open(filename, 'r') as headerfile:
         for line in headerfile:
+            line = line.rstrip()
+
+            # Find an #if statement
+            if current_if_statement is not None:
+                # Line continuation
+                current_if_statement += ' ' + line
+            else:
+                # Start #if or #elif
+                matches = re.match(r'#\s*(if|ifdef|ifndef|elif) (.*)', line)
+                if matches is not None:
+                    current_if_statement_type, current_if_statement = matches.groups()
+
+            if current_if_statement is not None:
+                if current_if_statement.endswith('\\'):
+                    current_if_statement = current_if_statement[:-1]
+                    continue
+                # Convert #ifdef
+                if current_if_statement_type == 'ifdef':
+                    current_if_statement_type = 'if'
+                    current_if_statement = 'defined({0})'.format(current_if_statement)
+                elif current_if_statement_type == 'ifndef':
+                    current_if_statement_type = 'if'
+                    current_if_statement = '!defined({0})'.format(current_if_statement)
+
+                # if we already are in a disabled block, stay disabled
+                if current_if_statement_type == 'if' and if_stack[-1] in (0, 2, 3):
+                    if_stack.append(3)
+                    current_if_statement = None
+                    continue
+                if current_if_statement_type == 'elif' and if_stack[-1] in (1, 2, 3):
+                    if if_stack[-1] == 1:
+                        if_stack[-1] = 2
+                    current_if_statement = None
+                    continue
+                # Interpret the #if statement
+                result = is_ifcondition_enabled(arch, current_if_statement)
+                if current_if_statement_type == 'if':
+                    if_stack.append(1 if result else 0)
+                elif current_if_statement_type == 'elif':
+                    if_stack[-1] = 1 if result else 0
+                current_if_statement = None
+                continue
+
+            # Parse #else
+            if re.match(r'#\s*else', line):
+                assert len(if_stack) >= 2
+                if if_stack[-1] == 0:
+                    if_stack[-1] = 1
+                elif if_stack[-1] == 1:
+                    if_stack[-1] = 2
+                continue
+
+            # Parse #endif
+            if re.match(r'#\s*endif', line):
+                assert len(if_stack) >= 2
+                if_stack.pop()
+
+            # Skip disabled lines
+            if if_stack[-1] != 1:
+                continue
+
             matches = re.match(r'#define\s+__NR_(\S+)\s+(.*)', line)
             if matches is not None:
                 name, rawnum = matches.groups()
@@ -140,12 +301,20 @@ def read_syscalls_from_header_file(filename):
                     continue
 
                 # Check unicity
-                assert name not in syscalls
+                if name in syscalls:
+                    raise RuntimeError("Syscall {0} is defined twice".format(name))
 
                 # Decode rawnum
                 rawnum = rawnum.strip().replace(' ', '')
                 rawnum = rawnum.replace('\t', '')
                 rawnum = re.sub(r'/\*.*\*/', '', rawnum)
+
+                # Find a macro like "#define __NR_fcntl __NR3264_fcntl"
+                if rawnum in other_macros:
+                    rawnum = other_macros[rawnum]
+                    rawnum = rawnum.strip().replace(' ', '')
+                    rawnum = rawnum.replace('\t', '')
+                    rawnum = re.sub(r'/\*.*\*/', '', rawnum)
 
                 # Find relative syscalls
                 matches = re.match(r'\(__NR_([^)+]+)\+(.*)\)$', rawnum)
@@ -177,6 +346,21 @@ def read_syscalls_from_header_file(filename):
                 else:
                     sys.stderr.write(
                         "Invalid syscall number on line: {0}\n".format(line))
+                continue
+
+            # Record other single-line macros, where they may be used
+            matches = re.match(r'#define\s+(\S+)\s+(\S+)', line)
+            if matches is not None:
+                name, value = matches.groups()
+                if '(' not in name and not value.endswith('\\'):
+                    other_macros[name] = value
+
+    if current_if_statement is not None:
+        sys.stderr.write("Unfinished #{0} statement: {1}\n".format(
+            current_if_statement_type, current_if_statement))
+    if if_stack != [1]:
+        sys.stderr.write("Unexpected #if stack final state: {0}\n".format(
+            if_stack))
 
     # Put aliases into syscall_list
     for alias, real, offset in syscall_relative:
@@ -188,17 +372,20 @@ def read_syscalls_from_header_file(filename):
     return syscalls
 
 
-def read_syscalls_from_table_file(filename):
+def read_syscalls_from_table_file(filename, arch):
     """Build a syscall dictionary from the given table file"""
     syscalls = {}
     # White-list the ABI identifiers which are used
     if re.search(r'arch/arm/.*/syscall\.tbl', filename):
+        assert arch == 'arm'
         used_abis = frozenset(['common', 'eabi', 'oabi'])
         unused_abis = frozenset()
     elif re.search(r'arch/x86/.*/syscall_32\.tbl', filename):
+        assert arch == 'x86_32'
         used_abis = frozenset(['i386'])
         unused_abis = frozenset()
     elif re.search(r'arch/x86/.*/syscall_64\.tbl', filename):
+        assert arch == 'x86_64'
         used_abis = frozenset(['common', '64'])
         unused_abis = frozenset(['x32'])
     else:
@@ -226,12 +413,12 @@ def read_syscalls_from_table_file(filename):
     return syscalls
 
 
-def read_syscalls_from_file(filename):
+def read_syscalls_from_file(filename, arch):
     """Build a syscall dictionary from a file"""
     if filename.endswith('.h'):
-        return read_syscalls_from_header_file(filename)
+        return read_syscalls_from_header_file(filename, arch)
     if filename.endswith('.tbl'):
-        return read_syscalls_from_table_file(filename)
+        return read_syscalls_from_table_file(filename, arch)
     # This is an internal error in SC_INCLUDE_LOCATIONS
     raise RuntimeError("Unknwon file extenstion of {0}".format(filename))
 
@@ -289,15 +476,16 @@ def main(argv=None):
         return 0
 
     # Find an include file according to the architecture
-    filename = find_syscall_include(args.arch)
-    if not filename:
+    filename_arch = find_syscall_include(args.arch)
+    if not filename_arch:
         return 1
+    filename, arch = filename_arch
 
     if args.show_header:
         print("Using {0}".format(filename))
 
     # Parse the file
-    name2nr = read_syscalls_from_file(filename)
+    name2nr = read_syscalls_from_file(filename, arch)
 
     # Reverse the syscalls mappings
     nr2name = {}
