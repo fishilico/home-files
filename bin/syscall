@@ -38,9 +38,11 @@ import webbrowser
 # https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/
 SC_INCLUDE_LOCATIONS = {
     'arm': (
+        ('kernel', 'arch/arm/tools/syscall.tbl'),
+        ('natinc', 'asm/unistd-common.h'),
+        ('inc', 'arm-linux-gnueabihf/asm/unistd-common.h'),
         ('natinc', 'asm/unistd.h'),
         ('inc', 'arm-linux-gnueabihf/asm/unistd.h'),
-        ('kernel', 'arch/arm/tools/syscall.tbl'),
         ('kernel', 'arch/arm/include/uapi/asm/unistd.h'),
     ),
     'arm64': (
@@ -146,6 +148,8 @@ def is_ifcondition_enabled(arch, if_cond):
         'CONFIG_MMU': True,
 
         # Header guards
+        '__ASM_ARM_UNISTD_H': False,
+        '_ASM_ARM_UNISTD_COMMON_H': False,
         '_ASM_X86_UNISTD_32_H': False,
         '_ASM_X86_UNISTD_64_H': False,
         '_UAPI__ASM_ARM_UNISTD_H': False,
