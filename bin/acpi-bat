@@ -208,7 +208,8 @@ def run_acpi(name_filter=None):
         elif status == 'Charging':
             if len(parts) < 3:
                 raise ValueError("invalid acpi output for battery {0}".format(name))
-            if parts[2] in ('rate information unavailable', ' until charged'):
+            if parts[2] in ('rate information unavailable', ' until charged',
+                            'charging at zero rate - will never fully charge.'):
                 remaining = None
             else:
                 matches = re.match(r'([0-9]+):([0-9]+):([0-9]+) until charged$', parts[2])
