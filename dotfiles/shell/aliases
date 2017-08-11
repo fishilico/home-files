@@ -396,6 +396,9 @@ if type alias > /dev/null 2>&1 ; then
     alias disarmt='objdump -D -bbinary -marm -Mforce-thumb'
     alias disnarm='arm-none-eabi-objdump -D -bbinary -marm'
     alias disnarmt='arm-none-eabi-objdump -D -bbinary -marm -Mforce-thumb'
+    # Disassemble ARM64 binary objects
+    alias disarm64='objdump -D -bbinary -maarch64'
+    alias disgarm64='aarch64-linux-gnu-objdump -D -bbinary -maarch64'
 
     # Run a program into gdb and break on Address Sanitizer errors
     alias gdb-run='gdb -q -ex run --args'

@@ -495,6 +495,7 @@ objdump_wrapper() {
 if type alias > /dev/null 2>&1 ; then
     alias objdump='objdump_wrapper /usr/bin/objdump'
     alias arm-none-eabi-objdump='objdump_wrapper /usr/bin/arm-none-eabi-objdump'
+    alias aarch64-linux-gnu-objdump='objdump_wrapper /usr/bin/aarch64-linux-gnu-objdump'
 else
     objdump() {
         objdump_wrapper /usr/bin/objdump "$@"
