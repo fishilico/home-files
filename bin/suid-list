@@ -222,9 +222,10 @@ TRUSTED_SUID_FILES = [
     LinkToSuidFile('/sbin/runq', '/sbin/exim4'),
     LinkToSuidFile('/sbin/sendmail', '/sbin/exim4'),
 
-    # fuse, http://fuse.sourceforge.net/
-    # http://sourceforge.net/p/fuse/fuse/ci/master/tree/
+    # fuse, https://github.com/libfuse/libfuse/wiki
+    # https://github.com/libfuse/libfuse
     SuidFile('/bin/fusermount'),
+    SuidFile('/bin/fusermount3'),
 
     # glibc, http://www.gnu.org/software/libc/
     # https://sourceware.org/git/?p=glibc.git;a=tree
@@ -652,6 +653,7 @@ TRUSTED_CAPS_FILES = [
     # mtr, http://www.bitwizard.nl/mtr/
     # https://github.com/traviscross/mtr
     CapsFile('/bin/mtr', '= cap_net_raw+ep'),
+    CapsFile('/bin/mtr-packet', '= cap_net_bind_service,cap_net_raw+ep'),
 
     # systemd, http://www.freedesktop.org/wiki/Software/systemd/
     # https://github.com/systemd/systemd
