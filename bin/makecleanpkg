@@ -138,6 +138,13 @@ while [ \$# -ge 1 ] ; do
     esac
     shift
 done
+
+# Ask --ask=4 to replace packages when installing with pacman -U --noconfirm
+if [ "\$1 \$2 \$3" = 'pacman -U --noconfirm' ] ; then
+    shift
+    set pacman --ask=4 "\$@"
+fi
+
 echo "Running proot \${proot_options[*]} \$*"
 exec proot "\${proot_options[@]}" "\$@"
 EOF
