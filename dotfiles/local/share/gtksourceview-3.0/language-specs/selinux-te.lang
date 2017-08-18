@@ -54,12 +54,15 @@ except according to those terms.
       <keyword>dontauditxperm</keyword>
       <keyword>else</keyword>
       <keyword>eq</keyword>
+      <keyword>expandattribute</keyword>
       <keyword>false</keyword>
       <keyword>fs_use_task</keyword>
       <keyword>fs_use_trans</keyword>
       <keyword>fs_use_xattr</keyword>
       <keyword>fscon</keyword>
       <keyword>genfscon</keyword>
+      <keyword>ibendportcon</keyword>
+      <keyword>ibpkeycon</keyword>
       <keyword>if</keyword>
       <keyword>incomp</keyword>
       <keyword>inherits</keyword>
@@ -128,17 +131,32 @@ except according to those terms.
     </context>
 
     <context id="m4-keywords" style-ref="m4-preproc">
+      <keyword>can_exec</keyword>
+      <keyword>decl_cats</keyword>
+      <keyword>decl_levels</keyword>
+      <keyword>decl_sens</keyword>
       <keyword>define</keyword>
       <keyword>errprint</keyword>
+      <keyword>gen_bool</keyword>
+      <keyword>gen_cats</keyword>
       <keyword>gen_context</keyword>
+      <keyword>gen_dominance</keyword>
+      <keyword>gen_levels</keyword>
       <keyword>gen_require</keyword>
+      <keyword>gen_sens</keyword>
       <keyword>gen_tunable</keyword>
       <keyword>gen_user</keyword>
       <keyword>ifdef</keyword>
       <keyword>ifelse</keyword>
       <keyword>ifndef</keyword>
       <keyword>interface</keyword>
+      <keyword>mcs_allcats</keyword>
+      <keyword>mcs_systemhigh</keyword>
+      <keyword>mcs_systemlow</keyword>
+      <keyword>mls_systemhigh</keyword>
+      <keyword>mls_systemlow</keyword>
       <keyword>optional_policy</keyword>
+      <keyword>policy_module</keyword>
       <keyword>popdef</keyword>
       <keyword>pushdef</keyword>
       <keyword>refpolicyerr</keyword>
@@ -151,11 +169,25 @@ except according to those terms.
       <keyword>self</keyword>
     </context>
 
+    <!-- Populate with:
+       sed 's/#.*//' policy/flask/access_vectors | \
+            sed -n 's/^class \+\(.*\)/      <keyword>\1<\/keyword>/p' | \
+            LANG=C sort -u
+    -->
     <context id="security-classes" style-ref="type">
+      <keyword>alg_socket</keyword>
       <keyword>appletalk_socket</keyword>
       <keyword>association</keyword>
+      <keyword>atmpvc_socket</keyword>
+      <keyword>atmsvc_socket</keyword>
+      <keyword>ax25_socket</keyword>
       <keyword>binder</keyword>
       <keyword>blk_file</keyword>
+      <keyword>bluetooth_socket</keyword>
+      <keyword>caif_socket</keyword>
+      <keyword>can_socket</keyword>
+      <keyword>cap2_userns</keyword>
+      <keyword>cap_userns</keyword>
       <keyword>capability2</keyword>
       <keyword>capability</keyword>
       <keyword>chr_file</keyword>
@@ -171,18 +203,29 @@ except according to those terms.
       <keyword>db_sequence</keyword>
       <keyword>db_table</keyword>
       <keyword>db_tuple</keyword>
-      <keyword>dbus</keyword>
       <keyword>db_view</keyword>
+      <keyword>dbus</keyword>
       <keyword>dccp_socket</keyword>
+      <keyword>decnet_socket</keyword>
       <keyword>dir</keyword>
       <keyword>fd</keyword>
       <keyword>fifo_file</keyword>
       <keyword>file</keyword>
       <keyword>filesystem</keyword>
+      <keyword>icmp_socket</keyword>
+      <keyword>ieee802154_socket</keyword>
+      <keyword>infiniband_endport</keyword>
+      <keyword>infiniband_pkey</keyword>
       <keyword>ipc</keyword>
+      <keyword>ipx_socket</keyword>
+      <keyword>irda_socket</keyword>
+      <keyword>isdn_socket</keyword>
+      <keyword>iucv_socket</keyword>
+      <keyword>kcm_socket</keyword>
       <keyword>kernel_service</keyword>
       <keyword>key</keyword>
       <keyword>key_socket</keyword>
+      <keyword>llc_socket</keyword>
       <keyword>lnk_file</keyword>
       <keyword>memprotect</keyword>
       <keyword>msg</keyword>
@@ -207,26 +250,40 @@ except according to those terms.
       <keyword>netlink_socket</keyword>
       <keyword>netlink_tcpdiag_socket</keyword>
       <keyword>netlink_xfrm_socket</keyword>
+      <keyword>netrom_socket</keyword>
+      <keyword>nfc_socket</keyword>
       <keyword>node</keyword>
       <keyword>nscd</keyword>
       <keyword>packet</keyword>
       <keyword>packet_socket</keyword>
       <keyword>passwd</keyword>
       <keyword>peer</keyword>
+      <keyword>phonet_socket</keyword>
+      <keyword>pppox_socket</keyword>
+      <keyword>process2</keyword>
       <keyword>process</keyword>
+      <keyword>qipcrtr_socket</keyword>
       <keyword>rawip_socket</keyword>
+      <keyword>rds_socket</keyword>
+      <keyword>rose_socket</keyword>
+      <keyword>rxrpc_socket</keyword>
+      <keyword>sctp_socket</keyword>
       <keyword>security</keyword>
       <keyword>sem</keyword>
       <keyword>service</keyword>
       <keyword>shm</keyword>
-      <keyword>socket</keyword>
+      <keyword>smc_socket</keyword>
       <keyword>sock_file</keyword>
+      <keyword>socket</keyword>
       <keyword>system</keyword>
       <keyword>tcp_socket</keyword>
+      <keyword>tipc_socket</keyword>
       <keyword>tun_socket</keyword>
       <keyword>udp_socket</keyword>
       <keyword>unix_dgram_socket</keyword>
       <keyword>unix_stream_socket</keyword>
+      <keyword>vsock_socket</keyword>
+      <keyword>x25_socket</keyword>
       <keyword>x_application_data</keyword>
       <keyword>x_client</keyword>
       <keyword>x_colormap</keyword>
@@ -247,15 +304,20 @@ except according to those terms.
       <keyword>x_synthetic_event</keyword>
     </context>
 
+    <!-- Populate with:
+       sed 's/#.*//' policy/flask/access_vectors | \
+            sed -n 's/^\s\+\(.*\)/      <keyword>\1<\/keyword>/p' | \
+            LANG=C sort -u
+    -->
     <context id="access-vectors" style-ref="identifier">
-      <keyword>acceptfrom</keyword>
       <keyword>accept</keyword>
+      <keyword>acceptfrom</keyword>
       <keyword>access</keyword>
       <keyword>acquire_svc</keyword>
+      <keyword>add</keyword>
       <keyword>add_child</keyword>
       <keyword>add_color</keyword>
       <keyword>add_glyph</keyword>
-      <keyword>add</keyword>
       <keyword>add_name</keyword>
       <keyword>admin</keyword>
       <keyword>append</keyword>
@@ -283,8 +345,8 @@ except according to those terms.
       <keyword>connectto</keyword>
       <keyword>contains</keyword>
       <keyword>copy</keyword>
-      <keyword>create_files_as</keyword>
       <keyword>create</keyword>
+      <keyword>create_files_as</keyword>
       <keyword>crontab</keyword>
       <keyword>dac_override</keyword>
       <keyword>dac_read_search</keyword>
@@ -318,25 +380,26 @@ except according to those terms.
       <keyword>fowner</keyword>
       <keyword>freeze</keyword>
       <keyword>fsetid</keyword>
+      <keyword>get_param</keyword>
+      <keyword>get_property</keyword>
+      <keyword>get_value</keyword>
       <keyword>getattr</keyword>
       <keyword>getcap</keyword>
       <keyword>getfocus</keyword>
       <keyword>getgrp</keyword>
       <keyword>gethost</keyword>
       <keyword>getopt</keyword>
-      <keyword>get_param</keyword>
       <keyword>getpgid</keyword>
-      <keyword>get_property</keyword>
       <keyword>getpwd</keyword>
+      <keyword>getrlimit</keyword>
       <keyword>getsched</keyword>
       <keyword>getserv</keyword>
       <keyword>getsession</keyword>
       <keyword>getstat</keyword>
-      <keyword>get_value</keyword>
       <keyword>grab</keyword>
       <keyword>halt</keyword>
-      <keyword>hide_cursor</keyword>
       <keyword>hide</keyword>
+      <keyword>hide_cursor</keyword>
       <keyword>impersonate</keyword>
       <keyword>implement</keyword>
       <keyword>import</keyword>
@@ -353,16 +416,19 @@ except according to those terms.
       <keyword>link</keyword>
       <keyword>linux_immutable</keyword>
       <keyword>list_child</keyword>
-      <keyword>listen</keyword>
       <keyword>list_property</keyword>
+      <keyword>listen</keyword>
       <keyword>load_module</keyword>
       <keyword>load_policy</keyword>
       <keyword>lock</keyword>
       <keyword>mac_admin</keyword>
       <keyword>mac_override</keyword>
       <keyword>manage</keyword>
+      <keyword>manage_subnet</keyword>
+      <keyword>map</keyword>
       <keyword>mknod</keyword>
       <keyword>mmap_zero</keyword>
+      <keyword>module_load</keyword>
       <keyword>module_request</keyword>
       <keyword>mount</keyword>
       <keyword>mounton</keyword>
@@ -379,13 +445,15 @@ except according to those terms.
       <keyword>nlmsg_relay</keyword>
       <keyword>nlmsg_tty_audit</keyword>
       <keyword>nlmsg_write</keyword>
+      <keyword>nnp_transition</keyword>
       <keyword>noatsecure</keyword>
       <keyword>node_bind</keyword>
+      <keyword>nosuid_transition</keyword>
       <keyword>open</keyword>
       <keyword>override</keyword>
       <keyword>passwd</keyword>
-      <keyword>paste_after_confirm</keyword>
       <keyword>paste</keyword>
+      <keyword>paste_after_confirm</keyword>
       <keyword>polmatch</keyword>
       <keyword>ptrace</keyword>
       <keyword>query</keyword>
@@ -399,17 +467,17 @@ except according to those terms.
       <keyword>reboot</keyword>
       <keyword>receive</keyword>
       <keyword>record</keyword>
-      <keyword>recvfrom</keyword>
       <keyword>recv</keyword>
       <keyword>recv_msg</keyword>
+      <keyword>recvfrom</keyword>
       <keyword>relabelfrom</keyword>
       <keyword>relabelto</keyword>
       <keyword>reload</keyword>
       <keyword>remount</keyword>
+      <keyword>remove</keyword>
       <keyword>remove_child</keyword>
       <keyword>remove_color</keyword>
       <keyword>remove_glyph</keyword>
-      <keyword>remove</keyword>
       <keyword>remove_name</keyword>
       <keyword>rename</keyword>
       <keyword>reparent</keyword>
@@ -425,12 +493,15 @@ except according to those terms.
       <keyword>send</keyword>
       <keyword>send_msg</keyword>
       <keyword>sendto</keyword>
+      <keyword>set_context_mgr</keyword>
+      <keyword>set_param</keyword>
+      <keyword>set_property</keyword>
+      <keyword>set_value</keyword>
       <keyword>setattr</keyword>
       <keyword>setbool</keyword>
       <keyword>setcap</keyword>
       <keyword>setcheckreqprot</keyword>
       <keyword>setcontext</keyword>
-      <keyword>set_context_mgr</keyword>
       <keyword>setcurrent</keyword>
       <keyword>setenforce</keyword>
       <keyword>setexec</keyword>
@@ -440,23 +511,20 @@ except according to those terms.
       <keyword>setgid</keyword>
       <keyword>setkeycreate</keyword>
       <keyword>setopt</keyword>
-      <keyword>set_param</keyword>
       <keyword>setpcap</keyword>
       <keyword>setpgid</keyword>
-      <keyword>set_property</keyword>
       <keyword>setrlimit</keyword>
       <keyword>setsched</keyword>
       <keyword>setsecparam</keyword>
       <keyword>setsockcreate</keyword>
       <keyword>setuid</keyword>
-      <keyword>set_value</keyword>
       <keyword>share</keyword>
       <keyword>shmemgrp</keyword>
       <keyword>shmemhost</keyword>
       <keyword>shmempwd</keyword>
       <keyword>shmemserv</keyword>
-      <keyword>show_cursor</keyword>
       <keyword>show</keyword>
+      <keyword>show_cursor</keyword>
       <keyword>shutdown</keyword>
       <keyword>sigchld</keyword>
       <keyword>siginh</keyword>
@@ -471,10 +539,6 @@ except according to those terms.
       <keyword>sys_admin</keyword>
       <keyword>sys_boot</keyword>
       <keyword>sys_chroot</keyword>
-      <keyword>syslog_console</keyword>
-      <keyword>syslog</keyword>
-      <keyword>syslog_mod</keyword>
-      <keyword>syslog_read</keyword>
       <keyword>sys_module</keyword>
       <keyword>sys_nice</keyword>
       <keyword>sys_pacct</keyword>
@@ -483,6 +547,10 @@ except according to those terms.
       <keyword>sys_resource</keyword>
       <keyword>sys_time</keyword>
       <keyword>sys_tty_config</keyword>
+      <keyword>syslog</keyword>
+      <keyword>syslog_console</keyword>
+      <keyword>syslog_mod</keyword>
+      <keyword>syslog_read</keyword>
       <keyword>tcp_recv</keyword>
       <keyword>tcp_send</keyword>
       <keyword>transfer</keyword>
@@ -496,20 +564,25 @@ except according to those terms.
       <keyword>unlink</keyword>
       <keyword>unmount</keyword>
       <keyword>update</keyword>
-      <keyword>use_as_override</keyword>
       <keyword>use</keyword>
+      <keyword>use_as_override</keyword>
+      <keyword>validate_trans</keyword>
       <keyword>view</keyword>
       <keyword>wake_alarm</keyword>
       <keyword>write</keyword>
     </context>
 
+    <!-- Populate with:
+        grep 'define' policy/support/obj_perm_sets.spt | \
+            sed "s/^define(\`\([^']*\)',.*/      <keyword>\1<\/keyword>/" | \
+            LANG=C sort
+    -->
     <context id="complex-access-vectors" style-ref="identifier">
       <keyword>add_entry_dir_perms</keyword>
       <keyword>append_blk_file_perms</keyword>
       <keyword>append_chr_file_perms</keyword>
       <keyword>append_fifo_file_perms</keyword>
       <keyword>append_file_perms</keyword>
-      <keyword>append_inherited_file_perms</keyword>
       <keyword>append_lnk_file_perms</keyword>
       <keyword>client_stream_socket_perms</keyword>
       <keyword>connected_socket_perms</keyword>
@@ -524,8 +597,8 @@ except according to those terms.
       <keyword>create_netlink_socket_perms</keyword>
       <keyword>create_sem_perms</keyword>
       <keyword>create_shm_perms</keyword>
-      <keyword>create_socket_perms</keyword>
       <keyword>create_sock_file_perms</keyword>
+      <keyword>create_socket_perms</keyword>
       <keyword>create_stream_socket_perms</keyword>
       <keyword>del_entry_dir_perms</keyword>
       <keyword>delete_blk_file_perms</keyword>
@@ -560,11 +633,14 @@ except according to those terms.
       <keyword>mount_fs_perms</keyword>
       <keyword>notdevfile_class_set</keyword>
       <keyword>packet_perms</keyword>
+      <keyword>r_msgq_perms</keyword>
+      <keyword>r_netlink_socket_perms</keyword>
+      <keyword>r_sem_perms</keyword>
+      <keyword>r_shm_perms</keyword>
       <keyword>read_blk_file_perms</keyword>
       <keyword>read_chr_file_perms</keyword>
       <keyword>read_fifo_file_perms</keyword>
       <keyword>read_file_perms</keyword>
-      <keyword>read_inherited_file_perms</keyword>
       <keyword>read_lnk_file_perms</keyword>
       <keyword>read_sock_file_perms</keyword>
       <keyword>relabel_blk_file_perms</keyword>
@@ -572,6 +648,8 @@ except according to those terms.
       <keyword>relabel_dir_perms</keyword>
       <keyword>relabel_fifo_file_perms</keyword>
       <keyword>relabel_file_perms</keyword>
+      <keyword>relabel_lnk_file_perms</keyword>
+      <keyword>relabel_sock_file_perms</keyword>
       <keyword>relabelfrom_blk_file_perms</keyword>
       <keyword>relabelfrom_chr_file_perms</keyword>
       <keyword>relabelfrom_dir_perms</keyword>
@@ -579,8 +657,6 @@ except according to those terms.
       <keyword>relabelfrom_file_perms</keyword>
       <keyword>relabelfrom_lnk_file_perms</keyword>
       <keyword>relabelfrom_sock_file_perms</keyword>
-      <keyword>relabel_lnk_file_perms</keyword>
-      <keyword>relabel_sock_file_perms</keyword>
       <keyword>relabelto_blk_file_perms</keyword>
       <keyword>relabelto_chr_file_perms</keyword>
       <keyword>relabelto_dir_perms</keyword>
@@ -595,28 +671,21 @@ except according to those terms.
       <keyword>rename_file_perms</keyword>
       <keyword>rename_lnk_file_perms</keyword>
       <keyword>rename_sock_file_perms</keyword>
-      <keyword>r_msgq_perms</keyword>
-      <keyword>r_netlink_socket_perms</keyword>
-      <keyword>r_sem_perms</keyword>
-      <keyword>r_shm_perms</keyword>
       <keyword>rw_blk_file_perms</keyword>
       <keyword>rw_chr_file_perms</keyword>
       <keyword>rw_dir_perms</keyword>
       <keyword>rw_fifo_file_perms</keyword>
       <keyword>rw_file_perms</keyword>
-      <keyword>rw_inherited_blk_file_perms</keyword>
-      <keyword>rw_inherited_chr_file_perms</keyword>
       <keyword>rw_inherited_fifo_file_perms</keyword>
       <keyword>rw_inherited_file_perms</keyword>
-      <keyword>rw_inherited_sock_file_perms</keyword>
       <keyword>rw_inherited_term_perms</keyword>
       <keyword>rw_lnk_file_perms</keyword>
       <keyword>rw_msgq_perms</keyword>
       <keyword>rw_netlink_socket_perms</keyword>
       <keyword>rw_sem_perms</keyword>
       <keyword>rw_shm_perms</keyword>
-      <keyword>rw_socket_perms</keyword>
       <keyword>rw_sock_file_perms</keyword>
+      <keyword>rw_socket_perms</keyword>
       <keyword>rw_stream_socket_perms</keyword>
       <keyword>rw_term_perms</keyword>
       <keyword>search_dir_perms</keyword>
@@ -636,7 +705,6 @@ except according to those terms.
       <keyword>write_chr_file_perms</keyword>
       <keyword>write_fifo_file_perms</keyword>
       <keyword>write_file_perms</keyword>
-      <keyword>write_inherited_file_perms</keyword>
       <keyword>write_lnk_file_perms</keyword>
       <keyword>write_sock_file_perms</keyword>
     </context>
