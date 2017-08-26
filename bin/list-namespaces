@@ -125,6 +125,12 @@ def gather_namespaces():
                     # Zombie processes only have PID and user namespaces
                     if exc.errno in (errno.EACCES, errno.EPERM, errno.ENOENT):
                         continue
+                    # Linux<3.8 uses pseudo-files instead of symlinks
+                    if exc.errno == errno.EINVAL:
+                        sys.stderr.write("File is not a symlink: {0}\n"
+                                         .format(nspath))
+                        continue
+                    raise
                 nstype = get_ns_type_from_name(namespace)
                 match = re.match(r'([a-z]+):\[([0-9]+)\]$', link)
                 if match is None or match.group(1) != nstype:
@@ -135,6 +141,7 @@ def gather_namespaces():
         except OSError as exc:
             if exc.errno in (errno.EACCES, errno.EPERM):
                 continue
+            raise
 
         result[pid] = {
             'uid': uid,
