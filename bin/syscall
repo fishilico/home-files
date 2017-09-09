@@ -21,6 +21,11 @@
 # THE SOFTWARE.
 """Convert a system call number to its text identifier and back
 
+Similar project:
+* ausyscall (a program that lets you map syscall names and numbers) from audit:
+  https://people.redhat.com/sgrubb/audit
+  https://github.com/linux-audit/audit-userspace/blob/master/tools/ausyscall/ausyscall.c
+
 @author: Nicolas Iooss
 @license: MIT
 """
