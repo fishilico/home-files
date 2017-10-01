@@ -246,6 +246,7 @@ TRUSTED_SUID_FILES = [
     SuidFile('/bin/ping6', owners=('root', ), groups=('root', )),
     SuidFile('/bin/traceroute6'),
     SuidFile('/bin/traceroute6.iputils'),
+    LinkToSuidFile('/bin/ping[46]', '/bin/ping'),
     LinkToSuidFile('/sbin/ping6', '/bin/ping6'),
     LinkToSuidFile('/bin/traceroute6', '/bin/traceroute6.iputils'),
     LinkToSuidFile('/etc/alternatives/traceroute6', '/bin/traceroute6.iputils'),
