@@ -111,6 +111,7 @@ cat_script "$CHROOTDIR/bin/systemd-nspawn" << EOF
 $EXPORT_PROOT_NO_SECCOMP_CMD
 # Allow fakechroot in the proot'ed environment
 proot_options=(--cwd=/ -b /usr/lib/libfakeroot/fakechroot -b /usr/bin/fakechroot)
+env_variables=()
 while [ \$# -ge 1 ] ; do
     case "\$1" in
         -D)
@@ -120,7 +121,11 @@ while [ \$# -ge 1 ] ; do
         --bind=*|--bind-ro=*)
             proot_options+=(-b "\${1#*=}")
             ;;
-        -q|--register=no)
+        -E)
+            env_variables+=("\$2")
+            shift
+            ;;
+        -q|--keep-unit|--register=no)
             ;;
         locale-gen)
             # Skip locale-gen as it crashes with proot 5.1.0
@@ -145,13 +150,33 @@ if [ "\$1 \$2 \$3" = 'pacman -U --noconfirm' ] ; then
     set pacman --ask=4 "\$@"
 fi
 
-echo "Running proot \${proot_options[*]} \$*"
-exec proot "\${proot_options[@]}" "\$@"
+echo "Running proot \${proot_options[*]} env \${env_variables[*]} \$*"
+exec proot "\${proot_options[@]}" env "\${env_variables[@]}" "\$@"
 EOF
 
 # Redirect mount and umount to no-ops
 echo '#!/bin/true' | cat_script "$CHROOTDIR/bin/mount"
 echo '#!/bin/true' | cat_script "$CHROOTDIR/bin/umount"
+
+# Make "env -i" preserve fakeroot and fakechroot variables, in order to be
+# compatible after commit
+# https://git.archlinux.org/devtools.git/commit/?id=578a62f1e0713b0df9722470146fb85fb819202c
+cat_script "$CHROOTDIR/bin/env" << EOF
+#!/bin/bash
+if [ "\$1" = '-i' ] ; then
+    _env=(PATH="$CHROOTDIR/bin:/usr/bin")
+    while read -r varname; do
+        _env+=("\$varname=\${!varname}")
+    done < <(
+        declare -x | \
+        sed -r 's/^declare -x ([^=]*)=.*/\1/' | \
+        grep -e '^FAKE' -e '^LD_LIBRARY_PATH$' -e '^LD_PRELOAD$')
+    shift
+    exec /usr/bin/env -i "\${_env[@]}" "\$@"
+else
+    exec /usr/bin/env "\$@"
+fi
+EOF
 
 export PATH="$CHROOTDIR/bin:$PATH"
 
