@@ -1,0 +1,8 @@
+<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
+  <mime-type type="text/x-powershell">
+    <comment>Powershell Script</comment>
+    <glob pattern="*.ps1"/>
+    <glob pattern="*.psm1"/>
+    <glob pattern="*.psd1"/>
+  </mime-type>
+</mime-info>
