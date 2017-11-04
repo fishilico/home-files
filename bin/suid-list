@@ -181,6 +181,10 @@ TRUSTED_SUID_FILES = [
     LinkToSuidFile('/bin/atrm', '/bin/at', owners=('daemon', 'root'),
                    groups=('daemon', )),
 
+    # bubblewrap, https://www.projectatomic.io/blog/2017/07/unprivileged-containers-with-bwrap-oci-and-bubblewrap/
+    # https://github.com/projectatomic/bubblewrap
+    SuidFile('/bin/bwrap'),
+
     # busybox-suid, https://pkgs.alpinelinux.org/package/main/x86_64/busybox-suid
     # http://git.alpinelinux.org/cgit/aports/tree/main/busybox/bbsuid.c
     SuidFile('/bin/bbsuid'),
