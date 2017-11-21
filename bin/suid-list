@@ -212,6 +212,13 @@ TRUSTED_SUID_FILES = [
     # http://cgit.freedesktop.org/dbus/dbus/tree/
     SuidFile('/lib(32|64)?/dbus-1(.0)?/dbus-daemon-launch-helper'),
 
+    # ecryptfs-utils, https://launchpad.net/ecryptfs
+    # http://bazaar.launchpad.net/~ecryptfs/ecryptfs/trunk/files
+    SuidFile('/s?bin/mount.ecryptfs_private',
+             owners=('root', ), groups=('root', )),
+    LinkToSuidFile('/s?bin/umount.ecryptfs_private', '/s?bin/mount.ecryptfs_private',
+                   owners=('root', ), groups=('root', )),
+
     # exim, http://www.exim.org/
     # https://github.com/Exim/exim
     SuidFile('/sbin/exim4'),
