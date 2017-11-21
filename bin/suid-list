@@ -576,6 +576,11 @@ KNOWN_SUID_FILES = [
     # http://bazaar.launchpad.net/~landscape/landscape-client/trunk/files
     SuidFile('/lib/landscape/apt-update'),
 
+    # open-vm-tools, https://sourceforge.net/projects/open-vm-tools/
+    # https://github.com/vmware/open-vm-tools
+    SuidFile('/bin/vmware-user-suid-wrapper',
+             owners=('root', ), groups=('root', )),
+
     # pmount, https://launchpad.net/pmount
     # https://bazaar.launchpad.net/~fourmond/pmount/main/files/head:/
     SuidFile('/bin/pmount'),
@@ -600,6 +605,15 @@ KNOWN_SUID_FILES = [
     # usermode, https://fedorahosted.org/usermode/
     # https://fedorahosted.org/usermode/browser
     SuidFile('/s?bin/userhelper'),
+
+    # vmware-workstation, https://www.vmware.com/products/workstation-player.html
+    SuidFile('/bin/vmware-authd', owners=('root', ), groups=('root', )),
+    SuidFile('/lib/vmware/bin/vmware-vmx',
+             owners=('root', ), groups=('root', )),
+    SuidFile('/lib/vmware/bin/vmware-vmx-debug',
+             owners=('root', ), groups=('root', )),
+    SuidFile('/lib/vmware/bin/vmware-vmx-stats',
+             owners=('root', ), groups=('root', )),
 ]
 
 # Define similar things for files with capabilities
