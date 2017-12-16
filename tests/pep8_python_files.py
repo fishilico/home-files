@@ -79,6 +79,10 @@ def test():
             continue
 
         for filename in files:
+            # Skip .toprc, which is not UTF-8
+            if filename == 'toprc' and dirpath.endswith('dotfiles'):
+                continue
+
             filepath = os.path.join(dirpath, filename)
 
             # If there is no extension, the first line is used to find
