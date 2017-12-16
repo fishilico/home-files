@@ -205,10 +205,10 @@ if type alias > /dev/null 2>&1 ; then
     alias grep="grep$(get_grep_parameters)"
 
     # Find non-ascii characters
-    alias grep-noasc="LANG=C grep -P '[\x80-\xFF]'"
+    alias grep-noasc="LANG=C grep -P '"'[\x80-\xFF]'"'"
 
     # Strip commented lines
-    alias stripcom="grep -v -E '^[ \r\t]*(#|;|\$)'"
+    alias stripcom="grep -v -E '"'^[ \r\t]*(#|;|$)'"'"
 
     # Line-buffered grep, useful when selecting output of tail -F
     # Don't use colored output for lgrep

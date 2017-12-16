@@ -169,7 +169,7 @@ if [ "\$1" = '-i' ] ; then
         _env+=("\$varname=\${!varname}")
     done < <(
         declare -x | \
-        sed -r 's/^declare -x ([^=]*)=.*/\1/' | \
+        sed -r 's/^declare -x ([^=]*)=.*/\\1/' | \
         grep -e '^FAKE' -e '^LD_LIBRARY_PATH$' -e '^LD_PRELOAD$')
     shift
     exec /usr/bin/env -i "\${_env[@]}" "\$@"

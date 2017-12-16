@@ -24,23 +24,23 @@
 
 function echo_red()
 {
-    echo -e "\e[31;1m!! $*\e[m"
+    echo -e '\e[31;1m!!' "$*"'\e[m'
 }
 function echo_green()
 {
-    echo -e "\e[32m[] $*\e[m"
+    echo -e '\e[32m[]' "$*"'\e[m'
 }
 function echo_blue()
 {
-    echo -e "\e[34;1m[] $*\e[m"
+    echo -e '\e[34;1m[]' "$*"'\e[m'
 }
 function echo_white()
 {
-    echo -e "\e[m[] $*\e[m"
+    echo -e '\e[m[]' "$*"'\e[m'
 }
 function echo_startgray()
 {
-    echo -ne "\e[37m"
+    echo -ne '\e[37m'
 }
 
 function test_network()
@@ -52,14 +52,14 @@ function test_network()
         sed -ne 's/^.*dev \([^ ]\+\) .*$/\1/;1p')
     if [ -z "$IFACE" ]
     then
-        echo -ne "\r!! No default route, network is unreachable"
+        echo -ne '\r!! No default route, network is unreachable'
         return 1
     fi
 
     # Do nothing if interface does not have an IP address
     if [ -z "$(ip -oneline -4 addr show dev "$IFACE")" ]
     then
-        echo -ne "\r!! No IP address for $IFACE"
+        echo -ne '\r!! No IP address for' "$IFACE"
         return 1
     fi
     echo_white "$(date)"

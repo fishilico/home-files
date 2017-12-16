@@ -66,11 +66,11 @@ fi
 
 if [ -n "$BASH_VERSION" ]; then
     # Don't forget \[...\] to compute prompt width correctly
-    PS1="$BASH_PROMPT \[\e[35m\]\w\[\e[m\]\\\$ "
+    PS1="$BASH_PROMPT "'\[\e[35m\]\w\[\e[m\]\\$ '
     # Set the title to user@host:dir
     case "$TERM" in
         xterm*|rxvt*)
-            PS1="\[\e]0;\u@\h: \w\a\]$PS1"
+            PS1='\[\e]0;\u@\h: \w\a\]'"$PS1"
             ;;
     esac
 elif [ -n "$ZSH_VERSION" ]; then

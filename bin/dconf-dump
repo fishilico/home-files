@@ -37,7 +37,7 @@ dump_dconf_dir() {
         echo "$1" | sed 's,/\(.*\)/,[\1],'
         echo "$ENTRIES" | grep '[^/]$' | sort | while IFS= read -r ITEM
         do
-            printf "%s=%s\n" "$ITEM" "$(dconf read "$1$ITEM")"
+            printf '%s=%s\n' "$ITEM" "$(dconf read "$1$ITEM")"
         done
     fi
 

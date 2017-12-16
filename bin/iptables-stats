@@ -61,7 +61,7 @@ ipt_stats() {
             # We have a line which is not empty, show current chain
             # Replace "Chain ..." header line with "IPv4/6 Chain"
             run_ipt_nomatch "$IPT$IPT_NUMERIC" "$CURRENT_CHAIN" | \
-                sed "s/^\(Chain \)/${PREFIX} \1/" | \
+                sed 's/^\(Chain \)/'"${PREFIX}"' \1/' | \
                 if "$SHORT_OUTPUT"
                 then
                     # Remove second header line
