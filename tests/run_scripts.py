@@ -73,6 +73,7 @@ BIN_SCRIPTS = {
     'getaddr': 'args[localhost]',
     'get-power-rights': '(dbus-send|gdbus)direct',
     'git-single-fixup': 'args[-h]',
+    'graph-hw': 'direct',
     'gsettings-dump': '(gsettings)direct',
     'ical-decode': 'help',
     'iptables-rev': 'args[-A INPUT -j DROP]',

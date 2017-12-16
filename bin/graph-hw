@@ -1,0 +1,1076 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2017 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Graph the links between hardware components of the current system
+
+Run through the sysfs (/sys) on Linux and produce a DOT file of a JSON file,
+which can be used to generate images with Graphviz.
+
+Usage example with graphviz, without /sys/devices/system/memory and with debug:
+
+    graph-hw -Md -O -o /tmp/hw.svg
+
+... which performs the same things as:
+
+    graph-hw -Md | sfdp -Goverlap=prism -Tsvg -o /tmp/hw.svg && xdg-open /tmp/hw.svg
+
+See also:
+* lsblk, lsmem, lspci, lsusb
+* lshw, https://ezix.org/project/wiki/HardwareLiSter
+* lstopo command from hwloc (and hwloc-ls)
+  https://www.open-mpi.org/projects/hwloc/
+"""
+import argparse
+import collections
+import errno
+import json
+import logging
+import os
+import os.path
+import re
+import subprocess
+import sys
+import webbrowser
+
+
+# pylint: disable=invalid-name
+logger = logging.getLogger(__name__)
+
+
+# Color by kind of bus
+FUNCTION_WITH_GUID_COLOR = '#ff8888'
+INTERFACE_COLOR = 'orange'
+SENSOR_COLOR = '#ff9eea'
+STORAGE_COLOR = 'yellow'
+VIRTUAL_COLOR = '#d09ef0'
+BUSKIND_COLORS = {
+    'acpi': '#ccffcc',
+    'ata': STORAGE_COLOR,
+    'backlight': INTERFACE_COLOR,
+    'bdi': VIRTUAL_COLOR,
+    'block': STORAGE_COLOR,
+    'clockevents': VIRTUAL_COLOR,
+    'clocksource': SENSOR_COLOR,
+    'cpu': VIRTUAL_COLOR,
+    'drm': INTERFACE_COLOR,
+    'event_source': VIRTUAL_COLOR,
+    'graphics': INTERFACE_COLOR,
+    'hdaudio': INTERFACE_COLOR,
+    'hid': INTERFACE_COLOR,
+    'hwmon': VIRTUAL_COLOR,
+    'input': INTERFACE_COLOR,
+    'iommu': VIRTUAL_COLOR,
+    'mei': FUNCTION_WITH_GUID_COLOR,
+    'pci': 'green',
+    'leds': INTERFACE_COLOR,
+    'machinecheck': VIRTUAL_COLOR,
+    'media': INTERFACE_COLOR,
+    'mem': VIRTUAL_COLOR,
+    'memory': VIRTUAL_COLOR,
+    'misc': VIRTUAL_COLOR,
+    'mmc_host': STORAGE_COLOR,
+    'memstick_host': STORAGE_COLOR,
+    'net': INTERFACE_COLOR,
+    'node': VIRTUAL_COLOR,
+    'powercap': VIRTUAL_COLOR,
+    'power_supply': SENSOR_COLOR,
+    'ptp': INTERFACE_COLOR,
+    'rfkill': INTERFACE_COLOR,
+    'rtc': SENSOR_COLOR,
+    'scsi': STORAGE_COLOR,
+    'spi': STORAGE_COLOR,
+    'serio': INTERFACE_COLOR,
+    'sound': INTERFACE_COLOR,
+    'thermal': SENSOR_COLOR,
+    'tpm': SENSOR_COLOR,
+    'tty': VIRTUAL_COLOR,
+    'usb': '#88ccff',
+    'vc': VIRTUAL_COLOR,
+    'video4linux': INTERFACE_COLOR,
+    'vtconsole': VIRTUAL_COLOR,
+    'watchdog': SENSOR_COLOR,
+    'wmi': FUNCTION_WITH_GUID_COLOR,
+    'workqueue': VIRTUAL_COLOR,
+}
+
+# List of included kinds
+MORE_PRECISE_KINDS = (
+    ('ata', 'ata_device'),
+    ('ata', 'ata_link'),
+    ('ata', 'ata_port'),
+    ('drm', 'drm_dp_aux_dev'),
+    ('hid', 'hidraw'),
+    ('i2c', 'i2c-adapter'),
+    ('scsi', 'bsg'),
+    ('scsi', 'scsi_device'),
+    ('scsi', 'scsi_disk'),
+    ('scsi', 'scsi_generic'),
+    ('scsi', 'scsi_host'),
+    ('spi', 'spi_host'),
+    ('spi', 'spi_transport'),
+    ('pci', 'pci_bus'),
+    ('pci', 'pci_express'),
+    ('tpm', 'tpmrm'),
+    ('usb', 'usbmisc'),
+    ('wmi', 'wmi_bus'),
+)
+
+
+class SysfsDevice(collections.OrderedDict):
+    """A node of the graph, with properties"""
+    _properties = (
+        'sysfs_path',
+        'sysfs_name',
+        'buskind',
+        'children',
+        'label_desc',  # Label description
+    )
+
+    def __init__(self, values):
+        super(SysfsDevice, self).__init__((k, None) for k in self._properties)
+        for k, v in values.items():
+            if k in self._properties:
+                self[k] = v
+            else:
+                logger.error("Unexpected property %r for object %r", k, type(self))
+                raise ValueError
+        # Load a full dict
+        if self['children']:
+            new_children = {}
+            for name, child in self['children'].items():
+                if isinstance(child, SysfsDevice):
+                    new_children[name] = child
+                else:
+                    new_children[name] = SysfsDevice(child)
+            self['children'] = new_children
+
+    def init_children(self):
+        """Init the children dict"""
+        if self['children'] is None:
+            self['children'] = {}
+
+    def sort_children(self):
+        """Sort the children of the device"""
+        if self['children'] is None:
+            return
+        self['children'] = collections.OrderedDict(sorted(self['children'].items()))
+        for child in self['children'].values():
+            child.sort_children()
+
+    def iter_all(self):
+        """Iterate on all items"""
+        yield self
+        if self['children'] is not None:
+            for child in self['children'].values():
+                for item in child.iter_all():
+                    yield item
+
+    def iter_all_depth_by_depth(self):
+        """Iterate on all items one depth after another"""
+        new_depth_nodes = [self]
+        while new_depth_nodes:
+            cur_depth_nodes = new_depth_nodes
+            new_depth_nodes = []
+            for dev in cur_depth_nodes:
+                yield dev
+                if dev['children'] is not None:
+                    for child in dev['children'].values():
+                        new_depth_nodes.append(child)
+
+    def resolve_path(self, path, create=False):
+        """Get the device matching the given path, creating nodes if needed"""
+        self_path = self['sysfs_path']
+        if path == self_path:
+            return self
+        if not path.startswith(self_path + '/'):
+            logger.error("Looking for %r in %r, but it is outside", path, self_path)
+            raise KeyError()
+        if self['children'] is None:
+            if create:
+                self.init_children()
+            else:
+                raise KeyError(path)
+        name_parts = path[len(self_path) + 1:].split('/', 1)
+        childname = name_parts[0]
+        child = self['children'].get(childname)
+        if child is None:
+            if create:
+                child = SysfsDevice({
+                    'sysfs_path': '{}/{}'.format(self_path, childname),
+                    'sysfs_name': childname,
+                })
+                self['children'][childname] = child
+            else:
+                raise KeyError(path)
+        return child.resolve_path(path, create)
+
+    @property
+    def label(self):
+        """Label for the graph"""
+        if not self['buskind']:
+            # Directory
+            label = '{}/'.format(self['sysfs_name'])
+        else:
+            label = '{}:{}'.format(self['buskind'], self['sysfs_name'])
+
+        if self['label_desc']:
+            label = '{}\n{}'.format(label, self['label_desc'])
+        return label
+
+    def add_to_label_desc(self, desc):
+        """Add some information to the label description"""
+        if self['label_desc'] is None:
+            self['label_desc'] = desc
+        else:
+            self['label_desc'] = '{}\n{}'.format(self['label_desc'], desc)
+
+    @property
+    def color(self):
+        """Color of the item for the graph"""
+        color = BUSKIND_COLORS.get(self['buskind'])
+        if color:
+            # Easy case: there is a color
+            return color
+
+        # Try a less precise kind
+        for k1, k2 in MORE_PRECISE_KINDS:
+            if k2 == self['buskind']:
+                color = BUSKIND_COLORS.get(k1)
+                if color:
+                    return color
+
+        # If every child shares the same color, use it too
+        if self['children'] is None:
+            return
+        child_colors = set(child.color for child in self['children'].values())
+        if len(child_colors) == 1:
+            return list(child_colors)[0]
+
+
+def list_directory(dirpath):
+    """List a directory and fail nicely if it does not exist"""
+    try:
+        return sorted(os.listdir(dirpath))
+    except OSError as exc:
+        # On some virtual servers (and containers) there is no /sys/bus...
+        if exc.errno == errno.ENOENT:
+            logger.warning("%s does not exist", dirpath)
+            return []
+        raise
+
+
+def gather_sysfs_bus_devices():
+    """Walk /sys/bus, collect every device and put them in a tree"""
+    device_tree = SysfsDevice({
+        'sysfs_path': '/sys/devices',
+        'sysfs_name': '/sys/devices',
+    })
+    for buskind in list_directory('/sys/bus'):
+        devices_path = os.path.join('/sys/bus', buskind, 'devices')
+        for devname in list_directory(devices_path):
+            sysfs_path = os.path.realpath(os.path.join(devices_path, devname))
+            if os.path.basename(sysfs_path) != devname:
+                logger.warning(
+                    "Skipping invalid sysfs entry for %s -> %s: mismatched names",
+                    os.path.join(devices_path, devname),
+                    sysfs_path)
+                continue
+            if not sysfs_path.startswith('/sys/devices/'):
+                logger.warning(
+                    "Skipping non-device sysfs entry for %s -> %s",
+                    os.path.join(devices_path, devname),
+                    sysfs_path)
+                continue
+
+            # Walk the device tree according to sysfs_path
+            dev = device_tree.resolve_path(sysfs_path, create=True)
+            assert dev['buskind'] is None
+            dev['buskind'] = buskind
+    return device_tree
+
+
+def add_pci_bus_nodes(device_tree):
+    """Add PCI bus nodes to the device tree"""
+    for pcibus_id in list_directory('/sys/class/pci_bus'):
+        pcibus_path = os.path.realpath(os.path.join('/sys/class/pci_bus', pcibus_id))
+        path_suffix = '/pci_bus/{}'.format(pcibus_id)
+        if not pcibus_path.endswith(path_suffix):
+            logger.error("Unexpected pci_bus path for %s: %s", pcibus_id, pcibus_path)
+            continue
+        pcidev = device_tree.resolve_path(pcibus_path[:-len(path_suffix)], create=True)
+        logger.debug("PCI device %s is bus %s", pcidev['sysfs_name'], pcibus_id)
+        pcidev.add_to_label_desc('PCI bus {}'.format(pcibus_id))
+        # PCI bus 0000:00 is not a PCI device but it is a PCI bus
+        if pcidev['buskind'] is None:
+            pcidev['buskind'] = 'pci_bus'
+
+
+def add_class_nodes(device_tree, cls):
+    """Add input nodes to the device tree"""
+    sys_class_path = os.path.join('/sys/class', cls)
+    for name in list_directory(sys_class_path):
+        symlink_path = os.path.join(sys_class_path, name)
+        if not os.path.islink(symlink_path):
+            continue
+        sysfs_path = os.path.realpath(os.path.join(sys_class_path, name))
+        dev = device_tree.resolve_path(sysfs_path, create=True)
+        logger.debug("Adding %s %s", cls, dev['sysfs_path'])
+        assert dev['sysfs_path'] == sysfs_path
+        assert dev['sysfs_name'] == name
+        if dev['buskind'] is None:
+            dev['buskind'] = cls
+        elif dev['buskind'] != cls:
+            # It may be a more precise kind
+            if (dev['buskind'], cls) in MORE_PRECISE_KINDS:
+                dev['buskind'] = cls
+            elif (cls, dev['buskind']) in MORE_PRECISE_KINDS:
+                pass
+            else:
+                logger.error(
+                    "Incompatible kinds %s and %s for %s",
+                    dev['buskind'], cls, sysfs_path)
+
+
+def add_all_class_nodes(device_tree):
+    """Add many nodes from /sys/class"""
+    for cls in list_directory('/sys/class'):
+        if cls == 'pci_bus':
+            # pci_bus is special because it does not create more nodes
+            add_pci_bus_nodes(device_tree)
+        else:
+            add_class_nodes(device_tree, cls)
+
+
+def add_device_holders(device_tree):
+    """Add device holders (for RAID, LUKS, etc.)"""
+    need_rescan = True
+    while need_rescan:
+        need_rescan = False
+        for dev in device_tree.iter_all():
+            holders_path = os.path.join(dev['sysfs_path'], 'holders')
+            try:
+                for holder in os.listdir(holders_path):
+                    symlink = os.path.join(holders_path, holder)
+                    target_path = os.path.realpath(symlink)
+                    try:
+                        device_tree.resolve_path(symlink)
+                        continue
+                    except KeyError:
+                        lnkdev = device_tree.resolve_path(symlink, create=True)
+                        tgtdev = device_tree.resolve_path(target_path)
+                        lnkdev['buskind'] = tgtdev['buskind']
+                        lnkdev['label_desc'] = tgtdev['label_desc']
+                        need_rescan = True  # scan of holder's children
+
+                    if dev['buskind'] != 'block':
+                        logger.warning(
+                            "Found 'holders/%s' for non-block device %s",
+                            holder, dev['sysfs_path'])
+            except OSError as exc:
+                if exc.errno != errno.ENOENT:
+                    raise
+
+
+def add_bridge_interfaces(device_tree):
+    """Add interfaces which are part of a bridge"""
+    need_rescan = True
+    while need_rescan:
+        need_rescan = False
+        for dev in device_tree.iter_all():
+            brif_path = os.path.join(dev['sysfs_path'], 'brif')
+            try:
+                for iface in os.listdir(brif_path):
+                    symlink = os.path.join(brif_path, iface)
+                    target_path = os.path.realpath(symlink)
+                    if not target_path.endswith('/brport'):
+                        logger.error(
+                            "%s target path does not end with /brport: %s",
+                            symlink, target_path)
+                        continue
+                    target_path = target_path[:-len('/brport')]
+                    try:
+                        device_tree.resolve_path(symlink)
+                        continue
+                    except KeyError:
+                        lnkdev = device_tree.resolve_path(symlink, create=True)
+                        tgtdev = device_tree.resolve_path(target_path)
+                        lnkdev['buskind'] = tgtdev['buskind']
+                        need_rescan = True  # scan of interface's children
+
+                    if dev['buskind'] != 'net':
+                        logger.warning(
+                            "Found 'brif/%s' for non-net device %s",
+                            iface, dev['sysfs_path'])
+            except OSError as exc:
+                if exc.errno != errno.ENOENT:
+                    raise
+
+
+def fill_names_with_lspci_output(device_tree):
+    """Run lspci and parse its output to fill the name of the devices"""
+    # Prepare a dict to find devices from lspci output
+    pci_devices = {}
+    for dev in device_tree.iter_all():
+        if dev['buskind'] == 'pci':
+            pci_id = dev['sysfs_name']
+            pci_devices[pci_id] = dev
+            if pci_id.startswith('0000:'):
+                pci_devices[pci_id[5:]] = dev
+
+    logger.debug("Running lspci")
+    try:
+        output = subprocess.check_output(['lspci'])
+    except OSError as exc:
+        if exc.errno == errno.ENOENT:
+            logger.warning("lspci is not installed")
+            return
+        raise
+
+    for line in output.decode('utf8', errors='ignore').splitlines():
+        m = re.match(r'([0-9a-f:.]+) (\S[^:]*): (.*)', line)
+        if m is None:
+            logger.error("Unable to parse lspci line: %r", line)
+            continue
+        pci_id, kind, name = m.groups()
+        dev = pci_devices.get(pci_id)
+        if dev is None:
+            logger.error("Unable to find device %s (from lspci) in sysfs", pci_id)
+            continue
+        dev.add_to_label_desc('{}\n{}'.format(kind, name))
+
+
+def read_integer_file(path):
+    """Read a file containing an integer, and return None if an error occured"""
+    try:
+        with open(path, 'r') as int_fd:
+            return int(int_fd.read())
+    except IOError:
+        pass
+
+
+def fill_names_with_lsusb_output(device_tree):
+    """Run lsusb and parse its output to fill the name of the devices"""
+    # Prepare a dict (bus, device)->object to find devices from lsusb output
+    usb_devices = {}
+    for dev in device_tree.iter_all():
+        if dev['buskind'] == 'usb':
+            sysfs_path = dev['sysfs_path']
+            busnum = read_integer_file(os.path.join(sysfs_path, 'busnum'))
+            devnum = read_integer_file(os.path.join(sysfs_path, 'devnum'))
+            if busnum is not None and devnum is not None:
+                if (busnum, devnum) in usb_devices:
+                    logger.error(
+                        "Duplicated USB device for (%d, %d): %s and %s",
+                        busnum, devnum,
+                        usb_devices[busnum, devnum]['sysfs_path'],
+                        sysfs_path)
+                    continue
+                usb_devices[busnum, devnum] = dev
+
+    logger.debug("Running lsusb")
+    try:
+        output = subprocess.check_output(['lsusb'])
+    except OSError as exc:
+        if exc.errno == errno.ENOENT:
+            logger.warning("lsusb is not installed")
+            return
+        raise
+
+    for line in output.decode('utf8', errors='ignore').splitlines():
+        m = re.match(r'Bus ([0-9]+) Device ([0-9]+): ID ([0-9a-f:]+)(.*)', line)
+        if m is None:
+            logger.error("Unable to parse lsusb line: %r", line)
+            continue
+        busnum, devnum, usbid, desc = m.groups()
+        dev = usb_devices.get((int(busnum), int(devnum)))
+        if dev is None:
+            logger.error("Unable to find device %s,%s (from lsusb) in sysfs", busnum, devnum)
+            continue
+        dev.add_to_label_desc('USB ID: {}\n{}'.format(usbid, desc.strip()))
+
+
+KNOWN_MEI_UUIDS = {
+    '05b79a6f-4628-4d7f-899d-a91514cb32ab': 'WD (Watchdog)',
+    '0bb17a78-2a8e-4c50-94d4-50266723775c': 'NFC HCI',
+    '12f80028-b4b7-4b2d-aca8-46e0ff65814c': 'PTHI = AMTHI (Active Management Technology Host Interface)',
+    '309dcde8-ccb1-4062-8f78-600115a34327': 'FWU (Firmware Update)',
+    '3c4852d6-d47b-4f46-b05e-b5edc1aa430a': 'TDT = AT-p (Theft Deterrence Technology, Anti-Theft)',
+    '3c4852d6-d47b-4f46-b05e-b5edc1aa440e': 'JOM (Dynamic Application Loader, DAL)',
+    '3d98d9b7-1ce8-4252-b337-2eff106ef29f': 'LMS (Local Manageability Service)',
+    '42b3ce2f-bd9f-485a-96ae-26406230b1ff': 'old ICC (Integrated Clock Controller)',
+    '55213584-9a29-4916-badf-0fb7ed682aeb': 'MKHIF (ME Kernel Host Interface Fixed)',
+    '6733a4db-0476-4e7b-b3af-bcfc29bee7a7': 'LME (Local Manageability E?)',
+    '6b5205b9-8185-4519-b889-d98724b58607': 'QST',
+    '8c2f4425-77d6-4755-aca3-891fdbc66a58': 'ICC (Integrated Clock Controller)',
+    '8e6a6715-9abc-4043-88ef-9e39c6f63e0f': 'MKHI (ME Kernel Host Interface)',
+    'b638ab7e-94e2-4ea2-a552-d1c54b627f04': 'PAVP (Protected Audio Video Path)',
+    'd2de1625-382d-417d-48a4-efabba8a1206': 'NFC Info',
+    'd2ea63bc-5f04-4997-9454-8cadf4e3ef8a': 'Thermal',
+    'f908627d-13bf-4a04-b91f-a64e9245323d': 'CLS (Capability Licensing Service)',
+}
+
+
+def fill_mei_names(device_tree):
+    """Fill names from MEI (Intel's Management Engine Interface) UUIDs"""
+    for dev in device_tree.iter_all():
+        if dev['buskind'] == 'mei':
+            m = re.match(r'mei:[^:]*:([^:]*):', dev['sysfs_name'])
+            if m is None:
+                if not re.match(r'mei[0-9]$', dev['sysfs_name']):
+                    logger.warning("Invalid MEI device name %s", dev['sysfs_name'])
+                continue
+            mei_uuid = m.group(1)
+            desc = KNOWN_MEI_UUIDS.get(mei_uuid)
+            if desc:
+                dev['label_desc'] = desc
+
+
+# Decode the content of
+# /sys/devices/platform/PNP0C14:00/wmi_bus/wmi_bus-PNP0C14:00/05901221-D566-11D1-B2F0-00A0C9062910/bmof
+# using bmf2mof from https://github.com/pali/bmfdec
+# and UUIDS found in:
+# - Linux kernel
+# - https://bitbucket.org/tuxedocomputers/clevo-xsm-wmi/src/
+#       37c470bc8c3c31c7487964c26861a4ee5969ff2b/module/clevo-xsm-wmi.c
+KNOWN_WMI_UUIDS = {
+    '02314822-307C-4F66-BF0E-48AEAEB26CC8': 'Dell All-In-One WMI Event (Linux)',
+    '05901221-D566-11D1-B2F0-00A0C9062910': 'BMOF (Embedded Binary Managed Object Format)',
+    '0B3CBB35-E3C2-45ED-91C2-4C5A6D195D1C': 'ASUS_NB_WMI_EVENT (Linux)',
+    '284A0E6B-380E-472A-921F-E52786257FB4': 'Dell All-In-One WMI Event (Linux)',
+    '35AA3CE0-7EEF-4CCA-A88E-A653A81910DA':
+        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_Button\n(according to BMOF)',
+    '41227C2D-80E1-423F-8B8E-87E32755A0EB':
+        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_PlatformEvents\n(according to BMOF)',
+    '551A1F84-FBDD-4125-91DB-3EA8F44F1D45': 'MSIWMI_BIOS (Linux)',
+    '59142400-C6A3-40FA-BADB-8A2652834100': 'TOSHIBA_WMI_EVENT (Linux)',
+    '5B3CC38A-40D9-7245-8AE6-1145B751BE3F': 'MSIWMI_WIND_EVENT (Linux)',
+    '5FB7F034-2C63-45E9-BE91-3D44E2C707E4':
+        '\\\\.\\root\\wmi\\hpqBIntM\n(according to BMOF)\nHPWMI_BIOS (Linux)',
+    '61EF69EA-865C-4BC3-A502-A0DEBA0CB531': 'Acer WMID (Linux)',
+    '6AF4F258-B401-42FD-BE91-3D4AC2D7C0D3': 'Acer WMID (Linux)',
+    '676AA15E-6A47-4D9F-A2CC-1E6D18D14026': 'ACERWMID_EVENT (Linux)',
+    '6FB7F034-2C63-45E9-BE91-3D44E2C707E4':
+        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSPassword\n(according to BMOF)',
+    '8232DE3C-663D-4327-A8F4-E293ADB9BF05':
+        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSString\n(according to BMOF)',
+    '8232DE3D-663D-4327-A8F4-E293ADB9BF05':
+        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSInteger\n(according to BMOF)',
+    '8232DE3E-663D-4327-A8F4-E293ADB9BF05':
+        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSEnumeration\n(according to BMOF)',
+    '8232DE3F-663D-4327-A8F4-E293ADB9BF05':
+        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSOrderedList\n(according to BMOF)',
+    '82C54990-DB9F-4AEF-91BE-175D84386AC4':
+        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_ButtonInterface\n(according to BMOF)',
+    '8D9DDCBC-A997-11DA-B012-B622A1EF5492': 'DELL_DESCRIPTOR (Linux)',
+    '8F1F6435-9F42-42C8-BADC-0E9424F20C9A':
+        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSNumericSensor\n(according to BMOF)',
+    '8F1F6436-9F42-42C8-BADC-0E9424F20C9A':
+        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSStateSensor\n(according to BMOF)',
+    '95764E09-FB56-4E83-B31A-37761F60994A': 'Acer WMID (Linux)',
+    '95F24279-4D7B-4334-9387-ACCDC67EF61C':
+        '\\\\.\\root\\wmi\\HPBIOS_BIOSEvent\n(according to BMOF)\nHPWMI_EVENT (Linux)',
+    '97845ED0-4E6D-11DE-8A39-0800200C9A66': 'ASUS_WMI_MGMT (Linux)',
+    '9DBB5994-A997-11DA-B012-B622A1EF5492': 'DELL_EVENT (Linux)',
+    'A70591CE-A997-11DA-B012-B622A1EF5492': 'Alienware WMAX_CONTROL (Linux)',
+    'A80593CE-A997-11DA-B012-B622A1EF5492': 'Alienware LEGACY_POWER_CONTROL (Linux)',
+    'A90597CE-A997-11DA-B012-B622A1EF5492': 'Alienware LEGACY_CONTROL (Linux)',
+    'ABBC0F6B-8EA1-11D1-00A0-C90629100000': 'CLEVO_EVENT',
+    'ABBC0F6C-8EA1-11D1-00A0-C90629100000': 'CLEVO_EMAIL',
+    'ABBC0F6D-8EA1-11D1-00A0-C90629100000': 'CLEVO_GET',
+    'ABBC0F6F-8EA1-11D1-00A0-C90629100000': 'PEAQ_DOLBY_BUTTON (Linux)',
+    'ABBC0F72-8EA1-11D1-00A0-C90629100000': 'EEEPC_WMI_EVENT (Linux)',
+    'B6F3EEF2-3D2F-49DC-9DE3-85BCE18C62F2': 'MSIWMI_MSI_EVENT (Linux)',
+    'C364AC71-36DB-495A-8494-B439D472A505': 'tc1100 (Linux)',
+    'C9B590D8-E7E4-4DC5-BB0F-CB8A3522027E':
+        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSSettingInterface\n(according to BMOF)',
+    'F6CB5C3C-9CAE-4EBD-B577-931EA32A2CC0': 'MXM_WMMX (Linux)',
+    'F6E4FE6E-909D-47cb-8BAB-C9F6F2F8D396': 'DELL_LED_BIOS (Linux)',
+    'F7CC25EC-D20B-404C-8903-0ED4359C18AE': 'SURFACE3_LID (Linux)',
+}
+
+
+def fill_wmi_names(device_tree):
+    """Fill names from WMI (Microsoft Windows Management Instrumentation) UUIDs
+
+    The ACPI WMI bus appears in PNP0C14:00
+    """
+    for dev in device_tree.iter_all():
+        if dev['buskind'] == 'wmi':
+            m = re.match(r'[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}', dev['sysfs_name'])
+            if m is None:
+                if not re.match(r'mei[0-9]$', dev['sysfs_name']):
+                    logger.warning("Invalid WMI device name %s", dev['sysfs_name'])
+                continue
+            wmi_uuid = dev['sysfs_name']
+            desc = KNOWN_WMI_UUIDS.get(wmi_uuid)
+            if desc:
+                dev['label_desc'] = desc.replace('\\', '\\\\')
+
+
+def add_uevent_names(device_tree):
+    """Add names from uevent file"""
+    for dev in device_tree.iter_all():
+        uevent_path = os.path.join(dev['sysfs_path'], 'uevent')
+        devname = None
+        devmajor = None
+        devminor = None
+        try:
+            with open(uevent_path, 'r') as fd_uevent:
+                for line in fd_uevent:
+                    parts = line.strip().split('=', 1)
+                    if len(parts) < 2:
+                        continue
+                    key, value = parts
+                    if value.startswith('"'):
+                        assert value.endswith('"')
+                        value = value[1:-1]
+                        assert '"' not in value
+                    if key == 'DRIVER':
+                        dev.add_to_label_desc("Driver: {}".format(value))
+                    elif key == 'DEVNAME':
+                        devname = value
+                    elif key == 'DEVTYPE':
+                        dev.add_to_label_desc("Dev type: {}".format(value))
+                    elif key == 'HID_NAME':
+                        dev.add_to_label_desc("HID name: {}".format(value))
+                    elif key == 'MAJOR':
+                        devmajor = value
+                    elif key == 'MINOR':
+                        devminor = value
+                    elif key == 'NAME':
+                        dev.add_to_label_desc("Name: {}".format(value))
+        except IOError:
+            pass
+        if devname is not None:
+            dev.add_to_label_desc("/dev/{} ({}:{})".format(
+                devname,
+                devmajor if devmajor is not None else '?',
+                devminor if devminor is not None else '?'))
+
+
+def add_dm_names(device_tree):
+    """Add names for dm block devices"""
+    for dev in device_tree.iter_all():
+        dm_name_path = os.path.join(dev['sysfs_path'], 'dm', 'name')
+        try:
+            with open(dm_name_path, 'r') as fd_dm_name:
+                value = fd_dm_name.read().strip()
+                dev.add_to_label_desc("DM Name: {}".format(value))
+            if dev['buskind'] != 'block':
+                logger.warning("Found 'dm/name' for non-block device %s", dev['sysfs_path'])
+        except IOError:
+            pass
+
+
+def add_scsi_models(device_tree):
+    """Add models for SCSI devices"""
+    for dev in device_tree.iter_all():
+        model_path = os.path.join(dev['sysfs_path'], 'model')
+        try:
+            with open(model_path, 'r') as fd_model:
+                value = fd_model.read().strip()
+                dev.add_to_label_desc("Model: {}".format(value))
+            if dev['buskind'] not in ('media', 'scsi'):
+                logger.warning("Found 'model' for non-SCSI device %s", dev['sysfs_path'])
+        except IOError:
+            pass
+
+
+def add_acpi_path_names(device_tree):
+    """Add names from path file in ACPI directories"""
+    allowed_path_chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\\._'
+    for dev in device_tree.iter_all():
+        # Read "path" file
+        path_path = os.path.join(dev['sysfs_path'], 'path')
+        if dev['buskind'] != 'acpi':
+            if os.path.exists(path_path):
+                logger.warning(
+                    "Skipping non-ACPI path file %s (the filter may be too restrictive, for bus %s)",
+                    path_path, dev['buskind'])
+            continue
+        try:
+            with open(path_path, 'r') as fd_path:
+                value = fd_path.read().strip()
+                if any(c not in allowed_path_chars for c in value):
+                    logger.error("Invalid ACPI path %r", value)
+                    continue
+                dev.add_to_label_desc("Path: {}".format(value.replace('\\', '\\\\')))
+        except IOError:
+            pass
+
+
+def add_fiwmare_nodes(device_tree):
+    """Add references to physical_node and firmware_node"""
+    node_labels = (
+        ('physical_node', 'Physical node'),
+        ('firmware_node', 'FW node'),
+    )
+    for dev in device_tree.iter_all():
+        for nodename, label in node_labels:
+            node_path = os.path.realpath(os.path.join(dev['sysfs_path'], nodename))
+            if not os.path.exists(node_path):
+                continue
+            if not node_path.startswith('/sys/devices/'):
+                logger.error("%s symlink not in /sys/devices: %s", label, node_path)
+            else:
+                node_path = node_path[len('/sys/devices/'):]
+            dev.add_to_label_desc("{}: {}".format(label, node_path))
+
+
+def add_dev_descriptions(device_tree):
+    """Add description file contents for devices"""
+    for dev in device_tree.iter_all():
+        description_path = os.path.join(dev['sysfs_path'], 'description')
+        try:
+            with open(description_path, 'r') as fd_description:
+                value = fd_description.read().strip()
+                if '\n' in value:
+                    logger.warning("Skipping multi-line description for %s", dev['sysfs_path'])
+                    continue
+                dev.add_to_label_desc("Desc: {}".format(value))
+            if dev['buskind'] not in ('acpi', 'serio'):
+                logger.warning(
+                    "Found 'description' for unexpected device %s (%s)",
+                    dev['sysfs_path'], dev['buskind'])
+        except IOError:
+            pass
+
+
+def add_net_addresses(device_tree):
+    """Add addresses for network devices"""
+    has_ip = True
+    has_ifconfig = True
+    for dev in device_tree.iter_all():
+        hwaddr = None
+        address_path = os.path.join(dev['sysfs_path'], 'address')
+        try:
+            with open(address_path, 'r') as fd_address:
+                hwaddr = fd_address.read().strip()
+            if dev['buskind'] != 'net':
+                logger.warning("Found 'address' for non-net device %s", dev['sysfs_path'])
+                continue
+        except IOError:
+            continue
+        assert hwaddr
+
+        # Get the IP addresses of the interface
+        ipv4_addresses = set()
+        ipv6_addresses = set()
+        hw_addr_kind = ''
+        iface = dev['sysfs_name']
+        if has_ip:
+            cmdline = ['ip', 'addr', 'show', 'dev', iface]
+            logger.debug("Running %s", ' '.join(cmdline))
+            try:
+                output = subprocess.check_output(cmdline)
+            except OSError as exc:
+                if exc.errno == errno.ENOENT:
+                    logger.warning("ip is not installed")
+                    has_ip = False
+                    continue
+                raise
+
+            for line in output.decode('utf8', errors='ignore').splitlines():
+                m = re.match(r'\s+link/(\S*)\s+(\S+)', line)
+                if m is not None:
+                    kind, addr = m.groups()
+                    if addr != hwaddr:
+                        logger.error("Unexpected HW address from ip: %s != %s", addr, hwaddr)
+                    elif hw_addr_kind and kind != hw_addr_kind:
+                        logger.error("Unexpected HW address kind from ip: %s != %s", kind, hw_addr_kind)
+                    else:
+                        hw_addr_kind = kind
+                m = re.match(r'\s+inet\s+(\S+)', line)
+                if m is not None:
+                    ipv4_addresses.add(m.group(1))
+                m = re.match(r'\s+inet6\s+(\S+)', line)
+                if m is not None:
+                    ipv6_addresses.add(m.group(1))
+
+        if has_ifconfig:
+            cmdline = ['ifconfig', iface]
+            logger.debug("Running %s", ' '.join(cmdline))
+            try:
+                output = subprocess.check_output(cmdline)
+            except OSError as exc:
+                if exc.errno == errno.ENOENT:
+                    logger.warning("ifconfig is not installed")
+                    has_ifconfig = False
+                    continue
+                raise
+
+            for line in output.decode('utf8', errors='ignore').splitlines():
+                m = re.match(r'\s+(ether)\s+(\S+)', line)
+                if m is not None:
+                    kind, addr = m.groups()
+                    if addr != hwaddr:
+                        logger.error("Unexpected HW address from ifconfig: %s != %s", addr, hwaddr)
+                    elif hw_addr_kind and kind != hw_addr_kind:
+                        logger.error("Unexpected HW address kind from ifconfig: %s != %s", kind, hw_addr_kind)
+                    else:
+                        hw_addr_kind = kind
+                m = re.match(r'\s+inet\s+(\S+).*netmask\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)', line)
+                if m is not None:
+                    addr, netmask = m.groups()
+                    netmask_i = sum(int(x) << (24 - i * 8) for i, x in enumerate(netmask.split('.', 3)))
+                    prefixlen = 33 - ((0xffffffff ^ netmask_i) + 1).bit_length()
+                    ipv4_addresses.add('{}/{}'.format(addr, prefixlen))
+                m = re.match(r'\s+inet6\s+(\S+).*prefixlen\s+(\S+)', line)
+                if m is not None:
+                    addr, prefixlen = m.groups()
+                    ipv6_addresses.add('{}/{}'.format(addr, prefixlen))
+
+        dev.add_to_label_desc("Address: {} {}".format(hw_addr_kind, hwaddr))
+        for addr in sorted(ipv4_addresses):
+            dev.add_to_label_desc("IPv4: {}".format(addr))
+        for addr in sorted(ipv6_addresses):
+            dev.add_to_label_desc("IPv6: {}".format(addr))
+
+
+def shorten_paths_in_label(label):
+    """Shorten the paths in the given label to a reasonable length"""
+    if len(label) <= 30 or ':' not in label:
+        return label
+    try:
+        first_part_idx = label.index('/', 1)
+        last_part_idx = label.rindex('/')
+    except ValueError:
+        return label
+    if first_part_idx + 6 >= last_part_idx:
+        return label
+    return '{}/...{}'.format(label[:first_part_idx], label[last_part_idx:])
+
+
+def shorten_label_paths(device_tree):
+    """Shorten the paths in the labels of the given tree to a reasonable length"""
+    for dev in device_tree.iter_all():
+        desc = dev['label_desc']
+        if not desc:
+            continue
+        dev['label_desc'] = '\n'.join(shorten_paths_in_label(l) for l in desc.split('\n'))
+
+
+def dump_dot_graph(device_tree, stream):
+    """Produce a dot graph"""
+    logger.debug("Producing a DOT graph")
+    stream.write('digraph {\n')
+    # stream.write('    overlap=false;\n')
+    stream.write('    overlap=prism;\n')
+    stream.write('    node [shape=box,style=filled];\n')
+
+    # Dump nodes
+    for dev in device_tree.iter_all_depth_by_depth():
+        stream.write('   "{}" [label="{}"'.format(dev['sysfs_path'], dev.label))
+        color = dev.color
+        if color is not None:
+            stream.write(',fillcolor="{}"'.format(color))
+        stream.write('];\n')
+
+    # Dump edges
+    for dev in device_tree.iter_all():
+        if dev['children'] is not None:
+            for child in dev['children'].values():
+                stream.write('   "{}" -> "{}";\n'.format(dev['sysfs_path'], child['sysfs_path']))
+    stream.write('}\n')
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Graph hardware components")
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help="show debug messages")
+    parser.add_argument('-i', '--input', type=str,
+                        help="load a JSON format instead of scanning /sys")
+    parser.add_argument('-j', '--json', action='store_true',
+                        help="output the tree in JSON format")
+    parser.add_argument('-M', '--no-memory', action='store_true',
+                        help="remove /sys/devices/system/memory nodes")
+    parser.add_argument('-o', '--output', type=str,
+                        help="write the output to this file")
+    parser.add_argument('-O', '--open', action='store_true',
+                        help="open the output file once it is written")
+    parser.add_argument('-p', '--pci', action='store_true',
+                        help="restrict to PCI devices")
+    parser.add_argument('-s', '--shorten-paths', action='store_true',
+                        help="shorten the long paths in labels")
+    parser.add_argument('-t', '--tree', action='store_true',
+                        help="output the graph as a flat tree")
+    parser.add_argument('-T', '--type', type=str,
+                        help="specify a Graphviz/dot output format (svg, png...)")
+    parser.add_argument('-V', '--no-virtual', action='store_true',
+                        help="remove /sys/devices/virtual nodes")
+    parser.add_argument('-W', '--web-browser', action='store_true',
+                        help="open the output file in a browser")
+    parser.add_argument('-X', '--xdot', action='store_true',
+                        help="open the output file in xdot")
+    args = parser.parse_args(argv)
+
+    if args.open and not args.output:
+        parser.error("--open requires an output file (option -o)")
+    if args.web_browser and not args.output:
+        parser.error("--web-browser requires an output file (option -o)")
+    if args.xdot and not args.output:
+        parser.error("--xdot requires an output file (option -o)")
+    if args.web_browser and args.xdot:
+        parser.error("--web-browser and --xdot can not be used together")
+    if args.type and args.type not in ('json', 'dot') and not args.output:
+        parser.error("--type requires an output file (option -o)")
+    if args.json and args.type and args.json != 'json':
+        parser.error("--json and --type are exclusive")
+
+    # Find out the output format
+    outformat = 'dot'
+    if args.json:
+        outformat = 'json'
+    elif args.type:
+        outformat = args.type
+    elif args.output:
+        fileext = os.path.basename(args.output).rsplit('.', 1)[-1].lower()
+        if fileext in ('dot', 'fig', 'jpg', 'jpeg', 'json', 'pdf', 'png', 'ps', 'svg', 'svgz', 'xdot'):
+            outformat = fileext
+        elif args.xdot:
+            # Using --xdot makes using dot format implicit
+            outformat = 'dot'
+        else:
+            parser.error("--type needed to specify the format of unknown file extension {}".format(fileext))
+
+    if args.xdot and outformat != 'dot':
+        parser.error("--xdot only supports dot format")
+
+    logging.basicConfig(
+        format='[%(levelname)s] %(message)s',
+        level=logging.DEBUG if args.debug else logging.INFO)
+
+    if args.input:
+        with open(args.input, 'r') as input_fd:
+            device_tree = SysfsDevice(json.load(input_fd))
+        logger.info("Loading %s", args.input)
+    else:
+        logger.info("Scanning /sys/bus for devices")
+
+        # Collect every nodes
+        device_tree = gather_sysfs_bus_devices()
+
+        logger.info("Scanning /sys/class for more devices")
+        add_all_class_nodes(device_tree)
+
+        logger.info("Add device holders")
+        add_device_holders(device_tree)
+        add_bridge_interfaces(device_tree)
+
+        # Collect information for labels
+        logger.info("Filling device names")
+        fill_names_with_lspci_output(device_tree)
+        fill_names_with_lsusb_output(device_tree)
+        fill_mei_names(device_tree)
+        fill_wmi_names(device_tree)
+        add_uevent_names(device_tree)
+        add_dm_names(device_tree)
+        add_scsi_models(device_tree)
+        add_acpi_path_names(device_tree)
+        add_fiwmare_nodes(device_tree)
+        add_dev_descriptions(device_tree)
+        add_net_addresses(device_tree)
+
+    if args.no_memory:
+        try:
+            sysdev = device_tree.resolve_path('/sys/devices/system') or {}
+            del sysdev['children']['memory']
+        except KeyError:
+            logger.info("No /sys/devices/system/memory found")
+        else:
+            logger.info("Pruning nodes in /sys/devices/system/memory")
+
+    if args.no_virtual:
+        try:
+            del device_tree['children']['virtual']
+        except KeyError:
+            logger.info("No /sys/devices/virtual found")
+        else:
+            logger.info("Pruning nodes in /sys/devices/virtual")
+
+    if args.pci:
+        # Destroy non-pci nodes
+        for name in list(device_tree['children'].keys()):
+            if not name.startswith('pci'):
+                del device_tree['children'][name]
+            else:
+                logger.info("Keeping %s", device_tree['children'][name]['sysfs_path'])
+
+    # Reorder the graph
+    device_tree.sort_children()
+
+    # Shorten the paths in labels
+    if args.shorten_paths:
+        shorten_label_paths(device_tree)
+
+    # Format the graph
+    if outformat == 'json':
+        if args.output:
+            logger.info("Writing JSON file %s", args.output)
+            with open(args.output, 'w') as fout:
+                json.dump(device_tree, fout, indent=2)
+        else:
+            json.dump(device_tree, sys.stdout, indent=2)
+    elif outformat == 'dot':
+        if args.output:
+            logger.info("Writing DOT file %s", args.output)
+            with open(args.output, 'w') as fout:
+                dump_dot_graph(device_tree, fout)
+        else:
+            dump_dot_graph(device_tree, sys.stdout)
+    else:
+        assert args.output  # It should have triggered a parser.error
+        # Run graphviz
+        if args.tree:
+            cmdline = ['dot', '-T' + outformat, '-o' + args.output]
+        else:
+            cmdline = ['sfdp', '-Goverlap=prism', '-T' + outformat, '-o' + args.output]
+        logger.info("Running %s", ' '.join(cmdline))
+        proc = subprocess.Popen(cmdline, stdin=subprocess.PIPE, universal_newlines=True)
+        dump_dot_graph(device_tree, proc.stdin)
+        proc.stdin.close()
+        exitcode = proc.wait()
+        if exitcode:
+            logger.error("sfdp (Graphviz) failed: %d", exitcode)
+            return exitcode
+
+    # Open the file
+    if args.web_browser:
+        logger.info("Opening in a web browser %s", args.output)
+        webbrowser.open(args.output)
+    elif args.xdot:
+        logger.info("Opening in xdot %s", args.output)
+        subprocess.call(['xdot', args.output])
+    elif args.open:
+        logger.info("Opening %s", args.output)
+        if sys.platform == 'darwin':
+            subprocess.call(['open', args.output])
+        elif sys.platform == 'win32':
+            subprocess.call(['start', args.output])
+        elif sys.platform.startswith('linux'):
+            subprocess.call(['xdg-open', args.output])
+        else:
+            webbrowser.open(args.output)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
