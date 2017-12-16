@@ -94,7 +94,7 @@ if [ -r /proc/cpuinfo ] ; then
     indent_out < /proc/cpuinfo
 fi
 # DMI information: bios_vendor, board_vendor, chassis_vendor, sys_vendor
-for FILE in /sys/class/dmi/id/*_vendor ; do
+for FILE in /sys/class/dmi/id/*_vendor /sys/class/dmi/id/uevent ; do
     if [ -r "$FILE" ] ; then
         echo "* $FILE: $(cat "$FILE")"
     fi
