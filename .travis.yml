@@ -69,9 +69,9 @@ install:
     PATH="$HOME/.cabal/bin:$PATH" ;
     shellcheck --version ;
     fi
-# Install pep8 for the current version of Python
-  - pip install pep8
-  - pep8 --version
+# Install pycodestyle for the current version of Python
+  - pip install pycodestyle
+  - pycodestyle --version
 
 script:
 # Run automated tests
