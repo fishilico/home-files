@@ -561,37 +561,37 @@ KNOWN_WMI_UUIDS = {
     '0B3CBB35-E3C2-45ED-91C2-4C5A6D195D1C': 'ASUS_NB_WMI_EVENT (Linux)',
     '284A0E6B-380E-472A-921F-E52786257FB4': 'Dell All-In-One WMI Event (Linux)',
     '35AA3CE0-7EEF-4CCA-A88E-A653A81910DA':
-        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_Button\n(according to BMOF)',
+    '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_Button\n(according to BMOF)',
     '41227C2D-80E1-423F-8B8E-87E32755A0EB':
-        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_PlatformEvents\n(according to BMOF)',
+    '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_PlatformEvents\n(according to BMOF)',
     '551A1F84-FBDD-4125-91DB-3EA8F44F1D45': 'MSIWMI_BIOS (Linux)',
     '59142400-C6A3-40FA-BADB-8A2652834100': 'TOSHIBA_WMI_EVENT (Linux)',
     '5B3CC38A-40D9-7245-8AE6-1145B751BE3F': 'MSIWMI_WIND_EVENT (Linux)',
     '5FB7F034-2C63-45E9-BE91-3D44E2C707E4':
-        '\\\\.\\root\\wmi\\hpqBIntM\n(according to BMOF)\nHPWMI_BIOS (Linux)',
+    '\\\\.\\root\\wmi\\hpqBIntM\n(according to BMOF)\nHPWMI_BIOS (Linux)',
     '61EF69EA-865C-4BC3-A502-A0DEBA0CB531': 'Acer WMID (Linux)',
     '6AF4F258-B401-42FD-BE91-3D4AC2D7C0D3': 'Acer WMID (Linux)',
     '676AA15E-6A47-4D9F-A2CC-1E6D18D14026': 'ACERWMID_EVENT (Linux)',
     '6FB7F034-2C63-45E9-BE91-3D44E2C707E4':
-        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSPassword\n(according to BMOF)',
+    '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSPassword\n(according to BMOF)',
     '8232DE3C-663D-4327-A8F4-E293ADB9BF05':
-        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSString\n(according to BMOF)',
+    '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSString\n(according to BMOF)',
     '8232DE3D-663D-4327-A8F4-E293ADB9BF05':
-        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSInteger\n(according to BMOF)',
+    '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSInteger\n(according to BMOF)',
     '8232DE3E-663D-4327-A8F4-E293ADB9BF05':
-        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSEnumeration\n(according to BMOF)',
+    '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSEnumeration\n(according to BMOF)',
     '8232DE3F-663D-4327-A8F4-E293ADB9BF05':
-        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSOrderedList\n(according to BMOF)',
+    '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSOrderedList\n(according to BMOF)',
     '82C54990-DB9F-4AEF-91BE-175D84386AC4':
-        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_ButtonInterface\n(according to BMOF)',
+    '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_ButtonInterface\n(according to BMOF)',
     '8D9DDCBC-A997-11DA-B012-B622A1EF5492': 'DELL_DESCRIPTOR (Linux)',
     '8F1F6435-9F42-42C8-BADC-0E9424F20C9A':
-        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSNumericSensor\n(according to BMOF)',
+    '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSNumericSensor\n(according to BMOF)',
     '8F1F6436-9F42-42C8-BADC-0E9424F20C9A':
-        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSStateSensor\n(according to BMOF)',
+    '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSStateSensor\n(according to BMOF)',
     '95764E09-FB56-4E83-B31A-37761F60994A': 'Acer WMID (Linux)',
     '95F24279-4D7B-4334-9387-ACCDC67EF61C':
-        '\\\\.\\root\\wmi\\HPBIOS_BIOSEvent\n(according to BMOF)\nHPWMI_EVENT (Linux)',
+    '\\\\.\\root\\wmi\\HPBIOS_BIOSEvent\n(according to BMOF)\nHPWMI_EVENT (Linux)',
     '97845ED0-4E6D-11DE-8A39-0800200C9A66': 'ASUS_WMI_MGMT (Linux)',
     '9DBB5994-A997-11DA-B012-B622A1EF5492': 'DELL_EVENT (Linux)',
     'A70591CE-A997-11DA-B012-B622A1EF5492': 'Alienware WMAX_CONTROL (Linux)',
@@ -605,7 +605,7 @@ KNOWN_WMI_UUIDS = {
     'B6F3EEF2-3D2F-49DC-9DE3-85BCE18C62F2': 'MSIWMI_MSI_EVENT (Linux)',
     'C364AC71-36DB-495A-8494-B439D472A505': 'tc1100 (Linux)',
     'C9B590D8-E7E4-4DC5-BB0F-CB8A3522027E':
-        '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSSettingInterface\n(according to BMOF)',
+    '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSSettingInterface\n(according to BMOF)',
     'F6CB5C3C-9CAE-4EBD-B577-931EA32A2CC0': 'MXM_WMMX (Linux)',
     'F6E4FE6E-909D-47cb-8BAB-C9F6F2F8D396': 'DELL_LED_BIOS (Linux)',
     'F7CC25EC-D20B-404C-8903-0ED4359C18AE': 'SURFACE3_LID (Linux)',
