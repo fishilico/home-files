@@ -51,6 +51,17 @@ import sys
 import webbrowser
 
 
+# Python 2.6 does not have collections.OrderedDict. Use dict instead.
+# It does not have subprocess.check_output either. Replace with an exception.
+if sys.version_info < (2, 7):
+    assert not hasattr(collections, 'OrderedDict')
+    collections.OrderedDict = dict
+    assert not hasattr(subprocess, 'check_output')
+
+    def fake_subprocess_check_output(_):
+        raise OSError(errno.ENOENT, 'too old Python version')
+    subprocess.check_output = fake_subprocess_check_output
+
 # pylint: disable=invalid-name
 logger = logging.getLogger(__name__)
 
@@ -214,7 +225,7 @@ class SysfsDevice(collections.OrderedDict):
         if child is None:
             if create:
                 child = SysfsDevice({
-                    'sysfs_path': '{}/{}'.format(self_path, childname),
+                    'sysfs_path': '{0}/{1}'.format(self_path, childname),
                     'sysfs_name': childname,
                 })
                 self['children'][childname] = child
@@ -227,12 +238,12 @@ class SysfsDevice(collections.OrderedDict):
         """Label for the graph"""
         if not self['buskind']:
             # Directory
-            label = '{}/'.format(self['sysfs_name'])
+            label = '{0}/'.format(self['sysfs_name'])
         else:
-            label = '{}:{}'.format(self['buskind'], self['sysfs_name'])
+            label = '{0}:{1}'.format(self['buskind'], self['sysfs_name'])
 
         if self['label_desc']:
-            label = '{}\n{}'.format(label, self['label_desc'])
+            label = '{0}\n{1}'.format(label, self['label_desc'])
         return label
 
     def add_to_label_desc(self, desc):
@@ -240,7 +251,7 @@ class SysfsDevice(collections.OrderedDict):
         if self['label_desc'] is None:
             self['label_desc'] = desc
         else:
-            self['label_desc'] = '{}\n{}'.format(self['label_desc'], desc)
+            self['label_desc'] = '{0}\n{1}'.format(self['label_desc'], desc)
 
     @property
     def color(self):
@@ -311,13 +322,13 @@ def add_pci_bus_nodes(device_tree):
     """Add PCI bus nodes to the device tree"""
     for pcibus_id in list_directory('/sys/class/pci_bus'):
         pcibus_path = os.path.realpath(os.path.join('/sys/class/pci_bus', pcibus_id))
-        path_suffix = '/pci_bus/{}'.format(pcibus_id)
+        path_suffix = '/pci_bus/{0}'.format(pcibus_id)
         if not pcibus_path.endswith(path_suffix):
             logger.error("Unexpected pci_bus path for %s: %s", pcibus_id, pcibus_path)
             continue
         pcidev = device_tree.resolve_path(pcibus_path[:-len(path_suffix)], create=True)
         logger.debug("PCI device %s is bus %s", pcidev['sysfs_name'], pcibus_id)
-        pcidev.add_to_label_desc('PCI bus {}'.format(pcibus_id))
+        pcidev.add_to_label_desc('PCI bus {0}'.format(pcibus_id))
         # PCI bus 0000:00 is not a PCI device but it is a PCI bus
         if pcidev['buskind'] is None:
             pcidev['buskind'] = 'pci_bus'
@@ -454,7 +465,7 @@ def fill_names_with_lspci_output(device_tree):
         if dev is None:
             logger.error("Unable to find device %s (from lspci) in sysfs", pci_id)
             continue
-        dev.add_to_label_desc('{}\n{}'.format(kind, name))
+        dev.add_to_label_desc('{0}\n{1}'.format(kind, name))
 
 
 def read_integer_file(path):
@@ -509,7 +520,7 @@ def fill_names_with_lsusb_output(device_tree):
         if dev is None:
             logger.error("Unable to find device %s,%s (from lsusb) in sysfs", busnum, devnum)
             continue
-        dev.add_to_label_desc('USB ID: {}\n{}'.format(usbid, desc.strip()))
+        dev.add_to_label_desc('USB ID: {0}\n{1}'.format(usbid, desc.strip()))
 
 
 KNOWN_MEI_UUIDS = {
@@ -649,23 +660,23 @@ def add_uevent_names(device_tree):
                         value = value[1:-1]
                         assert '"' not in value
                     if key == 'DRIVER':
-                        dev.add_to_label_desc("Driver: {}".format(value))
+                        dev.add_to_label_desc("Driver: {0}".format(value))
                     elif key == 'DEVNAME':
                         devname = value
                     elif key == 'DEVTYPE':
-                        dev.add_to_label_desc("Dev type: {}".format(value))
+                        dev.add_to_label_desc("Dev type: {0}".format(value))
                     elif key == 'HID_NAME':
-                        dev.add_to_label_desc("HID name: {}".format(value))
+                        dev.add_to_label_desc("HID name: {0}".format(value))
                     elif key == 'MAJOR':
                         devmajor = value
                     elif key == 'MINOR':
                         devminor = value
                     elif key == 'NAME':
-                        dev.add_to_label_desc("Name: {}".format(value))
+                        dev.add_to_label_desc("Name: {0}".format(value))
         except IOError:
             pass
         if devname is not None:
-            dev.add_to_label_desc("/dev/{} ({}:{})".format(
+            dev.add_to_label_desc("/dev/{0} ({1}:{2})".format(
                 devname,
                 devmajor if devmajor is not None else '?',
                 devminor if devminor is not None else '?'))
@@ -678,7 +689,7 @@ def add_dm_names(device_tree):
         try:
             with open(dm_name_path, 'r') as fd_dm_name:
                 value = fd_dm_name.read().strip()
-                dev.add_to_label_desc("DM Name: {}".format(value))
+                dev.add_to_label_desc("DM Name: {0}".format(value))
             if dev['buskind'] != 'block':
                 logger.warning("Found 'dm/name' for non-block device %s", dev['sysfs_path'])
         except IOError:
@@ -692,7 +703,7 @@ def add_scsi_models(device_tree):
         try:
             with open(model_path, 'r') as fd_model:
                 value = fd_model.read().strip()
-                dev.add_to_label_desc("Model: {}".format(value))
+                dev.add_to_label_desc("Model: {0}".format(value))
             if dev['buskind'] not in ('media', 'scsi'):
                 logger.warning("Found 'model' for non-SCSI device %s", dev['sysfs_path'])
         except IOError:
@@ -717,7 +728,7 @@ def add_acpi_path_names(device_tree):
                 if any(c not in allowed_path_chars for c in value):
                     logger.error("Invalid ACPI path %r", value)
                     continue
-                dev.add_to_label_desc("Path: {}".format(value.replace('\\', '\\\\')))
+                dev.add_to_label_desc("Path: {0}".format(value.replace('\\', '\\\\')))
         except IOError:
             pass
 
@@ -737,7 +748,7 @@ def add_fiwmare_nodes(device_tree):
                 logger.error("%s symlink not in /sys/devices: %s", label, node_path)
             else:
                 node_path = node_path[len('/sys/devices/'):]
-            dev.add_to_label_desc("{}: {}".format(label, node_path))
+            dev.add_to_label_desc("{0}: {1}".format(label, node_path))
 
 
 def add_dev_descriptions(device_tree):
@@ -750,7 +761,7 @@ def add_dev_descriptions(device_tree):
                 if '\n' in value:
                     logger.warning("Skipping multi-line description for %s", dev['sysfs_path'])
                     continue
-                dev.add_to_label_desc("Desc: {}".format(value))
+                dev.add_to_label_desc("Desc: {0}".format(value))
             if dev['buskind'] not in ('acpi', 'serio'):
                 logger.warning(
                     "Found 'description' for unexpected device %s (%s)",
@@ -837,17 +848,17 @@ def add_net_addresses(device_tree):
                     addr, netmask = m.groups()
                     netmask_i = sum(int(x) << (24 - i * 8) for i, x in enumerate(netmask.split('.', 3)))
                     prefixlen = 33 - ((0xffffffff ^ netmask_i) + 1).bit_length()
-                    ipv4_addresses.add('{}/{}'.format(addr, prefixlen))
+                    ipv4_addresses.add('{0}/{1}'.format(addr, prefixlen))
                 m = re.match(r'\s+inet6\s+(\S+).*prefixlen\s+(\S+)', line)
                 if m is not None:
                     addr, prefixlen = m.groups()
-                    ipv6_addresses.add('{}/{}'.format(addr, prefixlen))
+                    ipv6_addresses.add('{0}/{1}'.format(addr, prefixlen))
 
-        dev.add_to_label_desc("Address: {} {}".format(hw_addr_kind, hwaddr))
+        dev.add_to_label_desc("Address: {0} {1}".format(hw_addr_kind, hwaddr))
         for addr in sorted(ipv4_addresses):
-            dev.add_to_label_desc("IPv4: {}".format(addr))
+            dev.add_to_label_desc("IPv4: {0}".format(addr))
         for addr in sorted(ipv6_addresses):
-            dev.add_to_label_desc("IPv6: {}".format(addr))
+            dev.add_to_label_desc("IPv6: {0}".format(addr))
 
 
 def shorten_paths_in_label(label):
@@ -861,7 +872,7 @@ def shorten_paths_in_label(label):
         return label
     if first_part_idx + 6 >= last_part_idx:
         return label
-    return '{}/...{}'.format(label[:first_part_idx], label[last_part_idx:])
+    return '{0}/...{1}'.format(label[:first_part_idx], label[last_part_idx:])
 
 
 def shorten_label_paths(device_tree):
@@ -883,17 +894,17 @@ def dump_dot_graph(device_tree, stream):
 
     # Dump nodes
     for dev in device_tree.iter_all_depth_by_depth():
-        stream.write('   "{}" [label="{}"'.format(dev['sysfs_path'], dev.label))
+        stream.write('   "{0}" [label="{1}"'.format(dev['sysfs_path'], dev.label))
         color = dev.color
         if color is not None:
-            stream.write(',fillcolor="{}"'.format(color))
+            stream.write(',fillcolor="{0}"'.format(color))
         stream.write('];\n')
 
     # Dump edges
     for dev in device_tree.iter_all():
         if dev['children'] is not None:
             for child in dev['children'].values():
-                stream.write('   "{}" -> "{}";\n'.format(dev['sysfs_path'], child['sysfs_path']))
+                stream.write('   "{0}" -> "{1}";\n'.format(dev['sysfs_path'], child['sysfs_path']))
     stream.write('}\n')
 
 
@@ -954,7 +965,7 @@ def main(argv=None):
             # Using --xdot makes using dot format implicit
             outformat = 'dot'
         else:
-            parser.error("--type needed to specify the format of unknown file extension {}".format(fileext))
+            parser.error("--type needed to specify the format of unknown file extension {0}".format(fileext))
 
     if args.xdot and outformat != 'dot':
         parser.error("--xdot only supports dot format")
