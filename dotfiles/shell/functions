@@ -281,10 +281,17 @@ if type alias > /dev/null 2>&1 ; then
 fi
 
 # Pretty-print some filetypes
-pretty_json() {
-    # Use json_pp from perl
-    cat "$@" | json_pp
-}
+if [ -x /usr/bin/python ] || which python > /dev/null 2>&1 ; then
+    pretty_json() {
+        # Use Python's json module
+        cat "$@" | python -m json.tool
+    }
+else
+    pretty_json() {
+        # Use Perl's json_pp
+        cat "$@" | json_pp
+    }
+fi
 pretty_xml() {
     # Use xmllint from libxml2
     cat "$@" | xmllint --format -
