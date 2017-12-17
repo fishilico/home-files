@@ -493,6 +493,11 @@ def fill_names_with_lsusb_output(device_tree):
             logger.warning("lsusb is not installed")
             return
         raise
+    except subprocess.CalledProcessError as exc:
+        logger.warning("lsusb failed with exit code %d", exc.returncode)
+        if exc.output:
+            logger.debug("lsusb output: %r", exc.output)
+        return
 
     for line in output.decode('utf8', errors='ignore').splitlines():
         m = re.match(r'Bus ([0-9]+) Device ([0-9]+): ID ([0-9a-f:]+)(.*)', line)
