@@ -861,6 +861,53 @@ def add_net_addresses(device_tree):
             dev.add_to_label_desc("IPv6: {0}".format(addr))
 
 
+def add_mem_info(device_tree):
+    """Add information on memory nodes"""
+    # Retrieve the block size
+    try:
+        with open('/sys/devices/system/memory/block_size_bytes', 'r') as fd_blocksize:
+            blocksize = int(fd_blocksize.read().strip(), 16)
+    except IOError:
+        logger.error("Unable to read /sys/devices/system/memory/block_size_bytes")
+        return
+
+    for dev in device_tree.iter_all():
+        dev_data = {}
+        for key in ('phys_device', 'phys_index', 'removable', 'state', 'valid_zones'):
+            data_path = os.path.join(dev['sysfs_path'], key)
+            try:
+                with open(data_path, 'r') as fd_data:
+                    dev_data[key] = fd_data.read().strip()
+            except IOError:
+                if dev['buskind'] == 'memory':
+                    logger.warning(
+                        "Missing %r in %s device %s",
+                        key, dev['buskind'], dev['sysfs_path'])
+                dev_data = None
+                break
+        if dev_data is None:
+            continue
+
+        if dev['buskind'] != 'memory':
+            logger.warning(
+                "Found memory properties for unexpected device %s (%s)",
+                dev['sysfs_path'], dev['buskind'])
+
+        phys_index = int(dev_data['phys_index'], 16)
+        dev.add_to_label_desc("Device: {0}/{1:#x}".format(
+            dev_data['phys_device'], phys_index))
+        dev.add_to_label_desc("Range: {0:#x}-{1:#x}".format(
+            phys_index * blocksize,
+            (phys_index + 1) * blocksize - 1))
+
+        state = dev_data['state']
+        if dev_data['removable']:
+            state += ', removable'
+        if dev_data['valid_zones'] != 'Normal':
+            state += ', ' + dev_data['valid_zones']
+        dev.add_to_label_desc("State: {0}".format(state))
+
+
 def shorten_paths_in_label(label):
     """Shorten the paths in the given label to a reasonable length"""
     if len(label) <= 30 or ':' not in label:
@@ -1004,6 +1051,7 @@ def main(argv=None):
         add_fiwmare_nodes(device_tree)
         add_dev_descriptions(device_tree)
         add_net_addresses(device_tree)
+        add_mem_info(device_tree)
 
     if args.no_memory:
         try:
