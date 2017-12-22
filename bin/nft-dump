@@ -21,6 +21,7 @@
 # THE SOFTWARE.
 #
 # Dump nftables state
+# It is like "nft list ruleset -an", but works even when ruleset is not available
 
 for FAMILY in arp bridge inet ip ip6
 do
@@ -32,6 +33,11 @@ do
             exit 1
         fi
         TABLENAME="${TABLELINE#* }"
-        nft list table "$FAMILY" "$TABLENAME"
+        # Remove family too, if it is present
+        if [ "${TABLENAME%% *}" = "$FAMILY" ]
+        then
+            TABLENAME="${TABLENAME#* }"
+        fi
+        nft --handle --numeric list table "$FAMILY" "$TABLENAME"
     done
 done
