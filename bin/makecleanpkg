@@ -133,12 +133,6 @@ while [ \$# -ge 1 ] ; do
             # Skip locale-gen as it crashes with proot 5.1.0
             exit
             ;;
-        pacman)
-            # Encapsulate a call to pacman into a fakechroot in order to run
-            # install scripts in chroots
-            proot_options+=(fakechroot)
-            break
-            ;;
         *)
             break
             ;;
@@ -191,24 +185,40 @@ fi
 
 # Fake sudo for "sudo -iu builduser makepkg" and when makepkg wants to use sudo
 # to install packages
-cat_script "$CHROOTDIR/root/etc/profile.d/fakesudo.sh" << EOF
+mkdir -p "$CHROOTDIR/root/faked_programs"
+cat_script "$CHROOTDIR/root/faked_programs/sudo" << EOF
 #!/bin/sh
-sudo() {
-    if [ "\$1" = '-u' ] || [ "\$1" = '-iu' ] ; then
-        shift 2
-
-        # Disable fakeroot
-        unset LD_PRELOAD
-        unset LD_LIBRARY_PATH
-        unset FAKEROOTKEY
-        "\$@"
-    else
-        # Use fakeroot and allow chroot
-        fakechroot fakeroot "\$@"
+if [ "\$1" = '-u' ] || [ "\$1" = '-iu' ] ; then
+    if [ "\$2" != 'builduser' ] ; then
+        echo >&2 "Warning: unexpected sudo-ed user \$2"
     fi
-}
+    shift 2
+
+    # Disable fakeroot
+    unset LD_PRELOAD
+    unset LD_LIBRARY_PATH
+    unset FAKEROOTKEY
+    "\$@"
+else
+    # Use fakeroot
+    fakeroot "\$@"
+fi
 EOF
 
+# Encapsulate all calls to pacman into a fakechroot in order to run install
+# scripts in chroots
+cat_script "$CHROOTDIR/root/faked_programs/pacman" << EOF
+#!/bin/sh
+fakechroot /usr/bin/pacman "\$@"
+EOF
+
+# Make /chrootbuild and makepkg use the fake programs
+cat_script "$CHROOTDIR/root/etc/profile.d/fakesudo.sh" << EOF
+#!/bin/sh
+if [ "\${PATH#/faked_programs:}" = "\$PATH" ] ; then
+    PATH="/faked_programs:\$PATH"
+fi
+EOF
 ln -sf ../../../etc/profile.d/fakesudo.sh "$CHROOTDIR/root/usr/share/makepkg/fakesudo.sh"
 
 # Fake sudo environment for makechrootpkg
