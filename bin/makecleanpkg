@@ -125,7 +125,7 @@ while [ \$# -ge 1 ] ; do
             env_variables+=("\$2")
             shift
             ;;
-        -q|--keep-unit|--register=no)
+        -q|--as-pid2|--keep-unit|--register=no)
             ;;
         locale-gen)
             # Skip locale-gen as it crashes with proot 5.1.0
