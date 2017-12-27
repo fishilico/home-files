@@ -111,6 +111,8 @@ cat_script "$CHROOTDIR/bin/systemd-nspawn" << EOF
 $EXPORT_PROOT_NO_SECCOMP_CMD
 # Allow fakechroot in the proot'ed environment
 proot_options=(--cwd=/ -b /usr/lib/libfakeroot/fakechroot -b /usr/bin/fakechroot)
+# Allow use of /dev/console inside the pseudo-container
+proot_options+=( -b /dev/tty:/dev/console)
 env_variables=()
 while [ \$# -ge 1 ] ; do
     case "\$1" in
