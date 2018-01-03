@@ -36,6 +36,7 @@ TEXT_EXT = (
     'conf',
     'desktop',
     'ini',
+    'json',
     'lang',
     'lua',
     'pa',
