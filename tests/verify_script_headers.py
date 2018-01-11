@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# SPDX-License-Identifier: MIT
 # Copyright (c) 2015-2018 Nicolas Iooss
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -73,6 +74,9 @@ MIT_LICENSE_HASHES = """#
 # Known license texts
 KNOWN_LICENSES = (
     MIT_LICENSE_HASHES,
+)
+KNOWN_LICENSES_SPDX = (
+    '# SPDX-License-Identifier: MIT',
 )
 
 
@@ -148,6 +152,16 @@ def verify_py(filepath):
         if secondline != '# -*- coding: utf-8 -*-':
             raise CheckError("bad python second line in: {}".format(secondline))
 
+        # Verify the SPDX license ID
+        line = curfile.readline()
+        if not line.startswith('# SPDX-License-Identifier:'):
+            raise CheckError(
+                "missing SPDX license identifier in Python script")
+        if line.rstrip('\n') not in KNOWN_LICENSES_SPDX:
+            raise CheckError(
+                "unknown SPDX license identifier in Python script: {}".format(
+                    line))
+
         # Verify the copyright information, which begins with hashes
         line = curfile.readline()
         copyright_lines = []
@@ -190,13 +204,21 @@ def verify_sh(filepath):
             numlines = len(curfile.readlines())
             if numlines > 10:
                 raise CheckError("missing copyright information")
-        else:
-            if comment_lines[0] != '#\n':
-                raise CheckError(
-                    "missing blank comment between shebang and copyright")
-            afterlicense = check_copyright_lines(comment_lines[1:])
-            if not afterlicense.startswith('#\n# '):
-                raise CheckError("missing script description after license")
+            return
+
+        if not comment_lines[0].startswith('# SPDX-License-Identifier:'):
+            raise CheckError(
+                "missing SPDX license identifier in shell script")
+        if comment_lines[0].rstrip('\n') not in KNOWN_LICENSES_SPDX:
+            raise CheckError(
+                "unknown SPDX license identifier in shell script: {}".format(
+                    comment_lines[0]))
+        if comment_lines[1] != '#\n':
+            raise CheckError(
+                "missing blank comment between shebang and copyright")
+        afterlicense = check_copyright_lines(comment_lines[2:])
+        if not afterlicense.startswith('#\n# '):
+            raise CheckError("missing script description after license")
 
 
 def verify_bin(filepath):

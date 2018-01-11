@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: MIT
 #
 # Copyright (c) 2015-2018 Nicolas Iooss
 #
