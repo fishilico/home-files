@@ -12,8 +12,7 @@ dependencies:
     - "~/.cabal"
   pre:
     - sudo apt-get update -qq
-    - sudo apt-get install -qq ash busybox zsh
-    - sudo pip install pycodestyle
+    - sudo apt-get install -qq ash busybox python-flake8 zsh
 
     # Install shellcheck, using cabal cache
     - test -x "$HOME/.cabal/bin/shellcheck" || (PATH="/opt/ghc/bin:$PATH" ; cabal update && cabal install shellcheck)

@@ -31,7 +31,7 @@ import gdb
 import sys
 
 # Python3 uses int() where Python2 used long()
-to_int = int if sys.version_info >= (3, ) else long
+to_int = int if sys.version_info >= (3, ) else long  # noqa
 
 
 class EntryPoint(gdb.Function):

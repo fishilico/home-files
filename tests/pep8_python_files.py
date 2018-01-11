@@ -50,7 +50,7 @@ def test():
 
     # On Arch Linux, pep8 has been replaced by pycodestyle
     pep8cmd = None
-    for cmd in ('pycodestyle', 'pep8'):
+    for cmd in ('flake8', 'pycodestyle', 'pep8'):
         try:
             pep8_helptext = subprocess.check_output([cmd, '--help'])
         except OSError as exc:

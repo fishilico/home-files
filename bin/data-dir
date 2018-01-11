@@ -34,7 +34,6 @@ permissions.
 @license: MIT
 """
 import argparse
-import functools
 import os
 import stat
 import sys
