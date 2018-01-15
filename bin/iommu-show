@@ -1,0 +1,284 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2017-2018 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Dump the configuration of an IOMMU (Input Output Memory Management Unit) if
+# it is active.
+#
+# Documentation:
+#   https://wiki.gentoo.org/wiki/IOMMU_SWIOTLB
+#   https://wiki.archlinux.org/index.php/PCI_passthrough_via_OVMF#Setting_up_IOMMU
+#
+# In order to see how Linux configured the IOMMU at boot time, use:
+#    $ dmesg | grep -i -e IOMMU -e DMAR
+#    Command line: ... intel_iommu=on
+#    ACPI: DMAR 0x0000000087C21D78 0000A8 (v01 INTEL  SKL      00000001 INTL 00000001)
+#    Kernel command line: ... intel_iommu=on
+#    DMAR: IOMMU enabled
+#    DMAR: Host address width 39
+#    DMAR: DRHD base: 0x000000fed90000 flags: 0x0
+#    DMAR: dmar0: reg_base_addr fed90000 ver 1:0 cap 1c0000c40660462 ecap 7e3ff0505e
+#    DMAR: DRHD base: 0x000000fed91000 flags: 0x1
+#    DMAR: dmar1: reg_base_addr fed91000 ver 1:0 cap d2008c40660462 ecap f050da
+#    DMAR: RMRR base: 0x00000087900000 end: 0x0000008791ffff
+#    DMAR: RMRR base: 0x00000088800000 end: 0x0000008cffffff
+#    DMAR-IR: IOAPIC id 2 under DRHD base  0xfed91000 IOMMU 1
+#    DMAR-IR: HPET id 0 under DRHD base 0xfed91000
+#    DMAR-IR: x2apic is disabled because BIOS sets x2apic opt out bit.
+#    DMAR-IR: Use 'intremap=no_x2apic_optout' to override the BIOS setting.
+#    DMAR-IR: Enabled IRQ remapping in xapic mode
+#    DMAR: No ATSR found
+#    DMAR: dmar0: Using Queued invalidation
+#    DMAR: dmar1: Using Queued invalidation
+#    DMAR: Setting RMRR:
+#    DMAR: Setting identity map for device 0000:00:02.0 [0x88800000 - 0x8cffffff]
+#    DMAR: Setting identity map for device 0000:00:14.0 [0x87900000 - 0x8791ffff]
+#    DMAR: Prepare 0-16MiB unity mapping for LPC
+#    DMAR: Setting identity map for device 0000:00:1f.0 [0x0 - 0xffffff]
+#    DMAR: Intel(R) Virtualization Technology for Directed I/O
+#    iommu: Adding device 0000:00:00.0 to group 0
+#    iommu: Adding device 0000:00:02.0 to group 1
+#    iommu: Adding device 0000:00:14.0 to group 2
+#    iommu: Adding device 0000:00:14.2 to group 2
+#    iommu: Adding device 0000:00:16.0 to group 3
+#    iommu: Adding device 0000:00:17.0 to group 4
+#    iommu: Adding device 0000:00:1b.0 to group 5
+#    iommu: Adding device 0000:00:1c.0 to group 6
+#    iommu: Adding device 0000:00:1c.4 to group 6
+#    iommu: Adding device 0000:00:1c.5 to group 6
+#    iommu: Adding device 0000:00:1c.6 to group 6
+#    iommu: Adding device 0000:00:1d.0 to group 7
+#    iommu: Adding device 0000:00:1d.4 to group 7
+#    iommu: Adding device 0000:00:1f.0 to group 8
+#    iommu: Adding device 0000:00:1f.2 to group 8
+#    iommu: Adding device 0000:00:1f.3 to group 8
+#    iommu: Adding device 0000:00:1f.4 to group 8
+#    iommu: Adding device 0000:03:00.0 to group 6
+#    iommu: Adding device 0000:06:00.0 to group 6
+#
+# On the same system, the output of "iommu-show -d" is:
+#
+#    IOMMU device dmar0: Intel IOMMU, domains 2/256
+#    IOMMU device dmar1: Intel IOMMU, domains 7/256
+#
+#    IOMMU group 0:
+#      PCI 00:00.0 Host bridge [0600]: Intel Corporation Xeon E3-1200
+#      v5/E3-1500 v5/6th Gen Core Processor Host Bridge/DRAM Registers
+#      [8086:191f] (rev 07) (bus master)
+#        ... IOMMU device dmar1
+#      0xfee00000 0xfeefffff msi
+#
+#    IOMMU group 1:
+#      PCI 00:02.0 VGA compatible controller [0300]: Intel Corporation HD
+#      Graphics 530 [8086:1912] (rev 06) (bus master)
+#        ... IOMMU device dmar0
+#      0x88800000 0x8cffffff direct
+#      0xfee00000 0xfeefffff msi
+#
+#    IOMMU group 2:
+#      PCI 00:14.0 USB controller [0c03]: Intel Corporation Sunrise Point-H
+#      USB 3.0 xHCI Controller [8086:a12f] (rev 31) (bus master)
+#        ... IOMMU device dmar1
+#      PCI 00:14.2 Signal processing controller [1180]: Intel Corporation
+#      Sunrise Point-H Thermal subsystem [8086:a131] (rev 31)
+#        ... IOMMU device dmar1
+#      0x87900000 0x8791ffff direct
+#      0xfee00000 0xfeefffff msi
+#
+#    IOMMU group 3:
+#      PCI 00:16.0 Communication controller [0780]: Intel Corporation Sunrise
+#      Point-H CSME HECI #1 [8086:a13a] (rev 31) (bus master)
+#        ... IOMMU device dmar1
+#      0xfee00000 0xfeefffff msi
+#
+#    IOMMU group 4:
+#      PCI 00:17.0 SATA controller [0106]: Intel Corporation Sunrise Point-H
+#      SATA controller [AHCI mode] [8086:a102] (rev 31) (bus master)
+#        ... IOMMU device dmar1
+#      0xfee00000 0xfeefffff msi
+#
+#    IOMMU group 5:
+#      PCI 00:1b.0 PCI bridge [0604]: Intel Corporation Sunrise Point-H PCI
+#      Root Port #19 [8086:a169] (rev f1) (bus master)
+#        ... IOMMU device dmar1
+#      0xfee00000 0xfeefffff msi
+#
+#    IOMMU group 6:
+#      PCI 00:1c.0 PCI bridge [0604]: Intel Corporation Sunrise Point-H PCI
+#      Express Root Port #3 [8086:a112] (rev f1) (bus master)
+#        ... IOMMU device dmar1
+#      PCI 00:1c.4 PCI bridge [0604]: Intel Corporation Sunrise Point-H PCI
+#      Express Root Port #5 [8086:a114] (rev f1) (bus master)
+#        ... IOMMU device dmar1
+#      PCI 00:1c.5 PCI bridge [0604]: Intel Corporation Sunrise Point-H PCI
+#      Express Root Port #6 [8086:a115] (rev f1) (bus master)
+#        ... IOMMU device dmar1
+#      PCI 00:1c.6 PCI bridge [0604]: Intel Corporation Sunrise Point-H PCI
+#      Express Root Port #7 [8086:a116] (rev f1) (bus master)
+#        ... IOMMU device dmar1
+#      PCI 03:00.0 Ethernet controller [0200]: Realtek Semiconductor Co.,
+#      Ltd. RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller
+#      [10ec:8168] (rev 15) (bus master)
+#        ... IOMMU device dmar1
+#      PCI 06:00.0 Network controller [0280]: Qualcomm Atheros AR9287 Wireless
+#      Network Adapter (PCI-Express) [168c:002e] (rev 01) (bus master)
+#        ... IOMMU device dmar1
+#      0xfee00000 0xfeefffff msi
+#
+#    IOMMU group 7:
+#      PCI 00:1d.0 PCI bridge [0604]: Intel Corporation Sunrise Point-H PCI
+#      Express Root Port #9 [8086:a118] (rev f1) (bus master)
+#        ... IOMMU device dmar1
+#      PCI 00:1d.4 PCI bridge [0604]: Intel Corporation Sunrise Point-H PCI
+#      Express Root Port #13 [8086:a11c] (rev f1) (bus master)
+#        ... IOMMU device dmar1
+#      0xfee00000 0xfeefffff msi
+#
+#    IOMMU group 8:
+#      PCI 00:1f.0 ISA bridge [0601]: Intel Corporation Sunrise Point-H LPC
+#      Controller [8086:a144] (rev 31) (bus master)
+#        ... IOMMU device dmar1
+#      PCI 00:1f.2 Memory controller [0580]: Intel Corporation Sunrise Point-H
+#      PMC [8086:a121] (rev 31)
+#        ... IOMMU device dmar1
+#      PCI 00:1f.3 Audio device [0403]: Intel Corporation Sunrise Point-H HD
+#      Audio [8086:a170] (rev 31) (bus master)
+#        ... IOMMU device dmar1
+#      PCI 00:1f.4 SMBus [0c05]: Intel Corporation Sunrise Point-H SMBus
+#      [8086:a123] (rev 31)
+#        ... IOMMU device dmar1
+#      0xfee00000 0xfeefffff msi
+
+USE_COLORS=false
+SHOW_DEVICES=false
+while getopts ":cdh" OPT
+do
+    case "$OPT" in
+        h)
+            echo "Usage: $0 [OPTION]"
+            echo "Dump IOMMU configuration"
+            echo ""
+            echo "Options:"
+            echo "  -c       use colors"
+            echo "  -d       show IOMMU devices"
+            echo "  -h       display this help and exit"
+            exit
+            ;;
+        c)
+            USE_COLORS=true
+            ;;
+        d)
+            SHOW_DEVICES=true
+            ;;
+        \?)
+            echo >&2 "$0: invalid option '$OPTARG'"
+            echo >&2 "Try '$0 -h' for more information."
+            exit 1
+            ;;
+    esac
+done
+
+# Invoke tput if USE_COLORS is set
+colortput() {
+    if "$USE_COLORS"
+    then
+        tput "$@"
+    fi
+}
+
+EXITVAL=0
+IS_FIRST_LINE=true
+
+if "$SHOW_DEVICES"
+then
+    for IOMMUDIR in /sys/class/iommu/*
+    do
+        if ! [ -e "$IOMMUDIR" ]
+        then
+            echo >&2 "$IOMMUDIR does not exist"
+            continue
+        fi
+        IOMMUDEVNAME="${IOMMUDIR##*/}"
+        DESC="IOMMU device $IOMMUDEVNAME"
+        if [ -e "$IOMMUDIR/intel-iommu" ]
+        then
+            DOMUSED="$(cat "$IOMMUDIR/intel-iommu/domains_used")"
+            DOMSUPP="$(cat "$IOMMUDIR/intel-iommu/domains_supported")"
+            DESC="$DESC: Intel IOMMU, domains $DOMUSED/$DOMSUPP"
+        fi
+        echo "$DESC"
+        IS_FIRST_LINE=false
+    done
+fi
+
+for GROUPDIR in /sys/kernel/iommu_groups/*
+do
+    if ! [ -e "$GROUPDIR" ]
+    then
+        echo >&2 "$GROUPDIR does not exist"
+        continue
+    fi
+    # Put a blank like between groups
+    if "$IS_FIRST_LINE"
+    then
+        IS_FIRST_LINE=false
+    else
+        echo ''
+    fi
+    GROUP="${GROUPDIR##*/}"
+    colortput bold
+    echo "IOMMU group $GROUP:"
+    colortput sgr0
+    for DEVICEDIR in "$GROUPDIR/devices/"*
+    do
+        if [ -e "$DEVICEDIR" ]
+        then
+            PCIDEV="${DEVICEDIR##*/}"
+            PCIDESC="$(lspci -nns "$PCIDEV")"
+            if lspci -vvs "$PCIDEV" | grep 'Control: .*BusMaster+' > /dev/null
+            then
+                colortput setaf 1
+                echo "  PCI $PCIDESC (bus master)"
+                colortput sgr0
+            else
+                colortput setaf 5
+                echo "  PCI $PCIDESC"
+                colortput sgr0
+            fi
+
+            IOMMUDEV="$(readlink "$DEVICEDIR/iommu")"
+            IOMMUDEVNAME="${IOMMUDEV##*/}"
+            if [ -z "$IOMMUDEVNAME" ]
+            then
+                echo >&2 "Error: unable to get IOMMU device of $DEVICEDIR"
+                EXITVAL=1
+            elif "$SHOW_DEVICES"
+            then
+                echo "    ... IOMMU device $IOMMUDEVNAME"
+            fi
+        fi
+    done
+    colortput setaf 6
+    sed -e 's/\b0x00000000/0x/g' -e 's/^/  /' < "$GROUPDIR/reserved_regions"
+    colortput sgr0
+done
+exit "$EXITVAL"
