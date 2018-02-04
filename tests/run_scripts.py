@@ -106,6 +106,7 @@ BIN_SCRIPTS = {
     'tab2space': 'never',
     'update-packages': 'never',
     'vagrant-wireshark': 'args[-h]',
+    'who-is-here': 'direct',
     'xfconf-dump': '(xfconf-query)direct',
 }
 

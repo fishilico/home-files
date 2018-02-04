@@ -51,3 +51,12 @@ for FILE in aliases environment functions prompt 'local' ; do
     fi
 done
 unset SHELL_CONFIG_DIR FILE
+
+# Show who is here if it is a login an interactive shell
+if shopt -q login_shell && [[ $- == *i* ]] ; then
+    case "$(tr '\0' ' ' < "/proc/$PPID/cmdline")" in
+        login*|sshd*)
+            who-is-here
+            ;;
+    esac
+fi

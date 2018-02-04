@@ -45,3 +45,12 @@ export REPORTTIME='10'
 
 # chdir if typed name is a dir name, e.g ".."
 setopt AUTO_CD
+
+# Show who is here if it is a login and interactive shell
+if [[ -o login ]] && [[ -o interactive ]] ; then
+    case "$(tr '\0' ' ' < "/proc/$PPID/cmdline")" in
+        login*|sshd*)
+            who-is-here
+            ;;
+    esac
+fi

@@ -1,0 +1,113 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2018 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Show a brief status of the currently logged in users, using:
+# - "last" from util-linux (and "utmpdump < /var/run/utmp")
+#   https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git/tree/login-utils/last.c
+#   https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git/tree/login-utils/utmpdump.c
+# - "w" from procps-ng
+#   https://gitlab.com/procps-ng/procps/blob/master/w.c
+#   https://gitlab.com/procps-ng/procps/blob/master/contrib/utmp.c
+# - "who" from coreutils
+#   http://git.savannah.gnu.org/cgit/coreutils.git/tree/src/who.c
+#
+# All these tools use /var/run/utmp and /var/log/wtmp
+
+# Colors
+COLOR_NORM="$(tput sgr0)"
+COLOR_RED="$(tput setaf 1)"
+COLOR_GREEN="$(tput setaf 2)"
+COLOR_YELLOW="$(tput setaf 3)"
+COLOR_BLUE="$(tput setaf 4)"
+COLOR_PURPLE="$(tput setaf 5)"
+COLOR_CYAN="$(tput setaf 6)"
+COLOR_GRAY="$(tput setaf 8)"
+COLOR_BOLDRED="$COLOR_RED$(tput bold)"
+
+# Uptime, with years in bold red, with short output if the command supports it
+echo "$COLOR_BLUE$( \
+    (uptime --pretty 2> /dev/null || uptime) | \
+    sed "s/\\(up .* years\\?\\|up [0-9][0-9][0-9][0-9]\\+ days\\|up [2-9][0-9][0-9]\\+ days\\)/$COLOR_BOLDRED\\1$COLOR_NORM$COLOR_BLUE/" \
+    ) (now $(date))$COLOR_NORM"
+
+# Nicify "w"
+LINE_SEDCMD=''
+w | sed '1{/ up /d}' | while IFS= read -r LINE ; do
+    if [ -z "$LINE_SEDCMD" ] ; then
+        # Build a sed command to reformat the fields of the line,
+        # accordingly to the header
+        LINE_SEDCMD='s/'
+        LINE_SEDCMD_REPL=''
+        CUR_PAT_IDX=1
+        # As zsh does not split strings around spaces, write compatible code
+        # with shell variable mangling
+        HEADER_LINE="$LINE"
+        while [ -n "$HEADER_LINE" ] ; do
+            COLUMN="${HEADER_LINE%% *}"
+            HEADER_LINE="$(echo "$HEADER_LINE" | sed 's/^\S\+\s*//')"
+            case "$COLUMN" in
+                USER)
+                    LINE_SEDCMD="$LINE_SEDCMD\\(\\S\\+\\s*\\)"
+                    LINE_SEDCMD_REPL="$LINE_SEDCMD_REPL$COLOR_YELLOW\\$CUR_PAT_IDX"
+                    CUR_PAT_IDX=$((CUR_PAT_IDX + 1))
+                    ;;
+                TTY)
+                    LINE_SEDCMD="$LINE_SEDCMD\\(\\S\\+\\s*\\)"
+                    LINE_SEDCMD_REPL="$LINE_SEDCMD_REPL$COLOR_PURPLE\\$CUR_PAT_IDX"
+                    CUR_PAT_IDX=$((CUR_PAT_IDX + 1))
+                    ;;
+                FROM)
+                    LINE_SEDCMD="$LINE_SEDCMD\\(\\S\\+\\s*\\)"
+                    LINE_SEDCMD_REPL="$LINE_SEDCMD_REPL$COLOR_CYAN\\$CUR_PAT_IDX"
+                    CUR_PAT_IDX=$((CUR_PAT_IDX + 1))
+                    ;;
+                LOGIN@)
+                    LINE_SEDCMD="$LINE_SEDCMD\\(\\S\\+\\s*\\)"
+                    LINE_SEDCMD_REPL="$LINE_SEDCMD_REPL$COLOR_GREEN\\$CUR_PAT_IDX"
+                    CUR_PAT_IDX=$((CUR_PAT_IDX + 1))
+                    ;;
+                WHAT)
+                    LINE_SEDCMD="$LINE_SEDCMD\\(.*\\)"
+                    LINE_SEDCMD_REPL="$LINE_SEDCMD_REPL$COLOR_GRAY\\$CUR_PAT_IDX"
+                    HEADER_LINE=''
+                    ;;
+                IDLE|JCPU|PCPU)
+                    LINE_SEDCMD="$LINE_SEDCMD\\S\\+\\s*"
+                    ;;
+                *)
+                    echo >&2 "Unknown column $COLUMN in w output"
+                    LINE_SEDCMD="$LINE_SEDCMD\\S\\+\\s*"
+                    ;;
+            esac
+        done
+        # Highlight root too
+        LINE_SEDCMD="$LINE_SEDCMD.*/$LINE_SEDCMD_REPL/;s/\\(root\\)/$COLOR_BOLDRED\\1$COLOR_BOLD/g"
+    fi
+    echo "$LINE$COLOR_NORM" | sed "$LINE_SEDCMD"
+done
+printf '%s' "$COLOR_NORM"
+
+# Show last in gray and without the last line "wtmp begins ..."
+echo "$COLOR_GRAY -- last --"
+last -n 5 | sed '/^$/d;${/^wtmp begins/d}'
+printf '%s' "$COLOR_NORM"
