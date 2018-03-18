@@ -422,8 +422,9 @@ if type alias > /dev/null 2>&1 ; then
     alias virtualenv3-sys='virtualenv3 --system-site-packages'
 
     # Always provide virtualenv2/3 as some systems do not provide them
+    # Python 3.3 introduced the venv module, so use it
     alias virtualenv2='virtualenv --python=python2'
-    alias virtualenv3='virtualenv --python=python3'
+    alias virtualenv3='python3 -m venv'
 
     # Open xterm in fullscreen
     alias xterm-full='xterm -bg black -fg white -fullscreen'
