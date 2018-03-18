@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# Dump available arichitecture information
+# Dump available architecture information
 
 echo "uname: machine $(uname -m), kernel $(uname -s -r), OS $(uname -o)"
 
