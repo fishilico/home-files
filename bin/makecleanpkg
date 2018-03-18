@@ -199,6 +199,17 @@ if [ "\$1" = '-u' ] || [ "\$1" = '-iu' ] ; then
     unset LD_PRELOAD
     unset LD_LIBRARY_PATH
     unset FAKEROOTKEY
+
+    # Make sure an UTF-8 locale get used when running makepkg
+    # It is mandatory for building systemd package, because meson needs it.
+    # Otherwise it displays the following error message:
+    #   WARNING: You are using 'ANSI_X3.4-1968' which is not a a Unicode-compatible locale.
+    #   WARNING: You might see errors if you use UTF-8 strings as filenames, as strings, or as file contents.
+    #   WARNING: Please switch to a UTF-8 locale for your platform.
+    # c.f. https://github.com/mesonbuild/meson/blob/0.42.0/meson.py#L21
+    if [ "\$LANG" = 'C' ] ; then
+        LANG=en_US.UTF-8
+    fi
     "\$@"
 else
     # Use fakeroot
