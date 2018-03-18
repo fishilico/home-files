@@ -211,7 +211,7 @@ TRUSTED_SUID_FILES = [
 
     # dbus, http://www.freedesktop.org/wiki/Software/dbus/
     # http://cgit.freedesktop.org/dbus/dbus/tree/
-    SuidFile('/lib(32|64)?/dbus-1(.0)?/dbus-daemon-launch-helper'),
+    SuidFile('/lib(32|64|exec)?/dbus-1(.0)?/dbus-daemon-launch-helper'),
 
     # ecryptfs-utils, https://launchpad.net/ecryptfs
     # http://bazaar.launchpad.net/~ecryptfs/ecryptfs/trunk/files
@@ -422,6 +422,7 @@ TRUSTED_SUID_FILES = [
     SuidFile('/bin/X', owners=('root', ), groups=('root', )),
     SuidFile('/bin/Xorg'),
     SuidFile('/lib/xorg-server/Xorg.wrap'),
+    SuidFile('/libexec/Xorg.wrap'),
 ]
 
 # Define here known and fully trusted SGID programs.
@@ -606,6 +607,10 @@ KNOWN_SUID_FILES = [
     # http://cgit.freedesktop.org/pulseaudio/pulseaudio/tree/
     SuidFile('/libexec/pulse/proximity-helper'),
 
+    # qubes, https://www.qubes-os.org/doc/qfilecopy/
+    # https://github.com/QubesOS/qubes-core-agent-linux
+    SuidFile('/lib/qubes/qfile-unpacker'),
+
     # systemtap, https://sourceware.org/systemtap/
     # https://sourceware.org/git/gitweb.cgi?p=systemtap.git;a=tree
     SuidFile('/bin/staprun'),
@@ -628,6 +633,10 @@ KNOWN_SUID_FILES = [
 # The text description of capabilities is explained in cap_to_text manpage.
 # The leading "=" indicates that is the capabilities are first reset.
 TRUSTED_CAPS_FILES = [
+    # apache, http://httpd.apache.org/docs/trunk/suexec.html
+    # http://svn.apache.org/repos/asf/httpd/httpd/
+    CapsFile('/s?bin/suexec', '= cap_setgid,cap_setuid+ep'),
+
     # fping, http://www.fping.org/
     # https://github.com/schweikert/fping
     CapsFile('/bin/fping', '= cap_net_raw+ep'),
@@ -652,13 +661,18 @@ TRUSTED_CAPS_FILES = [
     # iputils, http://www.skbuff.net/iputils/
     # https://github.com/iputils/iputils
     CapsFile('/s?bin/arping', '= cap_net_raw+ep'),
+    CapsFile('/s?bin/arping', '= cap_net_raw+p'),
     CapsFile('/s?bin/clockdiff', '= cap_net_raw+ep'),
+    CapsFile('/s?bin/clockdiff', '= cap_net_raw+p'),
     CapsFile('/bin/ping', '= cap_net_raw+ep'),
     CapsFile('/bin/ping', '= cap_net_admin,cap_net_raw+ep'),
+    CapsFile('/bin/ping', '= cap_net_admin,cap_net_raw+p'),
     CapsFile('/bin/ping6', '= cap_net_raw+ep'),
     CapsFile('/bin/ping6', '= cap_net_admin,cap_net_raw+ep'),
     LinkToCapsFile('/bin/ping[46]', '/bin/ping',
                    '= cap_net_raw+ep'),
+    LinkToCapsFile('/s?bin/ping[46]?', '/bin/ping',
+                   '= cap_net_admin,cap_net_raw+p'),
     LinkToCapsFile('/sbin/ping6', '/bin/ping6',
                    '= cap_net_admin,cap_net_raw+ep'),
     CapsFile('/bin/traceroute6.iputils', '= cap_net_raw+ep'),
