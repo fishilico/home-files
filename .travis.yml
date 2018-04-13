@@ -57,7 +57,7 @@ before_install:
     brew update && brew unlink gnupg && brew install gnupg shellcheck && brew upgrade python3 ;
     fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-    virtualenv "$HOME/venv" -p python3 && source "$HOME/venv/bin/activate";
+    PATH="/usr/local/opt/python/libexec/bin:$PATH" ;
     fi
 
 install:
