@@ -64,6 +64,7 @@ install:
 # Disable shellcheck on Linux, as it is buggy: it fails to parse quotes properly.
 # Do so by introducing a symlink to true named "shellcheck" in a directory present in $PATH.
   - if [ "$TRAVIS_OS_NAME" = "linux" ] ; then
+    mkdir -pv "$HOME/bin" ;
     ln -sv "$(which true)" "$HOME/bin/shellcheck" ;
     fi
 # Install flake8 for the current version of Python, if it is supported.
