@@ -147,3 +147,7 @@ if [ -n "$LD_LIBRARY_PATH" ] ; then
     echo >&2 'Warning: LD_LIBRARY_PATH is set!'
     tput sgr0 2> /dev/null
 fi
+
+# Disable creating symlinks in VirtualBox shared folders when running Vagrant
+# https://github.com/phoenhex/files/blob/master/slides/unboxing_your_virtualboxes.pdf
+export VAGRANT_DISABLE_VBOXSYMLINKSCREATE=1
