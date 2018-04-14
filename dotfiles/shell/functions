@@ -345,6 +345,46 @@ ipv4sort() {
     sort -n -t . -k 1,1 -k 2,2 -k 3,3 -k 4,4 "$@"
 }
 
+# Get the public IP address used by default, through HTTP or DNS
+# http://ifconfig.me/ is not used as it is not HTTPS
+public_ipv4_dns() {
+    if [ -x /usr/bin/dig ] || which dig > /dev/null 2>&1 ; then
+        dig +short -4 -t A myip.opendns.com @resolver1.opendns.com
+    elif [ -x /usr/bin/host ] || which host > /dev/null 2>&1 ; then
+        LANG=C host myip.opendns.com resolver1.opendns.com | \
+            sed -n 's/^myip\.opendns\.com has address //p'
+    else
+        echo >&2 'could not find commands dig or host'
+        return 1
+    fi
+}
+public_ipv6_dns() {
+    if [ -x /usr/bin/dig ] || which dig > /dev/null 2>&1 ; then
+        dig +short -6 -t AAAA myip.opendns.com @resolver1.ipv6-sandbox.opendns.com
+    elif [ -x /usr/bin/host ] || which host > /dev/null 2>&1 ; then
+        LANG=C host -6 -t AAAA myip.opendns.com resolver1.ipv6-sandbox.opendns.com | \
+            sed -n 's/^myip\.opendns\.com has IPv6 address //p'
+    else
+        echo >&2 'could not find commands dig or host'
+        return 1
+    fi
+}
+public_ipv4_https() {
+    # https://ipv4.wtfismyip.com/json is also possible
+    curl --silent -4 'https://diagnostic.opendns.com/myip' && echo ''
+}
+public_ipv6_https() {
+    # https://ipv6.wtfismyip.com/json is also possible
+    curl --silent -6 'https://diagnostic.opendns.com/myip' && echo ''
+}
+# Test the functions above
+all_public_ips() {
+    echo "public_ipv4_dns: $(public_ipv4_dns)"
+    echo "public_ipv4_https: $(public_ipv4_https)"
+    echo "public_ipv6_dns: $(public_ipv6_dns)"
+    echo "public_ipv6_https: $(public_ipv6_https)"
+}
+
 # Some X-Window functions
 xwinlist() {
     xwininfo -root -tree
