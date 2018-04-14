@@ -38,6 +38,29 @@ See also:
 * lshw, https://ezix.org/project/wiki/HardwareLiSter
 * lstopo command from hwloc (and hwloc-ls)
   https://www.open-mpi.org/projects/hwloc/
+
+When operating on embedded systems which do not provide Python, the sysfs can be
+replicated by copying the directories, the symbolic links and the needs files.
+This information can be recorded by the following commands:
+
+    find /sys -type d > sysfs_directories.txt
+    find /sys -type l -exec ls -ld {} \; > sysfs_symlinks.txt
+    find /sys -perm -400 -type f \( \
+        -name address -o \
+        -name block_size_bytes -o \
+        -name busnum -o \
+        -name description -o \
+        -name devnum -o \
+        -name firmware_revision -o \
+        -name model -o \
+        -name name -o \
+        -name path -o \
+        -name phys_device -o \
+        -name phys_index -o \
+        -name removable -o \
+        -name state -o \
+        -name uevent -o \
+        -name valid_zones \) -print -exec hexdump -Cv {} \; -exec echo EOF \; > sysfs_files.txt
 """
 import argparse
 import collections
@@ -234,6 +257,10 @@ class SysfsDevice(collections.OrderedDict):
                 raise KeyError(path)
         return child.resolve_path(path, create)
 
+    def resolve_relative_path(self, path, create=False):
+        """Like resolve_path(), but with a relative path"""
+        return self.resolve_path('{0}/{1}'.format(self['sysfs_path'], path), create)
+
     @property
     def label(self):
         """Label for the graph"""
@@ -289,14 +316,16 @@ def list_directory(dirpath):
         raise
 
 
-def gather_sysfs_bus_devices():
+def gather_sysfs_bus_devices(sysfs_path='/sys'):
     """Walk /sys/bus, collect every device and put them in a tree"""
+    sys_devices_path = os.path.join(sysfs_path, 'devices')
+    sys_bus_path = os.path.join(sysfs_path, 'bus')
     device_tree = SysfsDevice({
-        'sysfs_path': '/sys/devices',
-        'sysfs_name': '/sys/devices',
+        'sysfs_path': sys_devices_path,
+        'sysfs_name': sys_devices_path,
     })
-    for buskind in list_directory('/sys/bus'):
-        devices_path = os.path.join('/sys/bus', buskind, 'devices')
+    for buskind in list_directory(sys_bus_path):
+        devices_path = os.path.join(sys_bus_path, buskind, 'devices')
         for devname in list_directory(devices_path):
             sysfs_path = os.path.realpath(os.path.join(devices_path, devname))
             if os.path.basename(sysfs_path) != devname:
@@ -305,7 +334,7 @@ def gather_sysfs_bus_devices():
                     os.path.join(devices_path, devname),
                     sysfs_path)
                 continue
-            if not sysfs_path.startswith('/sys/devices/'):
+            if not sysfs_path.startswith(sys_devices_path):
                 logger.warning(
                     "Skipping non-device sysfs entry for %s -> %s",
                     os.path.join(devices_path, devname),
@@ -319,10 +348,10 @@ def gather_sysfs_bus_devices():
     return device_tree
 
 
-def add_pci_bus_nodes(device_tree):
+def add_pci_bus_nodes(device_tree, sys_cls_pci_bus_path):
     """Add PCI bus nodes to the device tree"""
-    for pcibus_id in list_directory('/sys/class/pci_bus'):
-        pcibus_path = os.path.realpath(os.path.join('/sys/class/pci_bus', pcibus_id))
+    for pcibus_id in list_directory(sys_cls_pci_bus_path):
+        pcibus_path = os.path.realpath(os.path.join(sys_cls_pci_bus_path, pcibus_id))
         path_suffix = '/pci_bus/{0}'.format(pcibus_id)
         if not pcibus_path.endswith(path_suffix):
             logger.error("Unexpected pci_bus path for %s: %s", pcibus_id, pcibus_path)
@@ -335,14 +364,13 @@ def add_pci_bus_nodes(device_tree):
             pcidev['buskind'] = 'pci_bus'
 
 
-def add_class_nodes(device_tree, cls):
+def add_class_nodes(device_tree, cls, sys_cls_path):
     """Add input nodes to the device tree"""
-    sys_class_path = os.path.join('/sys/class', cls)
-    for name in list_directory(sys_class_path):
-        symlink_path = os.path.join(sys_class_path, name)
+    for name in list_directory(sys_cls_path):
+        symlink_path = os.path.join(sys_cls_path, name)
         if not os.path.islink(symlink_path):
             continue
-        sysfs_path = os.path.realpath(os.path.join(sys_class_path, name))
+        sysfs_path = os.path.realpath(symlink_path)
         dev = device_tree.resolve_path(sysfs_path, create=True)
         logger.debug("Adding %s %s", cls, dev['sysfs_path'])
         assert dev['sysfs_path'] == sysfs_path
@@ -363,12 +391,16 @@ def add_class_nodes(device_tree, cls):
 
 def add_all_class_nodes(device_tree):
     """Add many nodes from /sys/class"""
-    for cls in list_directory('/sys/class'):
+    # /sys/class/{cls} from /sys/devices
+    assert device_tree['sysfs_path'].endswith('devices')
+    sys_class_path = device_tree['sysfs_path'][:-len('devices')] + 'class'
+    for cls in list_directory(sys_class_path):
+        sys_cls_path = os.path.join(sys_class_path, cls)
         if cls == 'pci_bus':
             # pci_bus is special because it does not create more nodes
-            add_pci_bus_nodes(device_tree)
+            add_pci_bus_nodes(device_tree, sys_cls_path)
         else:
-            add_class_nodes(device_tree, cls)
+            add_class_nodes(device_tree, cls, sys_cls_path)
 
 
 def add_device_holders(device_tree):
@@ -740,15 +772,16 @@ def add_firmware_nodes(device_tree):
         ('physical_node', 'Physical node'),
         ('firmware_node', 'FW node'),
     )
+    sys_devices_path = device_tree['sysfs_path']
     for dev in device_tree.iter_all():
         for nodename, label in node_labels:
             node_path = os.path.realpath(os.path.join(dev['sysfs_path'], nodename))
             if not os.path.exists(node_path):
                 continue
-            if not node_path.startswith('/sys/devices/'):
-                logger.error("%s symlink not in /sys/devices: %s", label, node_path)
+            if not node_path.startswith(sys_devices_path):
+                logger.error("%s symlink not in %s: %s", label, sys_devices_path, node_path)
             else:
-                node_path = node_path[len('/sys/devices/'):]
+                node_path = node_path[len(sys_devices_path):]
             dev.add_to_label_desc("{0}: {1}".format(label, node_path))
 
 
@@ -792,8 +825,10 @@ def add_dev_descriptions(device_tree):
 
 def add_net_addresses(device_tree):
     """Add addresses for network devices"""
-    has_ip = True
-    has_ifconfig = True
+    # Only run commands when using the live system
+    is_live_system = (device_tree['sysfs_path'] == '/sys/devices')
+    has_ip = is_live_system
+    has_ifconfig = is_live_system
     for dev in device_tree.iter_all():
         hwaddr = None
         address_path = os.path.join(dev['sysfs_path'], 'address')
@@ -885,12 +920,14 @@ def add_net_addresses(device_tree):
 
 def add_mem_info(device_tree):
     """Add information on memory nodes"""
-    # Retrieve the block size
+    # Retrieve the block size from /sys/devices/system/memory/block_size_bytes
+    block_size_bytes_path = os.path.join(device_tree['sysfs_path'], 'system', 'memory', 'block_size_bytes')
     try:
-        with open('/sys/devices/system/memory/block_size_bytes', 'r') as fd_blocksize:
+        with open(block_size_bytes_path, 'r') as fd_blocksize:
             blocksize = int(fd_blocksize.read().strip(), 16)
     except IOError:
-        logger.error("Unable to read /sys/devices/system/memory/block_size_bytes")
+        # This may occur on ARM-based systems
+        logger.warning("Unable to read %s in order to gather memory properties", block_size_bytes_path)
         return
 
     for dev in device_tree.iter_all():
@@ -993,8 +1030,12 @@ def main(argv=None):
                         help="open the output file once it is written")
     parser.add_argument('-p', '--pci', action='store_true',
                         help="restrict to PCI devices")
+    parser.add_argument('-r', '--root', type=str, default='/',
+                        help="path to the root directory to use")
     parser.add_argument('-s', '--shorten-paths', action='store_true',
                         help="shorten the long paths in labels")
+    parser.add_argument('-S', '--syspath', type=str, default='sys',
+                        help="path to the sysfs directory to use (/sys by default)")
     parser.add_argument('-t', '--tree', action='store_true',
                         help="output the graph as a flat tree")
     parser.add_argument('-T', '--type', type=str,
@@ -1039,6 +1080,13 @@ def main(argv=None):
     if args.xdot and outformat != 'dot':
         parser.error("--xdot only supports dot format")
 
+    # Build the path to the scanned sysfs
+    root_path = args.root.strip() or '/'
+    root_path = os.path.realpath(root_path)
+    if not root_path.endswith('/'):
+        root_path += '/'
+    sysfs_path = root_path + args.syspath.strip('/')
+
     logging.basicConfig(
         format='[%(levelname)s] %(message)s',
         level=logging.DEBUG if args.debug else logging.INFO)
@@ -1048,12 +1096,12 @@ def main(argv=None):
             device_tree = SysfsDevice(json.load(input_fd))
         logger.info("Loading %s", args.input)
     else:
-        logger.info("Scanning /sys/bus for devices")
+        logger.info("Scanning %s/bus for devices", sysfs_path)
 
         # Collect every nodes
-        device_tree = gather_sysfs_bus_devices()
+        device_tree = gather_sysfs_bus_devices(sysfs_path)
 
-        logger.info("Scanning /sys/class for more devices")
+        logger.info("Scanning %s/class for more devices", sysfs_path)
         add_all_class_nodes(device_tree)
 
         logger.info("Add device holders")
@@ -1062,8 +1110,10 @@ def main(argv=None):
 
         # Collect information for labels
         logger.info("Filling device names")
-        fill_names_with_lspci_output(device_tree)
-        fill_names_with_lsusb_output(device_tree)
+        if sysfs_path == '/sys':
+            # Only run commands when using the live system
+            fill_names_with_lspci_output(device_tree)
+            fill_names_with_lsusb_output(device_tree)
         fill_mei_names(device_tree)
         fill_wmi_names(device_tree)
         add_uevent_names(device_tree)
@@ -1076,22 +1126,34 @@ def main(argv=None):
         add_net_addresses(device_tree)
         add_mem_info(device_tree)
 
+        # Now that we are done collecting, remove the root from the path.
+        # This makes the graph cleaner
+        if root_path != '/':
+            # Keep the last / of root_path
+            assert root_path.endswith('/')
+            stripped_prefix_len = len(root_path) - 1
+            assert device_tree['sysfs_name'].startswith(root_path)
+            device_tree['sysfs_name'] = device_tree['sysfs_name'][stripped_prefix_len:]
+            for dev in device_tree.iter_all():
+                assert dev['sysfs_path'].startswith(root_path)
+                dev['sysfs_path'] = dev['sysfs_path'][stripped_prefix_len:]
+
     if args.no_memory:
         try:
-            sysdev = device_tree.resolve_path('/sys/devices/system') or {}
+            sysdev = device_tree.resolve_relative_path('system') or {}
             del sysdev['children']['memory']
         except KeyError:
-            logger.info("No /sys/devices/system/memory found")
+            logger.info("No %s/devices/system/memory found", sysfs_path)
         else:
-            logger.info("Pruning nodes in /sys/devices/system/memory")
+            logger.info("Pruning nodes in %s/devices/system/memory", sysfs_path)
 
-    if args.no_virtual:
+    if args.no_virtual and device_tree['children']:
         try:
             del device_tree['children']['virtual']
         except KeyError:
-            logger.info("No /sys/devices/virtual found")
+            logger.info("No %s/devices/virtual found", sysfs_path)
         else:
-            logger.info("Pruning nodes in /sys/devices/virtual")
+            logger.info("Pruning nodes in %s/devices/virtual", sysfs_path)
 
     if args.pci:
         # Destroy non-pci nodes
