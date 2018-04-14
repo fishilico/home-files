@@ -705,7 +705,7 @@ def add_scsi_models(device_tree):
             with open(model_path, 'r') as fd_model:
                 value = fd_model.read().strip()
                 dev.add_to_label_desc("Model: {0}".format(value))
-            if dev['buskind'] not in ('media', 'scsi'):
+            if dev['buskind'] not in ('media', 'nvme', 'scsi'):
                 logger.warning("Found 'model' for non-SCSI device %s", dev['sysfs_path'])
         except IOError:
             pass
