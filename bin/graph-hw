@@ -734,7 +734,7 @@ def add_acpi_path_names(device_tree):
             pass
 
 
-def add_fiwmare_nodes(device_tree):
+def add_firmware_nodes(device_tree):
     """Add references to physical_node and firmware_node"""
     node_labels = (
         ('physical_node', 'Physical node'),
@@ -1049,7 +1049,7 @@ def main(argv=None):
         add_dm_names(device_tree)
         add_scsi_models(device_tree)
         add_acpi_path_names(device_tree)
-        add_fiwmare_nodes(device_tree)
+        add_firmware_nodes(device_tree)
         add_dev_descriptions(device_tree)
         add_net_addresses(device_tree)
         add_mem_info(device_tree)
