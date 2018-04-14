@@ -828,7 +828,9 @@ def add_net_addresses(device_tree):
                 m = re.match(r'\s+link/(\S*)\s+(\S+)', line)
                 if m is not None:
                     kind, addr = m.groups()
-                    if addr != hwaddr:
+                    if addr != hwaddr and (addr, hwaddr) != ('0.0.0.0', '00:00:00:00'):
+                        # sit0 devices have 00:00:00:00 in /sys/.../address but
+                        # ip addr shows "link/sit 0.0.0.0 brd 0.0.0.0"
                         logger.error("Unexpected HW address from ip: %s != %s", addr, hwaddr)
                     elif hw_addr_kind and kind != hw_addr_kind:
                         logger.error("Unexpected HW address kind from ip: %s != %s", kind, hw_addr_kind)
