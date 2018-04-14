@@ -175,7 +175,7 @@ def verify_py(filepath):
             raise CheckError("trailing comments after the license")
 
         # After the copyright information, there should be the module docstring
-        if not line.startswith('"""'):
+        if not line.startswith(('"""', 'r"""')):
             raise CheckError("no docstring after copyright")
 
 
