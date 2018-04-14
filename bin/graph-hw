@@ -468,6 +468,35 @@ def add_bridge_interfaces(device_tree):
                     raise
 
 
+def add_bonded_interfaces(device_tree):
+    """Add interfaces which are part of a bond
+
+    Traverse the "master" symlink from a bonded interface to bond0, like device
+    holders
+    """
+    need_rescan = True
+    while need_rescan:
+        need_rescan = False
+        for dev in device_tree.iter_all():
+            symlink = os.path.join(dev['sysfs_path'], 'master')
+            if os.path.exists(symlink):
+                master_path = os.path.realpath(symlink)
+                try:
+                    device_tree.resolve_path(symlink)
+                    continue
+                except KeyError:
+                    lnkdev = device_tree.resolve_path(symlink, create=True)
+                    tgtdev = device_tree.resolve_path(master_path)
+                    lnkdev['sysfs_name'] = os.path.basename(master_path)
+                    lnkdev['buskind'] = tgtdev['buskind']
+                    need_rescan = True  # scan of interface's children
+
+                    if dev['buskind'] != 'net':
+                        logger.warning(
+                            "Found 'master' for non-net device %s",
+                            dev['sysfs_path'])
+
+
 def fill_names_with_lspci_output(device_tree):
     """Run lspci and parse its output to fill the name of the devices"""
     # Prepare a dict to find devices from lspci output
@@ -1107,6 +1136,7 @@ def main(argv=None):
         logger.info("Add device holders")
         add_device_holders(device_tree)
         add_bridge_interfaces(device_tree)
+        add_bonded_interfaces(device_tree)
 
         # Collect information for labels
         logger.info("Filling device names")
