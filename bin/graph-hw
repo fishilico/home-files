@@ -752,6 +752,25 @@ def add_firmware_nodes(device_tree):
             dev.add_to_label_desc("{0}: {1}".format(label, node_path))
 
 
+def add_firmware_revisions(device_tree):
+    """Add firmware_revision file contents for devices"""
+    for dev in device_tree.iter_all():
+        description_path = os.path.join(dev['sysfs_path'], 'firmware_revision')
+        try:
+            with open(description_path, 'r') as fd_fwrev:
+                value = fd_fwrev.read().strip()
+                if '\n' in value:
+                    logger.warning("Skipping multi-line firmware revision for %s", dev['sysfs_path'])
+                    continue
+                dev.add_to_label_desc("FW revision: {0}".format(value))
+            if dev['buskind'] != 'platform':
+                logger.warning(
+                    "Found 'firmware_revision' for unexpected device %s (%s)",
+                    dev['sysfs_path'], dev['buskind'])
+        except IOError:
+            pass
+
+
 def add_dev_descriptions(device_tree):
     """Add description file contents for devices"""
     for dev in device_tree.iter_all():
@@ -1050,6 +1069,7 @@ def main(argv=None):
         add_scsi_models(device_tree)
         add_acpi_path_names(device_tree)
         add_firmware_nodes(device_tree)
+        add_firmware_revisions(device_tree)
         add_dev_descriptions(device_tree)
         add_net_addresses(device_tree)
         add_mem_info(device_tree)
