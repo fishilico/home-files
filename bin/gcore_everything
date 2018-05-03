@@ -1,0 +1,71 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2018 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Run gcore on all the processes of the system
+#
+# This can be useful when searching for a pattern in process memory
+
+# Run gcore command in gdb
+# "run_gdb_gcore $PROCNAME $PID" is like "gcore -o $PROCNAME $PID", without
+# relying on gcore file from being provided.
+run_gdb_gcore() {
+    FILENAME="$(echo "$1.$2" | tr ' ()' '___')"
+    TARGET_PID="$2"
+    # Do not execute commands from .gdbinit, run in batch mode
+    gdb </dev/null -nx -batch \
+        -ex 'set pagination off' -ex 'set height 0' -ex 'set width 0' \
+        -ex "attach $TARGET_PID" -ex "gcore $FILENAME" -ex detach -ex quit
+}
+
+# Force the user to give an output directory in order to prevent unexpected user
+# experience.
+# Forbid using output directories starting with a dash in order to prevent
+# issues with --help/-h/... options that users may use
+if [ $# -ne 1 ] || [ "${1#-}" != "$1" ]
+then
+    echo >&2 "Usage: $0 OUTPUT_DIR"
+    echo >&2 "Run gcore on every process and store the results in the given directory"
+    exit 1
+fi
+mkdir -p -v "$1" || exit $?
+cd "$1" || exit $?
+
+for PROCPATH in /proc/[0-9]*
+do
+    EXEPATH="$(readlink "$PROCPATH/exe" 2> /dev/null)"
+    # shellcheck disable=SC2181
+    [ $? -eq 0 ] || continue
+    if [ -z "$EXEPATH" ]
+    then
+        # readlink returned an empty path to the executable file, without failing
+        echo >&2 "Warning: unexpected empty $PROCPATH/exe symlink without error"
+        continue
+    fi
+
+    if ! run_gdb_gcore "${EXEPATH##*/}" "${PROCPATH##*/}"
+    then
+        echo >&2 "Error while dumping PID ${PROCPATH##*/} ($EXEPATH)"
+        exit 1
+    fi
+    echo "Dumped PID ${PROCPATH##*/} ($EXEPATH)"
+done

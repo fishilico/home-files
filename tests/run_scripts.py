@@ -71,6 +71,7 @@ BIN_SCRIPTS = {
     'errno': 'args[42]',
     'firefox-private': '(firefox)help',
     'floatenc': 'args[0x42280000]',
+    'gcore_everything': 'never',
     'getaddr': 'args[localhost]',
     'get-power-rights': '(dbus-send|gdbus)direct',
     'git-single-fixup': 'args[-h]',
