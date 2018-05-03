@@ -352,6 +352,7 @@ TRUSTED_SUID_FILES = [
     # s-nail, http://sdaoden.users.sourceforge.net/code.html#s-nail
     # http://sourceforge.net/p/s-nail/code/ci/master/tree/
     SuidFile('/lib/mail-privsep'),
+    SuidFile('/lib/s-nail/s-nail-privsep'),
 
     # screen, http://www.gnu.org/software/screen/
     # http://git.savannah.gnu.org/cgit/screen.git/tree/
@@ -491,6 +492,11 @@ TRUSTED_SGID_FILES = [
     SuidFile('/lib/mailman/mail/mailman', groups=('list', )),
     LinkToSuidFile('/lib/mailman/mail/wrapper', '/lib/mailman/mail/mailman',
                    groups=('list', )),
+
+    # mailutils, https://mailutils.org/
+    # https://git.savannah.gnu.org/cgit/mailutils.git/tree/
+    SuidFile('/bin/dotlock.mailutils', groups=('mail', )),
+    LinkToSuidFile('/bin/dotlock', '/bin/dotlock.mailutils', groups=('mail', )),
 
     # mlocate, https://fedorahosted.org/mlocate/
     # https://fedorahosted.org/mlocate/browser
