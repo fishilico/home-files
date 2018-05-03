@@ -869,7 +869,7 @@ def add_net_addresses(device_tree):
                 continue
         except IOError:
             continue
-        assert hwaddr
+        assert hwaddr is not None
 
         # Get the IP addresses of the interface
         ipv4_addresses = set()
@@ -940,7 +940,8 @@ def add_net_addresses(device_tree):
                     addr, prefixlen = m.groups()
                     ipv6_addresses.add('{0}/{1}'.format(addr, prefixlen))
 
-        dev.add_to_label_desc("Address: {0} {1}".format(hw_addr_kind, hwaddr))
+        if hwaddr:
+            dev.add_to_label_desc("Address: {0} {1}".format(hw_addr_kind, hwaddr))
         for addr in sorted(ipv4_addresses):
             dev.add_to_label_desc("IPv4: {0}".format(addr))
         for addr in sorted(ipv6_addresses):
