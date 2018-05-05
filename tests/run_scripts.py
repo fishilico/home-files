@@ -46,6 +46,7 @@ logger = logging.getLogger(__name__)
 BIN_SCRIPTS = {
     'acpi-bat': '(acpi)args[--one-shot]',
     'afl-sysctl-config': 'never',
+    'aplaytest': 'never',
     'asciitable': 'direct',
     'capabilities': '(/proc)direct',
     'captive-portal': '(python3)help',
