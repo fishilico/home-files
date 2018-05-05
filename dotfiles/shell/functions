@@ -332,6 +332,22 @@ sha512sumd() {
     find "$@" -type f -exec sha512sum {} +
 }
 
+# Decode ASN.1 structures with OpenSSL, from the file given as argument or stdin
+# DER encoding can be binary, hexadecimal or base64
+openssl_asn1der() {
+    if [ $# -eq 0 ] ; then
+        openssl asn1parse -inform DER -i -dump
+    else
+        openssl asn1parse -inform DER -i -dump -in "$@"
+    fi
+}
+openssl_asn1hex() {
+    print_args_or_stdin "$@" | xxd -p -r | openssl asn1parse -inform DER -i -dump
+}
+openssl_asn1b64() {
+    print_args_or_stdin "$@" | base64 -d | openssl asn1parse -inform DER -i -dump
+}
+
 # Sort domain names by their subdomains
 dnssort() {
     # Reverse dot-separated components
