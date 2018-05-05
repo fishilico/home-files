@@ -35,7 +35,9 @@ set background=dark
 colorscheme desert
 
 " UI configuration
-set mouse=a " Enable mouse
+if has('mouse')
+  set mouse=a " Enable mouse
+endif
 set number " Show line numbers
 set showmode " Show the current mode on the last line
 set showcmd " Show the number of characters or lines in Visual mode
