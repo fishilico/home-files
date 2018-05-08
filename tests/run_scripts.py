@@ -109,6 +109,7 @@ BIN_SCRIPTS = {
     'update-packages': 'never',
     'vagrant-wireshark': 'args[-h]',
     'who-is-here': 'direct',
+    'xscreen-resolution': 'never',
     'xfconf-dump': '(xfconf-query)direct',
 }
 
