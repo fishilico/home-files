@@ -228,6 +228,11 @@ if type alias > /dev/null 2>&1 ; then
     # Show 3 months by default with cal
     alias cal='cal -3'
 
+    # Display date in ISO 8601 format
+    alias isodate='date -I'
+    alias isotime='date -Iseconds'
+    alias isoutctime='date -Iseconds --utc'
+
     # OpenSSL shortcuts
     # View a certificate request (add -verify to check it)
     alias openssl-csr='openssl req -noout -text -in'
