@@ -387,6 +387,7 @@ public_ipv6_dns() {
 }
 public_ipv4_https() {
     # https://ipv4.wtfismyip.com/json is also possible
+    # https://ipinfo.io/ip too
     curl --silent -4 'https://diagnostic.opendns.com/myip' && echo ''
 }
 public_ipv6_https() {
