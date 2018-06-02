@@ -423,7 +423,7 @@ TRUSTED_SUID_FILES = [
     SuidFile('/bin/X', owners=('root', ), groups=('root', )),
     SuidFile('/bin/Xorg'),
     SuidFile('/lib/xorg-server/Xorg.wrap'),
-    SuidFile('/libexec/Xorg.wrap'),
+    SuidFile('/lib(exec)?/Xorg.wrap'),
 ]
 
 # Define here known and fully trusted SGID programs.
