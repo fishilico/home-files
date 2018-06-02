@@ -23,11 +23,11 @@
 #
 # Clean a PDF file for printers which do not like complex PDF files
 
-if ! which mutool > /dev/null 2>&1 ; then
+if ! command -v mutool > /dev/null 2>&1 ; then
     echo >&2 "Error: mutool command does not exist (is mupdf-tools installed?)"
     exit 1
 fi
-if ! which gs > /dev/null 2>&1 ; then
+if ! command -v gs > /dev/null 2>&1 ; then
     echo >&2 "Error: gs command does not exist (is ghostscript installed?)"
     exit 1
 fi

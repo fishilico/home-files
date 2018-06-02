@@ -26,13 +26,13 @@
 # Introspection on the CLI can be done with:
 # gdbus introspect --system --dest "org.freedesktop..." --object-path "/org/freedesktop/..."
 
-if which gdbus > /dev/null 2>&1
+if command -v gdbus > /dev/null 2>&1
 then
     dbus_get() {
         gdbus call --system --dest "$1" --object-path "$2" --method "$1.$3" | \
             sed -e 's/^(\(.*\),).*/\1/' -e "s/'//g"
     }
-elif which dbus-send > /dev/null 2>&1
+elif command -v dbus-send > /dev/null 2>&1
 then
     dbus_get() {
         dbus-send --system --print-reply --dest="$1" "$2" "$3" | \

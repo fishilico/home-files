@@ -26,7 +26,7 @@
 # This can be used on a desktop workstation before connecting to an untrusted
 # network to reduce the attack surface.
 
-if [ -x /usr/bin/systemctl ] || which systemctl > /dev/null 2>&1
+if [ -x /usr/bin/systemctl ] || command -v systemctl > /dev/null 2>&1
 then
     # Systemd
     disable_service() {
@@ -39,7 +39,7 @@ then
             systemctl stop "$1" || exit $?
         fi
     }
-elif [ -x /usr/sbin/service ] || which service > /dev/null 2>&1
+elif [ -x /usr/sbin/service ] || command -v service > /dev/null 2>&1
 then
     # Debian-based system
     disable_service() {

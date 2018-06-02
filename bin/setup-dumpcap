@@ -34,6 +34,7 @@ for P in /usr/bin /usr/sbin /bin /sbin ; do
     fi
 done
 
+# shellcheck disable=SC2230
 [ -n "$DUMPCAP" ] || DUMPCAP="$(which dumpcap)"
 if [ -z "$DUMPCAP" ] || [ ! -r "$DUMPCAP" ] ; then
     echo >&2 "Error: dumpcap not found"

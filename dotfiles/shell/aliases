@@ -247,7 +247,7 @@ if type alias > /dev/null 2>&1 ; then
     alias gpg-resign-iknowwhatimdoing='gpg --ask-cert-level --expert --sign-key'
 
     # Colored diff
-    if which colordiff > /dev/null 2>&1 ; then
+    if command -v colordiff > /dev/null 2>&1 ; then
         alias diff='colordiff -u'
         # Change svn diff.
         # You may instead put "diff-cmd = colordiff" in ~/.subversion/config
@@ -296,13 +296,13 @@ if type alias > /dev/null 2>&1 ; then
     alias audit-journal='journalctl -b --identifier=audit _AUDIT_TYPE=1400 _AUDIT_TYPE=1300 _AUDIT_TYPE=1327 _AUDIT_TYPE=1107'
 
     # Use rsync instead of scp
-    if which rsync > /dev/null 2>&1 ; then
+    if command -v rsync > /dev/null 2>&1 ; then
         # Options: archive, verbose, compress, partial&progress
         alias scp='rsync -avzP'
     fi
 
     # X Window bell
-    if which xset > /dev/null 2>&1 ; then
+    if command -v xset > /dev/null 2>&1 ; then
         alias xbell-off='xset b off'
         alias xbell-on='xset b on'
     fi
@@ -315,7 +315,7 @@ if type alias > /dev/null 2>&1 ; then
     esac
 
     # DNSSEC validation with drill (from ldns package) or dig
-    if which drill > /dev/null 2>&1 ; then
+    if command -v drill > /dev/null 2>&1 ; then
         if [ -r '/etc/trusted-key.key' ] ; then
             alias dnssec-check='drill -TD -k /etc/trusted-key.key'
         elif [ -r '/var/lib/unbound/root.key' ] ; then
@@ -323,7 +323,7 @@ if type alias > /dev/null 2>&1 ; then
         else
             alias dnssec-check='drill -TD'
         fi
-    elif which dig > /dev/null 2>&1 ; then
+    elif command -v dig > /dev/null 2>&1 ; then
         if [ -r '/etc/trusted-key.key' ] ; then
             # +multiline can be used to view DNS key id
             alias dnssec-check='dig +sigchase +topdown +trusted-key=/etc/trusted-key.key'
@@ -344,9 +344,9 @@ if type alias > /dev/null 2>&1 ; then
     alias sshfp-here='ssh-keygen -r $(hostname)'
 
     # View mails in hold queue
-    if which postqueue > /dev/null 2>&1 ; then
+    if command -v postqueue > /dev/null 2>&1 ; then
         alias mailq-hold='postqueue -p |lgrep -E "^[0-9A-F]*!"'
-    elif which mailq > /dev/null 2>&1 ; then
+    elif command -v mailq > /dev/null 2>&1 ; then
         alias mailq-hold='mailq |lgrep -E "^[0-9A-F]*!"'
     fi
 
@@ -362,13 +362,13 @@ if type alias > /dev/null 2>&1 ; then
     alias vlc-append='vlc --started-from-file --playlist-enqueue'
 
     # hexdump + ascii output, with xxd, od or hexdump
-    if which xxd > /dev/null 2>&1 ; then
+    if command -v xxd > /dev/null 2>&1 ; then
         alias hexa='xxd'
         alias hexa32='xxd -c32'
-    elif which od > /dev/null 2>&1 ; then
+    elif command -v od > /dev/null 2>&1 ; then
         alias hexa='od -tx1z -Ax'
         alias hexa32='od -tx1z -Ax -w32'
-    elif which hexdump > /dev/null 2>&1 ; then
+    elif command -v hexdump > /dev/null 2>&1 ; then
         # hexdump command from bsdmainutils package
         # slightly different from "hexdump -C"
         _HEXDUMP_PART1='"%07.7_ax: " 16/1 "%02x ""  "'

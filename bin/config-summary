@@ -29,7 +29,7 @@
 #   https://git.kernel.org/cgit/boot/dracut/dracut.git/tree/modules.d/99base/rdsosreport.sh
 
 has_command() {
-    [ -x "/usr/bin/$1" ] || which "$1" > /dev/null 2>&1
+    [ -x "/usr/bin/$1" ] || command -v "$1" > /dev/null 2>&1
 }
 
 # If fmt is not found, replace with a simple cat

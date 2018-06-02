@@ -100,7 +100,7 @@ show_entropy() {
 
 # Log tail, to have colors when ccze is available
 # shellcheck disable=SC2039
-if which ccze > /dev/null 2>&1 ; then
+if command -v ccze > /dev/null 2>&1 ; then
     ltail() {
         tail "$@" |ccze -A
     }
@@ -232,7 +232,7 @@ protected_cat() {
         'import os,sys;a=sys.argv;os.execv(a[1],["cat","-v"][:1+sys.stdout.isatty()]+a[2:])' \
         "$@"
 }
-if [ -x /usr/bin/python ] || which python > /dev/null 2>&1 ; then
+if [ -x /usr/bin/python ] || command -v python > /dev/null 2>&1 ; then
     if [ -x /usr/bin/cat ] ; then
         if ! [ -L /usr/bin/cat ] ; then
             cat() {
@@ -267,7 +267,7 @@ print_args_or_stdin() {
 }
 
 # Reverse hex string and dump it
-if which xxd > /dev/null 2>&1 ; then
+if [ -x /usr/bin/xxd ] || command -v xxd > /dev/null 2>&1 ; then
     revhex() {
         print_args_or_stdin "$@" | xxd -p -r | xxd
     }
@@ -282,7 +282,7 @@ if type alias > /dev/null 2>&1 ; then
 fi
 
 # Pretty-print some filetypes
-if [ -x /usr/bin/python ] || which python > /dev/null 2>&1 ; then
+if [ -x /usr/bin/python ] || command -v python > /dev/null 2>&1 ; then
     pretty_json() {
         # Use Python's json module
         cat "$@" | python -m json.tool
@@ -364,9 +364,9 @@ ipv4sort() {
 # Get the public IP address used by default, through HTTP or DNS
 # http://ifconfig.me/ is not used as it is not HTTPS
 public_ipv4_dns() {
-    if [ -x /usr/bin/dig ] || which dig > /dev/null 2>&1 ; then
+    if [ -x /usr/bin/dig ] || command -v dig > /dev/null 2>&1 ; then
         dig +short -4 -t A myip.opendns.com @resolver1.opendns.com
-    elif [ -x /usr/bin/host ] || which host > /dev/null 2>&1 ; then
+    elif [ -x /usr/bin/host ] || command -v host > /dev/null 2>&1 ; then
         LANG=C host myip.opendns.com resolver1.opendns.com | \
             sed -n 's/^myip\.opendns\.com has address //p'
     else
@@ -375,9 +375,9 @@ public_ipv4_dns() {
     fi
 }
 public_ipv6_dns() {
-    if [ -x /usr/bin/dig ] || which dig > /dev/null 2>&1 ; then
+    if [ -x /usr/bin/dig ] || command -v dig > /dev/null 2>&1 ; then
         dig +short -6 -t AAAA myip.opendns.com @resolver1.ipv6-sandbox.opendns.com
-    elif [ -x /usr/bin/host ] || which host > /dev/null 2>&1 ; then
+    elif [ -x /usr/bin/host ] || command -v host > /dev/null 2>&1 ; then
         LANG=C host -6 -t AAAA myip.opendns.com resolver1.ipv6-sandbox.opendns.com | \
             sed -n 's/^myip\.opendns\.com has IPv6 address //p'
     else
@@ -447,6 +447,7 @@ strace_exec() {
 }
 
 # Find the package which provides an installed command
+# shellcheck disable=SC2230
 if [ -x /usr/bin/which ] ; then
     if [ -x /sbin/apk ] ; then
         # Alpine Linux

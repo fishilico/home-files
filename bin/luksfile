@@ -207,7 +207,7 @@ luksfile_file() {
             return
         fi
     fi
-    if "$DO_XDGOPEN" && which xdg-open > /dev/null 2>&1
+    if "$DO_XDGOPEN" && command -v xdg-open > /dev/null 2>&1
     then
         # Wait a little for the mount to be proceeded through the notification system
         sleep .1

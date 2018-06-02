@@ -90,12 +90,12 @@ if [ -z "$COLORFGBG" ] ; then
 fi
 
 # Use Vim
-if [ -x /usr/bin/vim ] || which vim > /dev/null 2>&1 ; then
+if [ -x /usr/bin/vim ] || command -v vim > /dev/null 2>&1 ; then
     export EDITOR=vim
 fi
 
 # Use less
-if [ -x /usr/bin/less ] || which less > /dev/null 2>&1 ; then
+if [ -x /usr/bin/less ] || command -v less > /dev/null 2>&1 ; then
     # Force -R = --RAW-CONTROL-CHARS to have colors in less
     export LESS='-R'
     export LESSCOLOR='yes'
@@ -113,7 +113,7 @@ if [ -x /usr/bin/lesspipe ] ; then
 fi
 
 # Use most to display man pages using colors
-if [ -x /usr/bin/most ] || which most > /dev/null 2>&1 ; then
+if [ -x /usr/bin/most ] || command -v most > /dev/null 2>&1 ; then
     export MANPAGER=most
 fi
 

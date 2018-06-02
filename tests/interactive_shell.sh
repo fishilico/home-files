@@ -32,7 +32,7 @@ then
     RETVAL=0
     for TESTED_SHELL in ash bash busybox dash zsh
     do
-        if [ -x "/usr/bin/$TESTED_SHELL" ] || which "$TESTED_SHELL" > /dev/null 2>&1 ; then
+        if [ -x "/usr/bin/$TESTED_SHELL" ] || command -v "$TESTED_SHELL" > /dev/null 2>&1 ; then
             # Re-execute this script with the given shell
             set -- "$0" run "$TESTED_SHELL"
             if [ "$TESTED_SHELL" = "busybox" ]

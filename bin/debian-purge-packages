@@ -24,10 +24,10 @@
 # Purge the config files of removed packages on a Debian system
 
 # Use aptitude or apt-get
-if which aptitude > /dev/null 2>&1
+if command -v aptitude > /dev/null 2>&1
 then
     APT=aptitude
-elif which apt-get > /dev/null 2>&1
+elif command -v apt-get > /dev/null 2>&1
 then
     APT=apt-get
 else

@@ -78,13 +78,13 @@ param_to_ip6ll() {
 # compute an IPv6 link-local address
 ip4_to_ip6ll() {
     local IFACE MAC OUT
-    if which ip > /dev/null 2>&1
+    if command -v ip > /dev/null 2>&1
     then
         # Use ip command
         OUT=$(ip neigh show "$1")
         MAC=$(echo "$OUT" | sed -n 's/.*lladdr \([0-9a-fA-F:]\{17\}\).*/\1/p')
         IFACE=$(echo "$OUT" | sed -n 's/.*dev \([^ ]\+\).*/\1/p')
-    elif which arp > /dev/null 2>&1
+    elif command -v arp > /dev/null 2>&1
     then
         # Use arp command
         OUT=$(arp -n "$1" | sed '1d')
@@ -204,7 +204,7 @@ then
 elif [ "$DEST" != "${DEST#*%}" ]
 then
     # Check interface with ndisc6 before ping6
-    if which ndisc6 > /dev/null 2>&1
+    if command -v ndisc6 > /dev/null 2>&1
     then
         printf 'NDISC6 '
         if ! ndisc6 "${DEST%%%*}" "${DEST#*%}"
@@ -220,7 +220,7 @@ fi
 
 shift
 # Since iputils s20150815 ping6 has been merged into ping
-if which ping6 > /dev/null 2>&1
+if command -v ping6 > /dev/null 2>&1
 then
     exec ping6 $OPTIONS "$DEST" "$@"
 else
