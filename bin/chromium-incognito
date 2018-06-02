@@ -24,4 +24,7 @@
 # Open a new Chromium tab in incognito mode
 # It can be used for example with Python's webbrower module:
 #    $ BROWSER=chromium-incognito python -m webbrowser -t "http://www.python.org"
+
+# shellcheck disable=SC2093
 exec chromium --incognito "$@"
+exec chromium-browser --incognito "$@"
