@@ -1,0 +1,76 @@
+# Configuration file for https://circleci.com/
+
+# Inspiration from https://github.com/DevProgress/onboarding/wiki/Using-Circle-CI-with-Github-Pages-for-Continuous-Delivery
+
+version: 2
+
+jobs:
+  build:
+    docker:
+      # Use a Python image from https://hub.docker.com/r/circleci/python/tags/
+      - image: circleci/python:3.6
+
+    steps:
+    - checkout
+
+    # Install dependencies
+    - run: sudo apt-get update -qq
+    - run: sudo apt-get install -qq ash busybox cabal-install graphviz python3-venv zsh
+
+    - run:
+        name: Setup environment variables
+        command: |
+          echo "$BASH_ENV"
+          echo 'export PATH=$HOME/.cabal/bin:$HOME/.virtualenv/bin:$PATH' >> "$BASH_ENV"
+          echo 'export TERM=vt100' >> "$BASH_ENV"
+
+    # Restore the dependency cache when rebuilding the same commit
+    - restore_cache:
+        key: deps-{{ .Branch }}-{{ .Revision }}
+
+    - run:
+        name: Install flake8 with pip
+        command: |
+          [ -x ~/.virtualenv/bin/python ] || python3 -m venv ~/.virtualenv
+          . ~/.virtualenv/bin/activate
+          pip install --upgrade pip
+          pip install --upgrade flake8
+    - run: flake8 --version
+
+    - run:
+        name: Install shellcheck with cabal
+        command: |
+          cabal update
+          cabal install shellcheck
+    - run: shellcheck --version
+
+    - save_cache:
+        key: deps-{{ .Branch }}-{{ .Revision }}
+        paths:
+          - ~/.cabal
+          - ~/.virtualenv
+
+    - run: ./run_tests.sh
+    - run:
+        name: Install the files after removing conflicting local files
+        command: |
+          rm -vf ~/.bash_profile ~/.bash_logout ~/.bashrc ~/.gitconfig ~/.profile
+          ./install.sh
+    - run:
+        name: Test updating branch master of the project
+        command: |
+          git remote set-branches origin master
+          git fetch origin
+          ./update.sh
+
+    # Finish with a dump of the configuration
+    - run: mkdir out-config
+    - run: bin/config-summary | tee out-config/config-summary.rst
+    - run: bin/graph-hw -o out-config/graph-hw.json
+    - run: bin/graph-hw -i out-config/graph-hw.json -M -o out-config/graph-hw.nomem.svg
+    - run: bin/graph-hw -i out-config/graph-hw.json -p -o out-config/graph-hw.pci.svg
+    - run: bin/graph-hw -i out-config/graph-hw.json -t -o out-config/graph-hw.tree.svg
+    - run: bin/graph-hw -i out-config/graph-hw.json -VMt -o out-config/graph-hw.novirt.tree.svg
+    - store_artifacts:
+        path: out-config
+        destination: out-config
