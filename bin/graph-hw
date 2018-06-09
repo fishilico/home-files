@@ -891,27 +891,27 @@ def add_net_addresses(device_tree):
                 if exc.errno == errno.ENOENT:
                     logger.warning("ip is not installed")
                     has_ip = False
-                    continue
-                raise
-
-            for line in output.decode('utf8', errors='ignore').splitlines():
-                m = re.match(r'\s+link/(\S*)\s+(\S+)', line)
-                if m is not None:
-                    kind, addr = m.groups()
-                    if addr != hwaddr and (addr, hwaddr) != ('0.0.0.0', '00:00:00:00'):
-                        # sit0 devices have 00:00:00:00 in /sys/.../address but
-                        # ip addr shows "link/sit 0.0.0.0 brd 0.0.0.0"
-                        logger.error("Unexpected HW address from ip: %s != %s", addr, hwaddr)
-                    elif hw_addr_kind and kind != hw_addr_kind:
-                        logger.error("Unexpected HW address kind from ip: %s != %s", kind, hw_addr_kind)
-                    else:
-                        hw_addr_kind = kind
-                m = re.match(r'\s+inet\s+(\S+)', line)
-                if m is not None:
-                    ipv4_addresses.add(m.group(1))
-                m = re.match(r'\s+inet6\s+(\S+)', line)
-                if m is not None:
-                    ipv6_addresses.add(m.group(1))
+                else:
+                    raise
+            else:
+                for line in output.decode('utf8', errors='ignore').splitlines():
+                    m = re.match(r'\s+link/(\S*)\s+(\S+)', line)
+                    if m is not None:
+                        kind, addr = m.groups()
+                        if addr != hwaddr and (addr, hwaddr) != ('0.0.0.0', '00:00:00:00'):
+                            # sit0 devices have 00:00:00:00 in /sys/.../address but
+                            # ip addr shows "link/sit 0.0.0.0 brd 0.0.0.0"
+                            logger.error("Unexpected HW address from ip: %s != %s", addr, hwaddr)
+                        elif hw_addr_kind and kind != hw_addr_kind:
+                            logger.error("Unexpected HW address kind from ip: %s != %s", kind, hw_addr_kind)
+                        else:
+                            hw_addr_kind = kind
+                    m = re.match(r'\s+inet\s+(\S+)', line)
+                    if m is not None:
+                        ipv4_addresses.add(m.group(1))
+                    m = re.match(r'\s+inet6\s+(\S+)', line)
+                    if m is not None:
+                        ipv6_addresses.add(m.group(1))
 
         if has_ifconfig:
             cmdline = ['ifconfig', iface]
@@ -922,29 +922,29 @@ def add_net_addresses(device_tree):
                 if exc.errno == errno.ENOENT:
                     logger.warning("ifconfig is not installed")
                     has_ifconfig = False
-                    continue
-                raise
-
-            for line in output.decode('utf8', errors='ignore').splitlines():
-                m = re.match(r'\s+(ether)\s+(\S+)', line)
-                if m is not None:
-                    kind, addr = m.groups()
-                    if addr != hwaddr:
-                        logger.error("Unexpected HW address from ifconfig: %s != %s", addr, hwaddr)
-                    elif hw_addr_kind and kind != hw_addr_kind:
-                        logger.error("Unexpected HW address kind from ifconfig: %s != %s", kind, hw_addr_kind)
-                    else:
-                        hw_addr_kind = kind
-                m = re.match(r'\s+inet\s+(\S+).*netmask\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)', line)
-                if m is not None:
-                    addr, netmask = m.groups()
-                    netmask_i = sum(int(x) << (24 - i * 8) for i, x in enumerate(netmask.split('.', 3)))
-                    prefixlen = 33 - ((0xffffffff ^ netmask_i) + 1).bit_length()
-                    ipv4_addresses.add('{0}/{1}'.format(addr, prefixlen))
-                m = re.match(r'\s+inet6\s+(\S+).*prefixlen\s+(\S+)', line)
-                if m is not None:
-                    addr, prefixlen = m.groups()
-                    ipv6_addresses.add('{0}/{1}'.format(addr, prefixlen))
+                else:
+                    raise
+            else:
+                for line in output.decode('utf8', errors='ignore').splitlines():
+                    m = re.match(r'\s+(ether)\s+(\S+)', line)
+                    if m is not None:
+                        kind, addr = m.groups()
+                        if addr != hwaddr:
+                            logger.error("Unexpected HW address from ifconfig: %s != %s", addr, hwaddr)
+                        elif hw_addr_kind and kind != hw_addr_kind:
+                            logger.error("Unexpected HW address kind from ifconfig: %s != %s", kind, hw_addr_kind)
+                        else:
+                            hw_addr_kind = kind
+                    m = re.match(r'\s+inet\s+(\S+).*netmask\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)', line)
+                    if m is not None:
+                        addr, netmask = m.groups()
+                        netmask_i = sum(int(x) << (24 - i * 8) for i, x in enumerate(netmask.split('.', 3)))
+                        prefixlen = 33 - ((0xffffffff ^ netmask_i) + 1).bit_length()
+                        ipv4_addresses.add('{0}/{1}'.format(addr, prefixlen))
+                    m = re.match(r'\s+inet6\s+(\S+).*prefixlen\s+(\S+)', line)
+                    if m is not None:
+                        addr, prefixlen = m.groups()
+                        ipv6_addresses.add('{0}/{1}'.format(addr, prefixlen))
 
         if hwaddr:
             dev.add_to_label_desc("Address: {0} {1}".format(hw_addr_kind, hwaddr))
@@ -952,6 +952,14 @@ def add_net_addresses(device_tree):
             dev.add_to_label_desc("IPv4: {0}".format(addr))
         for addr in sorted(ipv6_addresses):
             dev.add_to_label_desc("IPv6: {0}".format(addr))
+
+    if is_live_system:
+        if not has_ip and not has_ifconfig:
+            logger.warning("Unable to gather IP addresses")
+        elif has_ip and not has_ifconfig:
+            logger.info("Using 'ip addr' to gather IP addresses")
+        elif not has_ip and has_ifconfig:
+            logger.info("Using 'ifconfig' to gather IP addresses")
 
 
 def add_mem_info(device_tree):
