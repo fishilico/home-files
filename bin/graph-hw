@@ -93,8 +93,10 @@ logger = logging.getLogger(__name__)
 # Color by kind of bus
 FUNCTION_WITH_GUID_COLOR = '#ff8888'
 INTERFACE_COLOR = 'orange'
+PCI_COLOR = 'green'
 SENSOR_COLOR = '#ff9eea'
 STORAGE_COLOR = 'yellow'
+USB_COLOR = '#88ccff'
 VIRTUAL_COLOR = '#d09ef0'
 BUSKIND_COLORS = {
     'acpi': '#ccffcc',
@@ -114,7 +116,7 @@ BUSKIND_COLORS = {
     'input': INTERFACE_COLOR,
     'iommu': VIRTUAL_COLOR,
     'mei': FUNCTION_WITH_GUID_COLOR,
-    'pci': 'green',
+    'pci': PCI_COLOR,
     'leds': INTERFACE_COLOR,
     'machinecheck': VIRTUAL_COLOR,
     'media': INTERFACE_COLOR,
@@ -123,6 +125,7 @@ BUSKIND_COLORS = {
     'misc': VIRTUAL_COLOR,
     'mmc_host': STORAGE_COLOR,
     'memstick_host': STORAGE_COLOR,
+    'mtd': STORAGE_COLOR,
     'net': INTERFACE_COLOR,
     'node': VIRTUAL_COLOR,
     'powercap': VIRTUAL_COLOR,
@@ -137,7 +140,7 @@ BUSKIND_COLORS = {
     'thermal': SENSOR_COLOR,
     'tpm': SENSOR_COLOR,
     'tty': VIRTUAL_COLOR,
-    'usb': '#88ccff',
+    'usb': USB_COLOR,
     'vc': VIRTUAL_COLOR,
     'video4linux': INTERFACE_COLOR,
     'vtconsole': VIRTUAL_COLOR,
@@ -164,7 +167,10 @@ MORE_PRECISE_KINDS = (
     ('pci', 'pci_bus'),
     ('pci', 'pci_express'),
     ('tpm', 'tpmrm'),
+    ('usb', 'udc'),  # USB device controller
     ('usb', 'usbmisc'),
+    ('usb', 'usbmon'),
+    ('usb', 'usb_device'),
     ('wmi', 'wmi_bus'),
 )
 
