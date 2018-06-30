@@ -569,6 +569,10 @@ KNOWN_SUID_FILES = [
     # eject, http://www.pobox.com/~tranter/eject.html
     SuidFile('/lib/eject/dmcrypt-get-device'),
 
+    # glusterfs, https://www.gluster.org/
+    # https://github.com/gluster/glusterfs/tree/master/contrib/fuse-util
+    SuidFile('/bin/fusermount-glusterfs'),
+
     # inetutils, http://www.gnu.org/software/inetutils/
     # http://git.savannah.gnu.org/cgit/inetutils.git/tree/
     SuidFile('/bin/rcp', owners=('root', ), groups=('root', )),
