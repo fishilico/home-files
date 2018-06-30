@@ -163,6 +163,25 @@ get_https_cert() {
     openssl s_client -servername "$1" -connect "$1:443" < /dev/null \
          -showcerts | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'
 }
+get_https_cert_proxy() {
+    local S_CLIENT_PROXY
+    S_CLIENT_PROXY="$(
+        (
+            echo "${https_proxy-}" ;
+            echo "${HTTPS_PROXY-}" ;
+            echo "${all_proxy-}" ;
+            echo "${ALL_PROXY-}"
+        ) | \
+        sed -n 's,^\(http://\)\?\([0-9a-zA-Z._-]\+:[0-9]\+\)\(/\)\?$,\2,p' | \
+        sed -n 1p)"
+    if [ -z "$S_CLIENT_PROXY" ] ; then
+        echo >&2 "Unable to find the proxy settings"
+        exit 1
+    fi
+    openssl s_client -servername "$1" -connect "$1:443" < /dev/null \
+         -proxy "$S_CLIENT_PROXY" \
+         -showcerts | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'
+}
 
 # Check the DANE configuration for a HTTPS website (cert and TLSA DNS record)
 # To get a TLS record, use something like:
