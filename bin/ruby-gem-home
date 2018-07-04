@@ -1,0 +1,51 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2018 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Define a Ruby environment which installs gems in $HOME
+#
+# Usage in a directory containing a Gemfile:
+#
+#     ruby-gem-home gem install bundler
+#     ruby-gem-home bundler install
+
+GEM_HOME="$(ruby -e 'print Gem.user_dir')"
+if [ -z "$GEM_HOME" ]
+then
+    echo >&2 'Error: unable to configure GEM_HOME'
+    exit 1
+fi
+export GEM_HOME
+
+# Add the bin directory to the PATH
+export PATH="$GEM_HOME/bin:$PATH"
+
+# Use VIRTUAL_ENV variable in order to change the prompt
+export VIRTUAL_ENV="$GEM_HOME"
+
+if [ $# -ge 1 ]
+then
+    exec "$@"
+else
+    echo >&2 "Launching ${SHELL:-sh} with GEM_HOME=$GEM_HOME"
+    exec "${SHELL:-sh}"
+fi

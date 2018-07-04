@@ -97,6 +97,7 @@ BIN_SCRIPTS = {
     'ping-box': 'never',
     'polyproxy': 'never',
     'rm-temp': 'never',
+    'ruby-gem-home': '(ruby)args[ruby --version]',
     'scan-ip4priv': 'never',
     'sensors-temp': '(sensors)direct',
     'set-title': 'direct',
