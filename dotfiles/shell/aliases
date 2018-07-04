@@ -137,6 +137,9 @@ if type alias > /dev/null 2>&1 ; then
         setopt PUSHD_SILENT
     fi
 
+    # Customize exa's long mode
+    alias exa='exa --group --time-style=long-iso'
+
     # Go to parent directory
     alias ..='cd ..'
     alias ...='cd ../..'

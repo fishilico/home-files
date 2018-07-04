@@ -123,6 +123,15 @@ export GCC_COLORS=1
 # Set man section search order in a "developer-friendly" way
 export MANSECT='2:3:1:8:0:5:4:6:7:9:n:l'
 
+# Customize the color theme of exa, a modern replacement for ls (https://the.exa.website/)
+# * do not colorize the permission bits
+# * colorize the extended attribute indicator in grey
+# * do not colorize the size
+# * colorize a user that's you and a group that you belong to in yellow (not bold)
+# * colorize the date in purple
+# * colorize directories in bold blue
+export EXA_COLORS='ur=0:uw=0:ux=0:ue=0:gr=0:gw=0:gx=0:ge=0:tr=0:tw=0:tx=0:te=0:xa=38;5;8:sn=0:sb=0:uu=33:gu=33:da=35:di=1;34'
+
 # Force using GPG agent for SSH, if the agent is launched and there is not a
 # SSH session already (in order to allow ssh -o ForwardAgent=yes)
 if [ -z "$SSH_CLIENT" ] ; then
