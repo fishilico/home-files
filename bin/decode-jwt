@@ -1,0 +1,170 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2018 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Decode a base64-encoded token, such as an OAuth JWT (JSON web token) value
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+import argparse
+import base64
+import collections
+import json
+import logging
+import re
+import sys
+
+
+# pylint: disable=invalid-name
+logger = logging.getLogger(__name__)
+
+
+BASE64_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+BASE64URL_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
+assert len(BASE64_CHARSET) == 64
+assert len(BASE64URL_CHARSET) == 64
+BASE64_REGEXP = r'^[A-Za-z0-9+/]+=?=?$'
+BASE64URL_REGEXP = r'^[A-Za-z0-9_-]+=?=?$'
+
+
+def hexdump(data, indent=''):
+    """Show an hexdecimal dump of binary data"""
+    for iline in range(0, len(data), 16):
+        hexline = ''
+        ascline = ''
+        for i in range(16):
+            if iline + i >= len(data):
+                hexline += '  '
+            else:
+                # pylint: disable=invalid-name
+                x = data[iline + i] if sys.version_info >= (3,) else ord(data[iline + i])
+                hexline += '{:02x}'.format(x)
+                ascline += chr(x) if 32 <= x < 127 else '.'
+            if i % 2:
+                hexline += ' '
+        print("{}{:06x}:  {} {}".format(indent, iline, hexline, ascline))
+
+
+def show_with_repr(name, value, indent):
+    """Show a value using repr()"""
+    print("{}{}: {}".format(indent, name, repr(value)))
+
+
+def show_with_hexdump(name, value, indent):
+    """Show a value using hexdump()"""
+    print("{}{} hexdump:".format(indent, name))
+    hexdump(value, indent=indent + '  ')
+
+
+def show_with_try_utf8(name, value, indent):
+    """Try to decode as UTF-8 and show the result, or an hexdump()"""
+    try:
+        decoded_text = value.decode('utf-8')
+    except UnicodeDecodeError:
+        show_with_hexdump(name, value, indent)
+    else:
+        try:
+            data = json.loads(decoded_text, object_pairs_hook=collections.OrderedDict)
+        except ValueError:
+            show_with_repr(name, decoded_text, indent)
+        else:
+            print("{}{} JSON:".format(indent, name))
+            indent += '  '
+            json_dump = json.dumps(data, indent=2)
+            print('\n'.join(indent + line for line in json_dump.splitlines()))
+
+
+def decode_value(value, show_function, indent=''):
+    """Decode a base64-encoded value or token"""
+    # Ignore empty tokens
+    value = value.strip()
+    if not value:
+        return True
+
+    # Is it raw Base64?
+    if re.match(BASE64_REGEXP, value):
+        # Add padding if it is missing
+        if not value.endswith('=') and len(value) % 4 != 0:
+            padding = ('', 'A==', '==', '=')[len(value) % 4]
+            logger.debug("Adding base64-padding %r", padding)
+            value += padding
+        show_function('Base64', base64.b64decode(value), indent)
+        return True
+
+    # Is it Base64-URL?
+    if re.match(BASE64URL_REGEXP, value):
+        # Add padding if it is missing
+        if not value.endswith('=') and len(value) % 4 != 0:
+            padding = ('', 'A==', '==', '=')[len(value) % 4]
+            logger.debug("Adding base64-padding %r", padding)
+            value += padding
+        show_function('Base64URL', base64.b64decode(value, altchars='-_'), indent)
+        return True
+
+    # JWT format: base64url separated with dots
+    if '.' in value and re.match(r'^[.A-Za-z0-9_-]+$', value):
+        fields = value.split('.')
+        print("{}Web Token with {} components:".format(indent, len(fields)))
+        for subvalue in fields:
+            decode_value(subvalue, show_function, indent=indent + '  ')
+        return True
+
+    logger.error("Unknown value format: %r", value)
+    return False
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Decode a base64-encoded web token")
+    parser.add_argument('values', metavar='TOKEN', nargs='*',
+                        help="tokens to decode (stdin if none)")
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help="show debug messages")
+    parser.add_argument('-r', '--repr', action='store_true',
+                        help="represent the decoded text using repr()")
+    parser.add_argument('-x', '--hexdump', action='store_true',
+                        help="force showing an hexadecimal dump")
+    args = parser.parse_args(argv)
+
+    logging.basicConfig(
+        format='[%(levelname)s] %(message)s',
+        level=logging.DEBUG if args.debug else logging.INFO)
+
+    show_function = show_with_try_utf8
+    if args.repr:
+        show_function = show_with_repr
+    elif args.hexdump:
+        show_function = show_with_hexdump
+
+    if args.values:
+        for value in args.values:
+            if not decode_value(value, show_function):
+                return 1
+    else:
+        for line in sys.stdin:
+            if not decode_value(line, show_function):
+                return 1
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
