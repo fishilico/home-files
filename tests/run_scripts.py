@@ -90,6 +90,7 @@ BIN_SCRIPTS = {
     'lsofdel': '(lsof)direct',
     'luksfile': 'args[-h]',
     'makecleanpkg': 'never',
+    'mount-tree': '(/proc)direct',
     'musickbd': 'never',
     'nft-dump': '(nft)direct',
     'ntpd-stats': '(ntpdc)direct',

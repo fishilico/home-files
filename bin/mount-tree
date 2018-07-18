@@ -1,0 +1,579 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2018 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Parse the mount information in order to show a tree
+
+This script performs something similar to findmnt command, but also displays
+the accessible information about mount namespaces on the system.
+
+Documentation:
+* https://www.kernel.org/doc/Documentation/filesystems/proc.txt
+"""
+import argparse
+import errno
+import logging
+import re
+import os
+import os.path
+import sys
+
+
+# Do not support Python<2.7
+if sys.version_info < (2, 7):
+    sys.stderr.write("Python version too old. Please update.\n")
+    # Do not fail testing
+    sys.exit(0)
+
+
+# pylint: disable=invalid-name
+logger = logging.getLogger(__name__)
+
+
+# Colors
+COLOR_RED = '\033[31m'
+COLOR_GREEN = '\033[32m'
+COLOR_YELLOW = '\033[33m'
+COLOR_BLUE = '\033[34m'
+COLOR_PURPLE = '\033[35m'
+COLOR_GRAY = '\033[37m'
+COLOR_NORM = '\033[m'
+
+
+# Initial mount namespace (defined as PROC_DYNAMIC_FIRST)
+INITIAL_MNT_NS = 0xf0000000
+
+
+def format_ns(mnt_ns):
+    """Format a mount namespace"""
+    if mnt_ns is None:
+        return '?'
+    if mnt_ns == INITIAL_MNT_NS:
+        return 'init'
+    return 'mnt:%#x' % (mnt_ns - 0xf0000000)
+
+
+def read_piddir_command(pid_dir):
+    """Read a command name associated with a /proc/$PID directory"""
+    comm_path = os.path.join(pid_dir, 'comm')
+    comm = None
+    try:
+        with open(comm_path, 'r') as commfile:
+            comm = commfile.read().strip()
+    except IOError as exc:
+        if exc.errno in (errno.ENOENT, ):
+            pass
+        else:
+            raise
+
+    cmdline_path = os.path.join(pid_dir, 'cmdline')
+    try:
+        with open(cmdline_path, 'r') as cmdlinefile:
+            cmdline = cmdlinefile.read().strip().split('\0')[0]
+            comm_from_cmdline = cmdline.rsplit('/', 1)[-1]
+            if not comm_from_cmdline or comm == comm_from_cmdline:
+                return comm
+            elif not comm:
+                return comm_from_cmdline
+            else:
+                # Strip starting - for login shells
+                if comm_from_cmdline[0] == '-' and comm_from_cmdline[1:].startswith(comm):
+                    comm_from_cmdline = comm_from_cmdline[1:]
+                if comm == comm_from_cmdline:
+                    return comm
+                # comm may be truncated
+                if comm_from_cmdline.startswith(comm):
+                    return comm + comm_from_cmdline[len(comm):].split(' ', 1)[0]
+
+                # Combine cmdline and comm
+                return '{}<{}>'.format(comm_from_cmdline, comm)
+    except IOError as exc:
+        if exc.errno in (errno.ENOENT, ):
+            pass
+        else:
+            raise
+    return comm
+
+
+class MountInfoEntry(object):
+    """Entry in /proc/$PID/mountinfo"""
+    def __init__(self, mount_ns, chroot, mount_id, parent_id, major_dev,
+                 minor_dev, root, mount_point, mount_opt, opt_fields, fs_type,
+                 mount_source, super_opt):
+        self.mount_ns = mount_ns  # Mount namespace
+        self.chroot = chroot  # Chroot directory
+        self.mount_id = mount_id  # Mount ID
+        self.parent_id = parent_id  # Mount ID of the parent
+        self.major_dev = major_dev  # Major device number in st_dev
+        self.minor_dev = minor_dev  # Minor device number in st_dev
+        self.root = root  # Root of the mount within the filesystem
+        self.mount_point = mount_point  # Mount point relative to the process's root
+        self.mount_opt = mount_opt.split(',')  # Per mount options
+        self.opt_fields = opt_fields  # Optional fields
+        self.fs_type = fs_type  # Filesystem type
+        self.mount_source = mount_source  # Mount source
+        self.super_opt = super_opt.split(',')  # Per super block options
+
+        self.related_ids = []
+        for option in opt_fields:
+            m = re.match(r'^(master|shared):([0-9]+)$', option)
+            if m is not None:
+                key, value = m.groups()
+                self.related_ids.append((key, int(value)))
+                continue
+            logger.warning("Unknown mount option %r for %r", option, self)
+
+    def __repr__(self):
+        return '%s(ns=%s, id=%d, par=%d, dev=%d:%d, root=%r, chroot=%r, mount=%r, fs=%r, src=%r, mount_opt=%r, super_opt=%r, opt=%r)' % (  # noqa
+            self.__class__.__name__,
+            format_ns(self.mount_ns),
+            self.mount_id,
+            self.parent_id,
+            self.major_dev,
+            self.minor_dev,
+            self.root,
+            repr(self.chroot) if self.chroot is not None else '?',
+            self.mount_point,
+            self.fs_type,
+            self.mount_source,
+            self.mount_opt,
+            self.super_opt,
+            self.opt_fields,
+        )
+
+    def pretty_str(self, parent_ns, color=False):
+        """Return a prettyfied string describing the entry in one line"""
+        # Define colors
+        color_red = COLOR_RED if color else ''
+        color_green = COLOR_GREEN if color else ''
+        color_yellow = COLOR_YELLOW if color else ''
+        color_blue = COLOR_BLUE if color else ''
+        color_purple = COLOR_PURPLE if color else ''
+        color_gray = COLOR_GRAY if color else ''
+        color_norm = COLOR_NORM if color else ''
+
+        # Build the line
+        line = self.abs_mount_point(color=color)
+        id_and_related = ''
+        format_kind = {
+            'master': color_red + 'ms',
+            'shared': color_green + 'sh',
+        }
+        for kind, related_id in self.related_ids:
+            id_and_related += ' {}{}'.format(format_kind[kind], related_id)
+        line += ' {0}({2}{3}{0}){1}'.format(color_blue, color_norm, self.mount_id, id_and_related)
+        if self.mount_ns != parent_ns:
+            line += ' {}{}{}'.format(color_yellow, format_ns(self.mount_ns), color_norm)
+
+        if self.major_dev == 0:
+            # Special treatment for tmpfs and al.
+            line += ' from ' + color_gray
+            if self.fs_type in (self.mount_source, 'fuse.' + self.mount_source):
+                line += '{}'.format(self.fs_type)
+            else:
+                line += '{}:{}'.format(self.fs_type, self.mount_source)
+            line += ' ({}:{}){}'.format(self.major_dev, self.minor_dev, color_norm)
+        else:
+            line += ' {} from {}'.format(self.fs_type, self.mount_source)
+            if self.mount_source.startswith('/'):
+                # Resolve symbolic links like /dev/disk/by-uuid/...
+                mount_src_target = os.path.realpath(self.mount_source)
+                if mount_src_target != self.mount_source:
+                    line += ' -> {}'.format(mount_src_target)
+            line += ' ({}:{})'.format(self.major_dev, self.minor_dev)
+        if self.root != '/':
+            line += '[{}]'.format(self.root)
+
+        # Mount options
+        mount_opts = frozenset(self.mount_opt)
+        known_opts = (
+            ('ro', color_purple),
+            # ('rw', color_yellow),
+            ('noexec', color_purple),
+            ('exec', color_yellow),
+            ('nodev', color_purple),
+            ('dev', color_yellow),
+            ('nosuid', color_purple),
+            ('suid', color_yellow),
+            ('nouser', color_purple),
+            ('user', color_yellow),
+        )
+        self_opts = [col + opt + color_norm for (opt, col) in known_opts if opt in mount_opts]
+        if self_opts:
+            line += ' ({})'.format(','.join(self_opts))
+
+        return line
+
+    def abs_mount_point(self, no_question=False, color=False):
+        """Get the absolute mount point of the entry"""
+        if not color:
+            if self.chroot is None:
+                if no_question:
+                    return self.mount_point
+                return '?' + self.mount_point
+            if self.chroot == '/':
+                return self.mount_point
+            if self.mount_point == '/':
+                # There is a chroot and no mount-point (it is the root in chroot)
+                return self.chroot
+            return self.chroot + self.mount_point
+
+        # Colorize the result
+        if self.chroot is None:
+            if no_question:
+                return self.mount_point
+            return COLOR_RED + '?' + COLOR_NORM + self.mount_point
+        if self.chroot == '/':
+            return self.mount_point
+        if self.mount_point == '/':
+            return COLOR_RED + self.chroot + COLOR_NORM
+        return COLOR_RED + self.chroot + COLOR_NORM + self.mount_point
+
+    def is_equivalent_with(self, other):
+        """Compare two entries and return a value accordingly:
+
+        * 0 if the two entries differ
+        * 1 if they are the same of "self" contains more information than "other"
+        * 2 if "other" contains more information than "self" (and should replace it)
+        """
+        has_more_precise_mount_ns = False
+        if self.mount_ns is not None:
+            if other.mount_ns is not None and self.mount_ns != other.mount_ns:
+                return 0
+        elif other.mount_ns is not None:
+            has_more_precise_mount_ns = True
+
+        has_more_precise_chroot = False
+        if self.chroot is not None:
+            if other.chroot is not None and self.abs_mount_point() != other.abs_mount_point():
+                return 0
+        elif other.chroot is not None:
+            has_more_precise_chroot = True
+
+        if self.mount_id != other.mount_id or self.parent_id != other.parent_id:
+            return 0
+        if self.major_dev != other.major_dev or self.minor_dev != other.minor_dev:
+            return 0
+        if self.root != other.root:
+            return 0
+        if self.mount_opt != other.mount_opt:
+            return 0
+        if self.opt_fields != other.opt_fields:
+            return 0
+        if self.fs_type != other.fs_type:
+            return 0
+        if self.mount_source != other.mount_source:
+            return 0
+        if self.super_opt != other.super_opt:
+            return 0
+
+        return 2 if has_more_precise_mount_ns and has_more_precise_chroot else 1
+
+    @classmethod
+    def load_piddir(cls, pid_dir):
+        """Load information from /proc/$PID directory and yield entries"""
+        # Read mount namespace inode
+        mount_ns = None
+        mntns_path = os.path.join(pid_dir, 'ns', 'mnt')
+        try:
+            mntns_link = os.readlink(mntns_path)
+        except OSError as exc:
+            if exc.errno in (errno.EACCES, errno.EPERM, errno.ENOENT):
+                # Zombie processes only have PID and user namespaces
+                pass
+            elif exc.errno == errno.EINVAL:
+                # Linux<3.8 uses pseudo-files instead of symlinks
+                logger.warning("File is not a symlink: %s", mntns_path)
+            else:
+                raise
+        else:
+            match = re.match(r'^mnt:\[([0-9]+)\]$', mntns_link)
+            if not match:
+                logger.error("Invalid namespace link: %s -> %s",
+                             mntns_path, mntns_link)
+            mount_ns = int(match.group(1))
+
+        # Read the chroot path, if possible
+        chroot = None
+        chroot_path = os.path.join(pid_dir, 'root')
+        try:
+            chroot = os.readlink(chroot_path)
+        except OSError as exc:
+            if exc.errno in (errno.EACCES, errno.EPERM, errno.ENOENT):
+                pass
+            else:
+                raise
+
+        # Parse mountinfo
+        mountinfo_path = os.path.join(pid_dir, 'mountinfo')
+        try:
+            with open(mountinfo_path, 'r') as mntinfo:
+                for line in mntinfo:
+                    match = re.match(
+                        r'^([0-9]+) ([0-9]+) ([0-9]+):([0-9]+) (\S+) (\S+) (\S+) ((?:\S+:\S+ )*)- (\S+) (\S+) (\S+)\n?$',  # noqa
+                        line)
+                    if match is None:
+                        logger.error("Invalid mountinfo line in %s: %r",
+                                     mountinfo_path, line)
+                        continue
+                    mount_id, parent_id, major_dev, minor_dev, root, mount_point, \
+                        mount_opt, opt_fields, fs_type, mount_source, super_opt = match.groups()
+                    stripped_opt_fields = opt_fields.strip()
+                    yield cls(
+                        mount_ns=mount_ns,
+                        chroot=chroot,
+                        mount_id=int(mount_id),
+                        parent_id=int(parent_id),
+                        major_dev=int(major_dev),
+                        minor_dev=int(minor_dev),
+                        root=root,
+                        mount_point=mount_point,
+                        mount_opt=mount_opt,
+                        opt_fields=stripped_opt_fields.split(' ') if stripped_opt_fields else [],
+                        fs_type=fs_type,
+                        mount_source=mount_source,
+                        super_opt=super_opt,
+                    )
+        except IOError as exc:
+            if exc.errno == errno.EINVAL:
+                # Zombie process make opening their mountinfo returning EINVAL
+                pass
+            elif exc.errno == errno.ENOENT:
+                # Too late, the process disappeared
+                pass
+            else:
+                raise
+
+
+class MountInfoDict(object):
+    """Set of MountInfoEntry"""
+    def __init__(self):
+        self.items = {}
+        self.ns_proc_comms = {}
+        self.children_by_id = None
+        self.root_by_id = None
+        self.ns_for_root_id = None
+
+    def add_entry(self, entry):
+        """Add a MountInfoEntry"""
+        current_entry = self.items.get(entry.mount_id)
+        if current_entry is None:
+            self.items[entry.mount_id] = entry
+            return
+        equiv = current_entry.is_equivalent_with(entry)
+        if equiv == 0:
+            logger.error("Non-unique mount id found:")
+            logger.error("... %r", current_entry)
+            logger.error("... %r", entry)
+            raise ValueError("Non-unique mount id found")
+        elif equiv == 2:
+            # Replace the entry with a more precise one
+            logger.debug("Replacing entry %d for %s%s",
+                         entry.mount_id, entry.chroot, entry.mount_point)
+            self.items[entry.mount_id] = entry
+
+    def add_from_piddir(self, pid_dir):
+        """Load information from /proc/$PID directory"""
+        comm = read_piddir_command(pid_dir)
+
+        logger.debug("Loading mountinfo from %s", pid_dir)
+        for entry in MountInfoEntry.load_piddir(pid_dir):
+            self.add_entry(entry)
+            mount_ns = entry.mount_ns
+            if mount_ns is not None and comm is not None:
+                # Add the command to the mount namespace
+                if mount_ns not in self.ns_proc_comms:
+                    self.ns_proc_comms[mount_ns] = {}
+                self.ns_proc_comms[mount_ns][pid_dir] = comm
+                # Only do it once per process
+                comm = None
+
+    def add_from_proc(self, proc_dir):
+        """Load information from all PID directories in /proc"""
+        for dir_name in sorted(os.listdir(proc_dir)):
+            if re.match(r'^[0-9]+$', dir_name):
+                self.add_from_piddir(os.path.join(proc_dir, dir_name))
+
+    def collect_children_by_id(self):
+        """Collect the children of each mount ID"""
+        self.children_by_id = {}
+        self.root_by_id = {}
+        self.ns_for_root_id = {}
+
+        def recursive_fill_root_id(entry):
+            root_id = self.root_by_id.get(entry.mount_id)
+            if root_id is not None:
+                return root_id
+
+            if entry.parent_id == entry.mount_id:
+                # self-referencing is a root
+                root_id = entry.mount_id
+                self.root_by_id[root_id] = root_id
+                return root_id
+
+            parent_entry = self.items.get(entry.parent_id)
+            if parent_entry is None:
+                # The parent is unknown, so it is an implicit root
+                root_id = entry.mount_id
+                self.root_by_id[root_id] = root_id
+                return root_id
+
+            root_id = recursive_fill_root_id(parent_entry)
+            self.root_by_id[entry.mount_id] = root_id
+            return root_id
+
+        for entry in self.items.values():
+            if entry.parent_id not in self.children_by_id:
+                self.children_by_id[entry.parent_id] = {}
+            self.children_by_id[entry.parent_id][entry.mount_id] = entry.abs_mount_point(no_question=True)
+            root_id = recursive_fill_root_id(entry)
+            if root_id not in self.ns_for_root_id:
+                self.ns_for_root_id[root_id] = set()
+            self.ns_for_root_id[root_id].add(entry.mount_ns)
+
+        # Sanity check
+        assert len(self.items) == len(self.root_by_id)
+
+    def format_ns_with_processes(self, mount_ns):
+        """Show the namespace with the processes in it"""
+        if mount_ns is not None:
+            comms = self.ns_proc_comms.get(mount_ns)
+            if not comms:
+                pass
+            elif len(comms) <= 5:
+                # Only few processes in the namespace
+                return '{} ({})'.format(
+                    format_ns(mount_ns),
+                    ', '.join(
+                        '{}:{}'.format(pid_dir.rsplit('/', 1)[-1], comm)
+                        for pid_dir, comm in sorted(comms.items())
+                    ))
+            else:
+                return '{} ({} processes)'.format(format_ns(mount_ns), len(comms))
+        return format_ns(mount_ns)
+
+    def print_tree_entry(self, mount_id, parent_ns, paths, color=True, line_prefix='', is_last=True):
+        """Print an entry by its ID and its children"""
+        entry = self.items[mount_id]
+
+        # Define colors
+        color_gray = COLOR_GRAY if color else ''
+        color_norm = COLOR_NORM if color else ''
+
+        # Build the line
+        line = color_gray + line_prefix + ('`-' if is_last else '|-') + color_norm
+        line += entry.pretty_str(parent_ns, color=color)
+        print(line)
+
+        # Get children
+        children_id = self.children_by_id.get(mount_id)
+        if not children_id:
+            return
+        filtered_children = [
+            (mntpnt, mntid) for mntid, mntpnt in children_id.items()
+            if any(mntpnt.startswith(p) or p.startswith(mntpnt) for p in paths)
+        ]
+        filtered_children.sort()
+
+        for idx, child in enumerate(filtered_children):
+            self.print_tree_entry(
+                mount_id=child[1],
+                parent_ns=entry.mount_ns,
+                paths=paths,
+                color=color,
+                line_prefix=line_prefix + ('  ' if is_last else '| '),
+                is_last=(idx == len(filtered_children) - 1),
+            )
+
+    def print_tree(self, paths=None, color=True):
+        """Show the mountinfo as a tree"""
+        if not paths:
+            paths = ('/', )
+        is_first = True
+        ns_color = COLOR_YELLOW if color else ''
+        end_color = COLOR_NORM if color else ''
+        for root_mount_id, namespaces in sorted(self.ns_for_root_id.items()):
+            if is_first:
+                is_first = False
+            else:
+                print("")
+            assert namespaces
+            if len(namespaces) >= 2:
+                root_ns = self.items[root_mount_id].mount_ns
+                print("Namespaces {0}{2}{1} starting with {0}{3}{1}".format(
+                    ns_color,
+                    end_color,
+                    ', '.join(sorted((format_ns(ns) for ns in namespaces))),
+                    self.format_ns_with_processes(root_ns),
+                ))
+            else:
+                root_ns = list(namespaces)[0]
+                print("{0}Namespace {2}{1}".format(
+                    ns_color,
+                    end_color,
+                    self.format_ns_with_processes(root_ns),
+                ))
+            self.print_tree_entry(root_mount_id, root_ns, paths, color)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Show mount information")
+    parser.add_argument('path', nargs='*',
+                        help="restrict to the given paths")
+    parser.add_argument('-c', '--nocolor', action='store_true',
+                        help="keep the output monochrome")
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help="show debug messages")
+    parser.add_argument('-l', '--list', action='store_true',
+                        help="show a raw listing, sorted by mount ID")
+    parser.add_argument('-p', '--procdir', type=str, default='/proc',
+                        help="set the path to /proc directory")
+    parser.add_argument('-i', '--pid', action='append', type=int,
+                        help="set the process ID to analyse in /proc")
+    parser.add_argument('-s', '--self', action='append_const', dest='pid', const=0,
+                        help="only process /proc/self/mountinfo")
+    args = parser.parse_args(argv)
+
+    logging.basicConfig(
+        format='[%(levelname)s] %(message)s',
+        level=logging.DEBUG if args.debug else logging.INFO)
+
+    context = MountInfoDict()
+    if args.pid is None:
+        context.add_from_proc(args.procdir)
+    else:
+        for pid in args.pid:
+            pid_dir = os.path.join(args.procdir, str(pid) if pid else 'self')
+            context.add_from_piddir(pid_dir)
+
+    if args.list:
+        paths = args.path or ('/', )
+        for mntid, entry in sorted(context.items.items()):
+            mntpnt = entry.abs_mount_point(no_question=True)
+            if any(mntpnt.startswith(p) or p.startswith(mntpnt) for p in paths):
+                print(entry.pretty_str(parent_ns=INITIAL_MNT_NS, color=not args.nocolor))
+    else:
+        context.collect_children_by_id()
+        context.print_tree(paths=args.path, color=not args.nocolor)
+
+
+if __name__ == '__main__':
+    main()

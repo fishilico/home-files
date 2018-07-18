@@ -71,6 +71,7 @@ jobs:
     - run: bin/graph-hw -i out-config/graph-hw.json -p -o out-config/graph-hw.pci.svg
     - run: bin/graph-hw -i out-config/graph-hw.json -t -o out-config/graph-hw.tree.svg
     - run: bin/graph-hw -i out-config/graph-hw.json -VMt -o out-config/graph-hw.novirt.tree.svg
+    - run: bin/mount-tree --nocolor > out-config/mount-tree.txt
     - store_artifacts:
         path: out-config
         destination: out-config
