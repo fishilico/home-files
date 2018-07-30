@@ -22,6 +22,16 @@
 # THE SOFTWARE.
 """Figure out whether the web access is currently filtered by a captive portal
 
+In order to detect whether a captive portal is present, an HTTP request can be
+performed to one of the following URL:
+
+* http://www.google.com/ (in order to detect the redirection to HTTPS)
+* http://captive.apple.com/hotspot-detect.html (used by Apple iOS)
+* http://connectivitycheck.gstatic.com/generate_204 (used by Google Android)
+* http://detectportal.firefox.com/success.txt (used by Mozilla Firefox)
+* http://neverssl.com/
+* http://www.msftconnecttest.com/connecttest.txt (used by Microsoft Windows)
+
 @author: Nicolas Iooss
 @license: MIT
 """
