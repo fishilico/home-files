@@ -61,13 +61,13 @@ detect_os() {
 OS=$(detect_os)
 case $OS in
     arch)
-        # ArchLinux: use Yaourt or pacaur if available, pacman otherwise
-        if command -v pacaur > /dev/null 2>&1
+        # ArchLinux: use trizen or pacaur if available, pacman otherwise
+        if command -v trizen > /dev/null 2>&1
+        then
+            exec trizen -Syu
+        elif command -v pacaur > /dev/null 2>&1
         then
             exec pacaur -Syu
-        elif command -v yaourt > /dev/null 2>&1
-        then
-            exec yaourt -Syu --devel --aur
         elif [ "$(id -u)" = 0 ]
         then
             exec pacman -Syu
