@@ -189,6 +189,11 @@ fi
 mkdir -p "$CHROOTDIR/root/faked_programs"
 cat_script "$CHROOTDIR/root/faked_programs/sudo" << EOF
 #!/bin/sh
+if [ "\$1" = '--preserve-env=SOURCE_DATE_EPOCH' ] ; then
+    # We do not care about preserving this specific variable
+    shift
+fi
+
 if [ "\$1" = '-u' ] || [ "\$1" = '-iu' ] ; then
     if [ "\$2" != 'builduser' ] ; then
         echo >&2 "Warning: unexpected sudo-ed user \$2"
