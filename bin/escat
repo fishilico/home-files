@@ -1,0 +1,439 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2018 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""cat with escaping, except usual UTF-8 sequences and colors
+
+This aims to be a middleground between these two options:
+
+* "cat", which displays a file with escape sequences which can be harmful to
+  a terminal.
+* "cat -v", which escapes everything which is not printable ASCII, including
+  "\r\n" (shown as "^M" at end of lines), accentuated letters, etc.
+
+It also allows using grep --color as input, to grep in binary files.
+This works by filtering ANSI escape sequences:
+https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+"""
+import argparse
+import struct
+import sys
+import os
+
+
+def is_ascii_safe_py3(by_text):
+    """Check whether the text (bytes) contains only safe characters in ASCII
+
+    (Python 3 version)
+    """
+    return all(x in (9, 10) or 32 <= x <= 126 for x in by_text)
+
+
+def is_ascii_safe_py2(by_text):
+    """Check whether the text (bytes) contains only safe characters in ASCII
+
+    (Python 2 version)
+    """
+    return all(x in b'\t\n' or b' ' <= x <= b'~' for x in by_text)
+
+
+# This is mainly for performance, to quicken things
+is_ascii_safe = is_ascii_safe_py3 if sys.version_info >= (3, ) else is_ascii_safe_py2
+
+# Otherwise, support the Python-3 way of handling bytes and manage a Python-2
+# compatibility layer
+py2_ord = (lambda x: x) if sys.version_info >= (3, ) else ord
+
+
+def escape_byte(value):
+    """Escape a byte value like 'cat -v'"""
+    if 0 <= value < 32 or value == 127:
+        # Control codes (^@ to ^_) and DEL (^?)
+        return '^' + chr(value ^ 0x40)
+    if 128 <= value < 160 or value == 255:
+        # Meta control code (M-^@ to M-^_ and M-^?)
+        return 'M-^' + chr(value ^ 0xc0)
+    if 160 <= value <= 254:
+        # Meta code (M-space to M-~)
+        return 'M-' + chr(value ^ 0x80)
+    if 32 <= value <= 126:
+        # Printable (space to ~)
+        return chr(value)
+    raise ValueError("Invalid byte value {}".format(value))
+
+
+C_SEQUENCES = {
+    0: '\\0',
+    8: '\\b',
+    9: '\\t',
+    10: '\\n',
+    13: '\\r',
+    27: '\\e',
+}
+
+
+def escape_hex_byte(value):
+    """Escape a byte value like C hexadecimal escape sequences"""
+    seq = C_SEQUENCES.get(value)
+    if seq is not None:
+        return seq
+    if 32 <= value <= 126:
+        # Printable
+        return chr(value)
+    return '\\x{:02x}'.format(value)
+
+
+class EscCatContext(object):
+    """Context of display the content of a file, escaping things"""
+    def __init__(self, color, direct, crnl, termesc, unicodeesc):
+        self.color = color
+        self.direct = direct
+        self.crnl = crnl
+        self.termesc = termesc
+        self.unicodeesc = unicodeesc
+
+    def esc_single_byte(self, value, do_color=True):
+        """Escape a single byte according to the options"""
+        txtvalue = escape_byte(value) if self.termesc else escape_hex_byte(value)
+        return self.color.colorize(txtvalue) if do_color and self.color else txtvalue
+
+    def esc_all_bytes(self, data):
+        """Escape the bytes according to the options, without considering smart escape"""
+        txtvalue = ''.join(self.esc_single_byte(x, False) for x in data)
+        return self.color.colorize(txtvalue) if self.color else txtvalue
+
+    def esc_unicode(self, data, unicode_point):
+        """Escape a Unicode symbol"""
+        if not self.unicodeesc or unicode_point >= 0x10000:
+            return self.esc_all_bytes(data)
+        txtvalue = '\\u{:04x}'.format(unicode_point)
+        return self.color.colorize(txtvalue) if self.color else txtvalue
+
+    def format_utf8(self, sequence):
+        """Format an UTF-8 sequence, filtering printable characters"""
+        if 0xc2 <= sequence[0] <= 0xdf:
+            # Two-byte UTF-8
+            if len(sequence) < 2:
+                return None
+            assert len(sequence) == 2
+            unicode_point = (
+                ((sequence[0] - 0xc0) << 6) +
+                (sequence[1] - 0x80)
+            )
+            if unicode_point < 0x80:
+                # Invalid UTF-8 sequence
+                return self.esc_all_bytes(sequence)
+            elif 0xa1 <= unicode_point <= 0xbf:
+                # Symbols
+                return struct.pack('2B', sequence[0], sequence[1]).decode('utf-8')
+            elif 0xc0 <= unicode_point <= 0xff:
+                # Accentuated letters
+                return struct.pack('2B', sequence[0], sequence[1]).decode('utf-8')
+
+            # Escape UTF-8 character
+            return self.esc_unicode(sequence, unicode_point)
+
+        elif 0xe0 <= sequence[0] <= 0xef:
+            # Three-byte UTF-8
+            if len(sequence) < 3:
+                return None
+            assert len(sequence) == 3
+            unicode_point = (
+                ((sequence[0] - 0xe0) << 12) +
+                ((sequence[1] - 0x80) << 6) +
+                (sequence[2] - 0x80)
+            )
+            if unicode_point < 0x800:
+                # Invalid UTF-8 sequence
+                return self.esc_all_bytes(sequence)
+            elif unicode_point == 0x2122:  # TM
+                return struct.pack('3B', sequence[0], sequence[1], sequence[2]).decode('utf-8')
+
+            # Escape UTF-8 character
+            return self.esc_unicode(sequence, unicode_point)
+
+        elif 0xf0 <= sequence[0] <= 0xf4:
+            # Do not decode 4-byte UTF-8 characters (F0... to F4...)
+            # This could be implemented in the future
+            if len(sequence) < 4:
+                return None
+            assert len(sequence) == 4
+            return self.esc_all_bytes(sequence)
+
+        raise RuntimeError("This should not be reachable")
+
+    def parse_escape(self, sequence):
+        """Parse an ANSI escape sequence"""
+        assert sequence[0] == 27  # Ensure the sequence begins with ESC
+        if len(sequence) >= 2 and sequence[1] == ord('['):
+            if sequence[-1] == ord('m'):
+                # Mode (colors) : \e[...m
+                if len(sequence) == 3:
+                    # If "reset", propagate it
+                    return '\033[m'
+                commands = ''.join(chr(x) for x in sequence[2:-1])
+                if not all(x in ';0123456789' for x in commands):
+                    # There are unknown characters
+                    return self.esc_all_bytes(sequence)
+                # Propagate the command without more filtering
+                return '\033[' + commands + 'm'
+            elif ord('A') <= sequence[-1] <= ord('Z') and sequence[-1] != ord('O'):
+                # key movements:
+                #   A = up
+                #   B = down
+                #   C = right
+                #   D = left
+                #   H = set cursor position (like \e[2;3H)
+                #   J = clear to the end of line
+                #   K = clear to the end of screen
+                #   Z = shift-tab
+                return self.esc_all_bytes(sequence)
+            elif sequence[-1] in (ord('h'), ord('l')):
+                # terminfo sequences:
+                # * smcup/rmcup = \e[?1049h / \e[?1049l (alternate screen)
+                # * civis/cnom/ccvis with \e[?12h/l and \e[?25h/l (cursor visibility)
+                # * mouse mode \e[?1002h/l
+                # ...
+                return self.esc_all_bytes(sequence)
+            elif sequence[-1] == ord('~'):
+                # \e[2~ = Insert
+                # \e[3~ = Suppr
+                # \e[5~ = Page up
+                # \e[6~ = Page down
+                # \e[7~ = Home on numeric keypad
+                # \e[8~ = End on numeric keypad
+                # \e[15~ ... \e[24~ = F5 ... F12
+                return self.esc_all_bytes(sequence)
+        if len(sequence) == 3 and sequence[1] == ord('O') and ord('A') <= sequence[-1] <= ord('Z'):
+            # \eOF = end
+            # \eOH = home
+            # \eOP = F1
+            # \eOQ = F2
+            # \eOR = F3
+            # \eOS = F4
+            return self.esc_all_bytes(sequence)
+
+        # The sequence is not complete
+        return None
+
+    def show_bytes(self, data, is_end):
+        """Display bytes, escaping things"""
+        position = 0
+        incomplete_sequence = None
+        output_buffer = ''
+        for position in range(len(data)):
+            cur_byte = py2_ord(data[position])
+
+            if incomplete_sequence is not None:
+                if incomplete_sequence[0] == 13:
+                    # Carriage Return
+                    assert len(incomplete_sequence) == 1
+                    incomplete_sequence = None
+                    # CR + NL => NL
+                    if cur_byte == 10:
+                        output_buffer += '\n'
+                        continue
+                    # CR + something else
+                    output_buffer += self.esc_single_byte(13)
+                    if self.crnl:
+                        output_buffer += '\n'
+
+                elif incomplete_sequence[0] == 27:
+                    # Escape sequence
+                    # Only ASCII printable characters are allowed
+                    if not 32 <= cur_byte <= 126:
+                        output_buffer += self.esc_all_bytes(incomplete_sequence)
+                        incomplete_sequence = None
+                        # Fall-through to analyse cur_byte
+                    else:
+                        incomplete_sequence.append(cur_byte)
+                        output_esc = self.parse_escape(incomplete_sequence)
+                        if output_esc is not None:
+                            # The escape sequence was complete
+                            output_buffer += output_esc
+                            incomplete_sequence = None
+                        # Proceed to next byte
+                        continue
+
+                elif 0xc2 <= incomplete_sequence[0] <= 0xf4:
+                    # UTF-8
+                    if not 0x80 <= cur_byte <= 0xbf:
+                        # Invalid continuation byte
+                        output_buffer += self.esc_all_bytes(incomplete_sequence)
+                        incomplete_sequence = None
+                        # Fall-through to analyse cur_byte
+                    else:
+                        incomplete_sequence.append(cur_byte)
+                        formatted = self.format_utf8(incomplete_sequence)
+                        if formatted:
+                            output_buffer += formatted
+                            incomplete_sequence = None
+                        continue
+
+            # \t, \n or printable ASCII: show it directly
+            if cur_byte in (9, 10) or 32 <= cur_byte <= 126:
+                output_buffer += chr(cur_byte)
+                continue
+
+            if cur_byte in (13, 27) or 0xc2 <= cur_byte <= 0xf4:
+                # Carriage Return (CR, \r)
+                # Escape (ESC, \e, \033)
+                # UTF-8
+                incomplete_sequence = [cur_byte]
+                continue
+
+            # Binary: escape it
+            output_buffer += self.esc_single_byte(cur_byte)
+
+        if output_buffer:
+            sys.stdout.write(output_buffer)
+
+        if is_end and incomplete_sequence is not None:
+            # show the incomplete sequences too
+            sys.stdout.write(self.esc_all_bytes(incomplete_sequence))
+            return b''
+
+        if incomplete_sequence:
+            return b''.join(struct.pack('B', x) for x in incomplete_sequence)
+        return b''
+
+    def show_stream(self, stream):
+        """Display the content of a stream, escaping things"""
+        data = b''
+        while True:
+            new_data = stream.read(1 if self.direct else 4096)
+            if not new_data:
+                # Reached end of file
+                break
+            data += new_data
+            if is_ascii_safe(data):
+                # Simple case: everything is safe in the buffer
+                sys.stdout.write(data.decode('ascii'))
+                data = b''
+                continue
+            # Show data, keeping incomplete escape sequences
+            data = self.show_bytes(data, False)
+
+        # Show the remaining data
+        if data:
+            self.show_bytes(data, True)
+
+    def show_file(self, file_path):
+        """Display the content of a file, escaping things"""
+        with open(file_path, 'rb', buffering=0 if self.direct else -1) as fd:
+            self.show_stream(fd)
+
+
+class Color(object):
+    """Color parameter"""
+    tty_esc_sequence = {
+        'red': '\033[31m',
+        'green': '\033[32m',
+        'yellow': '\033[33m',
+        'blue': '\033[34m',
+        'purple': '\033[35m',
+        'cyan': '\033[36m',
+        'gray': '\033[37m',
+        'boldred': '\033[1;31m',
+        'boldgreen': '\033[1;32m',
+        'boldyellow': '\033[1;33m',
+        'boldblue': '\033[1;34m',
+        'boldpurple': '\033[1;35m',
+        'boldcyan': '\033[1;36m',
+        'boldgray': '\033[1;37m',
+    }
+    color_aliases = {
+        'r': 'red',
+        'g': 'green',
+        'b': 'blue',
+        'p': 'purple',
+        'c': 'cyan',
+        'br': 'boldred',
+        'bg': 'boldgreen',
+        'by': 'boldyellow',
+        'bb': 'boldblue',
+        'bp': 'boldpurple',
+        'bc': 'boldcyan',
+        'rb': 'boldred',
+        'gb': 'boldgreen',
+        'yb': 'boldyellow',
+        'pb': 'boldpurple',
+        'cb': 'boldcyan',
+    }
+
+    def __init__(self, color):
+        color = color.strip().lower()
+        color = self.color_aliases.get(color, color)
+        self.color = color
+        try:
+            self.esc = self.tty_esc_sequence[color]
+        except KeyError:
+            raise ValueError
+
+    def colorize(self, text):
+        return self.esc + text + '\033[m'
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="cat with escaping")
+    parser.add_argument('files', metavar='FILE', nargs='*',
+                        help="files to be displayed")
+    parser.add_argument('-c', '--color', metavar='COLOR', type=Color,
+                        help="colorize escaped characters")
+    parser.add_argument('-d', '--direct', action='store_true',
+                        help="show characters as they are received, without buffering")
+    parser.add_argument('-r', '--crnl', action='store_true',
+                        help="add a new line after each carriage return character")
+    parser.add_argument('-t', '--termesc', action='store_true',
+                        help="use terminal escape (\"^M\") instead of C/hexadecimal escaping")
+    parser.add_argument('-u', '--unicode', action='store_true',
+                        help="show unicode codepoint when showing UTF-8 characters")
+    args = parser.parse_args(argv)
+
+    # Never bufferize stdin when it is a tty
+    if not args.files and os.isatty(sys.stdin.fileno()):
+        direct = True
+    else:
+        direct = args.direct
+
+    escat = EscCatContext(
+        color=args.color,
+        direct=direct,
+        crnl=args.crnl,
+        termesc=args.termesc,
+        unicodeesc=args.unicode,
+    )
+
+    if args.files:
+        for file_path in args.files:
+            escat.show_file(file_path)
+    else:
+        # Use stdin opened in binary mode
+        stdin = sys.stdin.buffer if sys.version_info >= (3, ) else sys.stdin
+        try:
+            escat.show_stream(stdin)
+        except KeyboardInterrupt:
+            # Hide ^C ending
+            return
+
+
+if __name__ == '__main__':
+    main()

@@ -71,6 +71,7 @@ BIN_SCRIPTS = {
     'dxrandr': 'never',
     'enter-container': 'never',
     'errno': 'args[42]',
+    'escat': 'help',
     'firefox-private': '(firefox)help',
     'floatenc': 'args[0x42280000]',
     'gcore_everything': 'never',
