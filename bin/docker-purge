@@ -42,4 +42,14 @@ then
     echo "After cleanup, there remains $UNTAGGED_NUM untagged images."
 fi
 
+# Remove untagged versions (which appear after an update)
+NONEVER_NUM="$(docker images | awk '{ if($2 == "<none>")print $3 }' | wc -l)"
+echo "There are currently $NONEVER_NUM images with untagged versions."
+if [ "$NONEVER_NUM" -gt 0 ]
+then
+    docker images | awk '{ if($2 == "<none>")print $3 }' | xargs docker rmi
+    NONEVER_NUM="$(docker images | awk '{ if($2 == "<none>")print $3 }' | wc -l)"
+    echo "After cleanup, there remains $NONEVER_NUM images with untagged versions."
+fi
+
 # To remove every image, run: docker rmi $(docker images -q)
