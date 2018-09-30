@@ -792,7 +792,8 @@ def analyze_suid_file(filepath, realpath, owner, group):
 
     # /usr/lib/debug/.build-id contains symlinks to programs
     # ... let's consider them as real programs
-    if re.match(r'^(/usr)?/lib/debug/\.build-id/', filepath):
+    # Fedora uses /usr/lib/.build-id/XX/XXXXXXXXXXX... where X is a hexdigit
+    if re.match(r'^(/usr)?/lib(/debug)?/\.build-id/[0-9a-f][0-9a-f]/', filepath):
         filepath = realpath
 
     # Sometimes there are symlinks from /usr/bin to /bin
@@ -819,6 +820,10 @@ def analyze_suid_file(filepath, realpath, owner, group):
 
 def analyze_caps_file(filepath, realpath, caps):
     """Analyze a file with capabilities and return whether it is trusted"""
+    # Simplify /usr/lib/debug/.build-id like in analyze_suid_file
+    if re.match(r'^(/usr)?/lib(/debug)?/\.build-id/[0-9a-f][0-9a-f]/', filepath):
+        filepath = realpath
+
     if filepath == realpath:
         desc = 'file %s with caps: %s' % (filepath, caps)
     else:
