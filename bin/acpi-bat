@@ -261,7 +261,9 @@ def show_results(acpi_result, show_title, term):
             print('{0}: {1}'.format(name, state))
 
     if show_title:
-        set_title("{0}%".format(acpi_result[0][1].percent), term)
+        # Compute the mean percentage
+        percent = sum(entry[1].percent for entry in acpi_result) // len(acpi_result)
+        set_title("{0}%".format(percent), term)
 
 
 def main(argv=None):
