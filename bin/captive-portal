@@ -128,7 +128,7 @@ def handle_sfrwifi(redirurl):
     try:
         urlf = urllib.request.urlopen(newurl)
     except urllib.error.HTTPError as exc:
-        # Forward the error code when it is not "HTTP Moded Temporary"
+        # Forward the error code when it is not "HTTP Moved Temporary"
         if exc.code != 302:
             raise
 
