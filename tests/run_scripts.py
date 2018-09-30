@@ -73,6 +73,7 @@ BIN_SCRIPTS = {
     'errno': 'args[42]',
     'escat': 'help',
     'firefox-private': '(firefox)help',
+    'flatpak-steam-valve': 'never',
     'floatenc': 'args[0x42280000]',
     'gcore_everything': 'never',
     'getaddr': 'args[localhost]',
