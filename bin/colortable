@@ -40,8 +40,10 @@ To see the used color sequences, several ways exist:
 @author: Nicolas Iooss
 @license: MIT
 """
-
 import argparse
+import ctypes
+import os
+
 
 # 16-colors index table
 COLORS16_RGB = [
@@ -151,6 +153,21 @@ def main(argv=None):
         'usebg': args.background,
         'visible': args.visible,
     }
+
+    if os.name == 'nt':
+        # Fix ANSI color in Windows 10 version 10.0.14393 (Windows Anniversary Update)
+        # The initial console mode is 3.
+        # Documentation: https://docs.microsoft.com/en-us/windows/console/setconsolemode
+        # Constants:
+        # * STD_OUTPUT_HANDLE = (DWORD)-11 (in winbase.h)
+        # * ENABLE_PROCESSED_OUTPUT = 0x0001
+        # * ENABLE_WRAP_AT_EOL_OUTPUT = 0x0002
+        # * ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+        kernel32 = ctypes.windll.kernel32
+        hstdout = kernel32.GetStdHandle(-11)
+        console_mode = ctypes.c_uint32()
+        if hstdout != -1 and kernel32.GetConsoleMode(hstdout, ctypes.byref(console_mode)):
+            kernel32.SetConsoleMode(hstdout, console_mode.value | 4)
 
     # Display the table
     print("16-colors table:")
