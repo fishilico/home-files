@@ -1,8 +1,9 @@
 # ~/.bash_logout: executed by bash(1) when login shell exits.
 
 # when leaving the console clear the screen to increase privacy
+# to disable this behavior, define SHELL_NO_CLEAR_ON_LOGOUT=1 in .shell/local
 
-if [ "$SHLVL" = 1 ]; then
+if [ -z "${SHELL_NO_CLEAR_ON_LOGOUT:-}" ] && [ "$SHLVL" = 1 ]; then
     if [ -x /usr/bin/clear_console ]; then
         /usr/bin/clear_console -q
     elif [ -x /usr/bin/clear ]; then
