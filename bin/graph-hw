@@ -522,6 +522,11 @@ def fill_names_with_lspci_output(device_tree):
             logger.warning("lspci is not installed")
             return
         raise
+    except subprocess.CalledProcessError as exc:
+        logger.warning("lspci failed with exit code %d", exc.returncode)
+        if exc.output:
+            logger.debug("lspci output: %r", exc.output)
+        return
 
     for line in output.decode('utf8', errors='ignore').splitlines():
         m = re.match(r'([0-9a-f:.]+) (\S[^:]*): (.*)', line)
