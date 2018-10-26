@@ -723,6 +723,24 @@ def fill_wmi_names(device_tree):
 def add_uevent_names(device_tree):
     """Add names from uevent file"""
     for dev in device_tree.iter_all():
+        # Use .../name to gather the name of some devices (mtd, sound I/O,
+        # graphics card, etc.), which might be repeated in uevent.
+        name_path = os.path.join(dev['sysfs_path'], 'name')
+        name_value = None
+        try:
+            with open(name_path, 'r') as fd_name:
+                name_value = fd_name.read().strip()
+                if name_value and name_value != dev['sysfs_name']:
+                    if not all(' ' <= c < '\x7f' for c in name_value):
+                        logger.warning(
+                            "Found 'name' with invalid characters (for %s): %r",
+                            dev['sysfs_path'],
+                            name_value)
+                        name_value = repr(name_value)
+                    dev.add_to_label_desc("Name: {0}".format(name_value))
+        except IOError:
+            pass
+
         uevent_path = os.path.join(dev['sysfs_path'], 'uevent')
         devname = None
         devmajor = None
@@ -751,7 +769,8 @@ def add_uevent_names(device_tree):
                     elif key == 'MINOR':
                         devminor = value
                     elif key == 'NAME':
-                        dev.add_to_label_desc("Name: {0}".format(value))
+                        if value != name_value:
+                            dev.add_to_label_desc("Name from uevent: {0}".format(value))
         except IOError:
             pass
         if devname is not None:
