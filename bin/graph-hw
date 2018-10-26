@@ -72,7 +72,13 @@ import os.path
 import re
 import subprocess
 import sys
-import webbrowser
+
+# Python 2.7 on OpenWRT does not provide webbrowser
+try:
+    import webbrowser
+    HAVE_WEBBROWSER = True
+except ImportError:
+    HAVE_WEBBROWSER = False
 
 
 # Python 2.6 does not have collections.OrderedDict. Use dict instead.
@@ -1253,8 +1259,12 @@ def main(argv=None):
 
     # Open the file
     if args.web_browser:
-        logger.info("Opening in a web browser %s", args.output)
-        webbrowser.open(args.output)
+        if HAVE_WEBBROWSER:
+            logger.info("Opening in a web browser %s", args.output)
+            webbrowser.open(args.output)
+        else:
+            logger.fatal("Module webbrowser cannot be imported")
+            return 1
     elif args.xdot:
         logger.info("Opening in xdot %s", args.output)
         subprocess.call(['xdot', args.output])
