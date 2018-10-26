@@ -69,7 +69,7 @@ install:
     fi
 # Install flake8 for the current version of Python, if it is supported.
 # Otherwise, keep pycodestyle
-  - if python -c 'import sys;sys.exit(sys.version_info[:2] in ((2,6), (3,2)))' ; then
+  - if python -c 'import sys;sys.exit(sys.version_info[:2] in ((2,6), (3,2), (3,3)))' ; then
     pip install flake8 && flake8 --version ;
     else
     pip install pycodestyle && pycodestyle --version ;
