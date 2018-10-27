@@ -54,7 +54,7 @@ cache:
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-    brew update && brew unlink gnupg && brew install gnupg shellcheck && brew upgrade python3 ;
+    brew update && brew unlink gnupg && brew install gnupg shellcheck ;
     fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
     PATH="/usr/local/opt/python/libexec/bin:$PATH" ;
