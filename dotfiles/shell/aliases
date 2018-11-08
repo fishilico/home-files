@@ -323,10 +323,20 @@ if type alias > /dev/null 2>&1 ; then
     esac
 
     # DNSSEC validation with drill (from ldns package) or dig
+    # In order to generate the trusted-key.key file:
+    # dig +nocomments +nostats +nocmd +noquestion -t dnskey . > trusted-key.key
     if command -v drill > /dev/null 2>&1 ; then
         if [ -r '/etc/trusted-key.key' ] ; then
+            # Arch Linux package dnssec-anchors provides /etc/trusted-key.key
+            # https://www.archlinux.org/packages/core/any/dnssec-anchors/files/
+            # Fedora package bind-utils provides /etc/trusted-key.key
             alias dnssec-check='drill -TD -k /etc/trusted-key.key'
+        elif [ -r '/usr/share/dns/root.key' ] ; then
+            # Debian package dns-root-data provides /usr/share/dns/root.key
+            # https://packages.debian.org/sid/all/dns-root-data/filelist
+            alias dnssec-check='drill -TD -k /usr/share/dns/root.key'
         elif [ -r '/var/lib/unbound/root.key' ] ; then
+            # unbound-anchor creates /var/lib/unbound/root.key
             alias dnssec-check='drill -TD -k /var/lib/unbound/root.key'
         else
             alias dnssec-check='drill -TD'
@@ -335,6 +345,8 @@ if type alias > /dev/null 2>&1 ; then
         if [ -r '/etc/trusted-key.key' ] ; then
             # +multiline can be used to view DNS key id
             alias dnssec-check='dig +sigchase +topdown +trusted-key=/etc/trusted-key.key'
+        elif [ -r '/usr/share/dns/root.key' ] ; then
+            alias dnssec-check='dig +sigchase +topdown +trusted-key=/usr/share/dns/root.key'
         elif [ -r '/var/lib/unbound/root.key' ] ; then
             alias dnssec-check='dig +sigchase +topdown +trusted-key=/var/lib/unbound/root.key'
         else
