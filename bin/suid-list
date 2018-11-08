@@ -284,7 +284,7 @@ TRUSTED_SUID_FILES = [
 
     # lxc, https://linuxcontainers.org/
     # https://github.com/lxc/lxc
-    SuidFile('/lib/lxc/lxc-user-nic'),
+    SuidFile('/lib(exec)?/lxc/lxc-user-nic'),
     SuidFile('/lib/[a-zA-Z0-9_]+-linux-gnu/lxc/lxc-user-nic'),
 
     # man-db, http://www.nongnu.org/man-db/
@@ -705,6 +705,12 @@ TRUSTED_CAPS_FILES = [
     # https://github.com/traviscross/mtr
     CapsFile('/bin/mtr', '= cap_net_raw+ep'),
     CapsFile('/bin/mtr-packet', '= cap_net_bind_service,cap_net_raw+ep'),
+
+    # policycoreutils-newrole, https://github.com/SELinuxProject/selinux/wiki
+    # https://github.com/SELinuxProject/selinux/tree/master/policycoreutils/newrole
+    CapsFile('/bin/newrole',
+             '= cap_chown,cap_dac_override,cap_dac_read_search,cap_fowner,' +
+             'cap_setpcap,cap_sys_admin,cap_audit_write+ep'),
 
     # systemd, http://www.freedesktop.org/wiki/Software/systemd/
     # https://github.com/systemd/systemd
