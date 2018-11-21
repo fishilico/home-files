@@ -315,11 +315,6 @@ TRUSTED_SUID_FILES = [
     # https://github.com/davidben/nspluginwrapper
     SuidFile('/lib(32|64)?/nspluginwrapper/plugin-config'),
 
-    # ntfs-3g, http://www.tuxera.com/community/open-source-ntfs-3g/
-    SuidFile('/bin/ntfs-3g'),
-    LinkToSuidFile('/s?bin/mount.ntfs', '/bin/ntfs-3g'),
-    LinkToSuidFile('/s?bin/mount.ntfs-3g', '/bin/ntfs-3g'),
-
     # openssh, http://www.openssh.com/portable.html
     # https://anongit.mindrot.org/openssh.git/tree/
     SuidFile('/bin/ssh-agent', groups=('nobody', 'ssh', )),
@@ -607,6 +602,12 @@ KNOWN_SUID_FILES = [
     # landscape-client, http://www.ubuntu.com/management
     # http://bazaar.launchpad.net/~landscape/landscape-client/trunk/files
     SuidFile('/lib/landscape/apt-update'),
+
+    # ntfs-3g, http://www.tuxera.com/community/open-source-ntfs-3g/
+    # https://sourceforge.net/p/ntfs-3g/ntfs-3g/ci/edge/tree/
+    SuidFile('/bin/ntfs-3g'),
+    LinkToSuidFile('/s?bin/mount.ntfs', '/bin/ntfs-3g'),
+    LinkToSuidFile('/s?bin/mount.ntfs-3g', '/bin/ntfs-3g'),
 
     # open-vm-tools, https://sourceforge.net/projects/open-vm-tools/
     # https://github.com/vmware/open-vm-tools
