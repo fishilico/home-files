@@ -610,6 +610,8 @@ KNOWN_SUID_FILES = [
 
     # open-vm-tools, https://sourceforge.net/projects/open-vm-tools/
     # https://github.com/vmware/open-vm-tools
+    LinkToSuidFile('/bin/vmware-user', '/bin/vmware-user-suid-wrapper',
+                   owners=('root', ), groups=('root', )),
     SuidFile('/bin/vmware-user-suid-wrapper',
              owners=('root', ), groups=('root', )),
 
