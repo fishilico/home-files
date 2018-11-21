@@ -1,0 +1,101 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2018 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Enter an environment with a SOCKS proxy configuration, given by variables
+# SOCKS_PROXY_HOST and SOCKS_PROXY_PORT.
+#
+# SOCKS version:
+# - SOCKS4: to TCP/IPv4
+# - SOCKS4a: allow connecting to a domain name
+#   (using an invalid IPv4 destination address, 0.0.0.X)
+# - SOCKS5: allow TCP and UDP, over IPv4 or IPv6, using domain name, and
+#   authentication
+#
+# Documentation:
+# - https://en.wikipedia.org/wiki/SOCKS
+# - https://tools.ietf.org/html/rfc1928 SOCKS Protocol Version 5 (March 1996)
+
+# Default SOCKS port is 1080, but TOR uses 9050 by default
+SOCKS_PROXY_HOST="${SOCKS_PROXY_HOST:-127.0.0.1}"
+SOCKS_PROXY_PORT="${SOCKS_PROXY_PORT:-9050}"
+
+export all_proxy="socks4a://$SOCKS_PROXY_HOST:$SOCKS_PROXY_PORT/"
+export http_proxy="socks4a://$SOCKS_PROXY_HOST:$SOCKS_PROXY_PORT/"
+export https_proxy="socks4a://$SOCKS_PROXY_HOST:$SOCKS_PROXY_PORT/"
+export ftp_proxy="socks4a://$SOCKS_PROXY_HOST:$SOCKS_PROXY_PORT/"
+
+# For rsync
+export RSYNC_CONNECT_PROG=false
+export SSH_PROXYCOMMAND=""
+if command -v socat > /dev/null 2>&1
+then
+    RSYNC_CONNECT_PROG="socat - SOCKS4A:$SOCKS_PROXY_HOST:%H:873,proxyport=$SOCKS_PROXY_PORT"
+    SSH_PROXYCOMMAND="socat - SOCKS4A:$SOCKS_PROXY_HOST:%h:%p,proxyport=$SOCKS_PROXY_PORT"
+elif command -v nc > /dev/null 2>&1
+then
+    RSYNC_CONNECT_PROG="nc -X 5 -x $SOCKS_PROXY_HOST:$SOCKS_PROXY_PORT %H 873"
+    SSH_PROXYCOMMAND="nc -X 5 -x $SOCKS_PROXY_HOST:$SOCKS_PROXY_PORT %h %p"
+fi
+
+# Define some aliases, if possible
+# shellcheck disable=SC2039
+if type alias > /dev/null 2>&1 && [ -n "$SSH_PROXYCOMMAND" ]
+then
+    # shellcheck disable=SC2139
+    alias sshExt="ssh -o ProxyCommand='$SSH_PROXYCOMMAND'"
+
+    # rsync over ssh doesn't use $RSYNC_PROXY
+    # shellcheck disable=SC2139
+    alias rsyncSshExt="rsync -e \"ssh -o ProxyCommand='$SSH_PROXYCOMMAND'\""
+
+    # If scp is an alias to rsync, give parameters to rsync
+    if alias scp 2> /dev/null | grep -q 'rsync'
+    then
+        # shellcheck disable=SC2139
+        alias scpExt="scp -e \"ssh -o ProxyCommand='$SSH_PROXYCOMMAND'\""
+    else
+        # shellcheck disable=SC2139
+        alias scpExt="scp -o ProxyCommand='$SSH_PROXYCOMMAND'"
+    fi
+
+    # Chromium with SOCKS proxy
+    if [ -z "${CHROMIUM:-}" ]
+    then
+        if command -v chromium-browser > /dev/null 2>&1
+        then
+            CHROMIUM=chromium-browser
+        elif command -v chromium > /dev/null 2>&1
+        then
+            CHROMIUM=chromium
+        fi
+    fi
+    if [ -n "${CHROMIUM:-}" ]
+    then
+        # shellcheck disable=SC2139
+        alias chromium-proxy="$CHROMIUM --proxy-server=socks5://$SOCKS_PROXY_HOST:$SOCKS_PROXY_PORT"
+        # shellcheck disable=SC2139
+        alias chromium-incognito-proxy="$CHROMIUM --incognito --proxy-server=socks5://$SOCKS_PROXY_HOST:$SOCKS_PROXY_PORT"
+    fi
+fi
+
+echo >&2 "Using SOCKS proxy $http_proxy"
