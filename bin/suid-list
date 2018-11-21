@@ -201,6 +201,7 @@ TRUSTED_SUID_FILES = [
     # chromium, http://www.chromium.org/Home
     # https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master
     SuidFile('/lib/chromium/chrome-sandbox'),
+    SuidFile('/lib/x86_64-linux-gnu/oxide-qt/chrome-sandbox'),
     SuidFile('/opt/google/chrome/chrome-sandbox'),
 
     # cronie, https://fedorahosted.org/cronie/
@@ -380,9 +381,20 @@ TRUSTED_SUID_FILES = [
     # snappy (snap-confine), http://snapcraft.io/
     # https://github.com/snapcore/snapd
     SuidFile('/bin/ubuntu-core-launcher'),
+    LinkToSuidFile('/bin/ubuntu-core-launcher', '/lib/snapd/snap-confine',
+                   owners=('root', ), groups=('root', )),
+    SuidFile('/lib/snapd/snap-confine', owners=('root', ), groups=('root', )),
 
     # spice-gtk3, http://spice-space.org
     SuidFile('/bin/spice-client-glib-usb-acl-helper'),
+
+    # sssd, https://pagure.io/SSSD/sssd
+    # https://github.com/SSSD/sssd
+    SuidFile('/lib/x86_64-linux-gnu/sssd/krb5_child'),
+    SuidFile('/lib/x86_64-linux-gnu/sssd/ldap_child'),
+    SuidFile('/lib/x86_64-linux-gnu/sssd/p11_child'),
+    SuidFile('/lib/x86_64-linux-gnu/sssd/proxy_child'),
+    SuidFile('/lib/x86_64-linux-gnu/sssd/selinux_child'),
 
     # sudo, https://www.sudo.ws/
     # https://www.sudo.ws/repos/sudo
