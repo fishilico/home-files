@@ -1,0 +1,10 @@
+<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
+  <mime-type type="application/x-ida-32">
+    <comment>IDA (32-bit) Database</comment>
+    <glob pattern="*.idb"/>
+  </mime-type>
+  <mime-type type="application/x-ida-64">
+    <comment>IDA (64-bit) Database</comment>
+    <glob pattern="*.i64"/>
+  </mime-type>
+</mime-info>
