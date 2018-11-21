@@ -1,0 +1,103 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2013-2018 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Enter an environment with an HTTP proxy configuration, given by variables
+# HTTP_PROXY_HOST and HTTP_PROXY_PORT.
+#
+# In order to skip proxy for *.mydomain and localhost:
+#    export noproxy='.mydomain,localhost'
+
+if [ -z "${HTTP_PROXY_HOST:-}" ]
+then
+    echo >&2 "No HTTP proxy defined"
+else
+    export HTTP_PROXY_PORT="${HTTP_PROXY_PORT:-8080}"
+
+    export all_proxy="http://$HTTP_PROXY_HOST:$HTTP_PROXY_PORT/"
+    export http_proxy="http://$HTTP_PROXY_HOST:$HTTP_PROXY_PORT/"
+    export https_proxy="http://$HTTP_PROXY_HOST:$HTTP_PROXY_PORT/"
+    export ftp_proxy="http://$HTTP_PROXY_HOST:$HTTP_PROXY_PORT/"
+
+    # For rsync
+    export RSYNC_PROXY="$HTTP_PROXY_HOST:$HTTP_PROXY_PORT"
+
+    # Use socat, connect (Debian), connect-proxy (Ubuntu) or netcat for ssh
+    export SSH_PROXYCOMMAND=""
+    if false && command -v socat > /dev/null 2>&1
+    then
+        SSH_PROXYCOMMAND="socat - PROXY:$HTTP_PROXY_HOST:%h:%p,proxyport=$HTTP_PROXY_PORT"
+    elif command -v connect > /dev/null 2>&1
+    then
+        SSH_PROXYCOMMAND="connect -H $HTTP_PROXY_HOST:$HTTP_PROXY_PORT %h %p"
+    elif command -v connect-proxy > /dev/null 2>&1
+    then
+        SSH_PROXYCOMMAND="connect-proxy -H $HTTP_PROXY_HOST:$HTTP_PROXY_PORT %h %p"
+    elif command -v nc > /dev/null 2>&1
+    then
+        SSH_PROXYCOMMAND="nc -X connect -x $HTTP_PROXY_HOST:$HTTP_PROXY_PORT %h %p"
+    fi
+
+    # Define some aliases, if possible
+    # shellcheck disable=SC2039
+    if type alias > /dev/null 2>&1 && [ -n "$SSH_PROXYCOMMAND" ]
+    then
+        # shellcheck disable=SC2139
+        alias sshExt="ssh -o ProxyCommand='$SSH_PROXYCOMMAND'"
+
+        # rsync over ssh doesn't use $RSYNC_PROXY
+        # shellcheck disable=SC2139
+        alias rsyncSshExt="rsync -e \"ssh -o ProxyCommand='$SSH_PROXYCOMMAND'\""
+
+        # If scp is an alias to rsync, give parameters to rsync
+        if alias scp 2> /dev/null | grep -q 'rsync'
+        then
+            # shellcheck disable=SC2139
+            alias scpExt="scp -e \"ssh -o ProxyCommand='$SSH_PROXYCOMMAND'\""
+        else
+            # shellcheck disable=SC2139
+            alias scpExt="scp -o ProxyCommand='$SSH_PROXYCOMMAND'"
+        fi
+
+        # Chromium with HTTP proxy
+        # In order to access to localhost, add this to chromium command line:
+        #    --proxy-bypass-list="localhost;127.0.0.1"
+        # First, find out how chromium is called
+        if [ -z "${CHROMIUM:-}" ]
+        then
+            if command -v chromium-browser > /dev/null 2>&1
+            then
+                CHROMIUM=chromium-browser
+            elif command -v chromium > /dev/null 2>&1
+            then
+                CHROMIUM=chromium
+            fi
+        fi
+        if [ -n "${CHROMIUM:-}" ]
+        then
+            # shellcheck disable=SC2139
+            alias chromium-proxy="$CHROMIUM --proxy-server=$HTTP_PROXY_HOST:$HTTP_PROXY_PORT"
+            # shellcheck disable=SC2139
+            alias chromium-incognito-proxy="$CHROMIUM --incognito --proxy-server=$HTTP_PROXY_HOST:$HTTP_PROXY_PORT"
+        fi
+    fi
+fi
