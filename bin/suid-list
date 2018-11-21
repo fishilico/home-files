@@ -168,7 +168,7 @@ TRUSTED_SUID_FILES = [
     # abrt-addon-ccpp, https://abrt.readthedocs.org/en/latest/
     # https://github.com/abrt/abrt
     SuidFile('/libexec/abrt-action-install-debuginfo-to-abrt-cache',
-             owners=('abrt', )),
+             owners=('abrt', ), groups=('abrt', )),
 
     # apache, http://httpd.apache.org/docs/trunk/suexec.html
     # http://svn.apache.org/repos/asf/httpd/httpd/
@@ -244,6 +244,10 @@ TRUSTED_SUID_FILES = [
     # https://sourceware.org/git/?p=glibc.git;a=tree
     SuidFile('/lib(exec)?/pt_chown'),
 
+    # gstreamer, https://gstreamer.freedesktop.org/
+    # https://cgit.freedesktop.org/gstreamer/gstreamer/tree/
+    SuidFile('/libexec/gstreamer-1.0/gst-ptp-helper'),
+
     # inn2, https://www.eyrie.org/~eagle/software/inn/
     # https://inn.eyrie.org/trac/browser/trunk
     SuidFile('/lib/news/bin/innbind'),
@@ -296,6 +300,7 @@ TRUSTED_SUID_FILES = [
     # mtr, http://www.bitwizard.nl/mtr/
     # https://github.com/traviscross/mtr
     SuidFile('/bin/mtr'),
+    SuidFile('/sbin/mtr-packet'),
 
     # ndisc6, http://www.remlab.net/ndisc6/
     # http://git.remlab.net/gitweb/?p=ndisc6.git;a=tree
@@ -721,6 +726,7 @@ TRUSTED_CAPS_FILES = [
     # https://github.com/traviscross/mtr
     CapsFile('/bin/mtr', '= cap_net_raw+ep'),
     CapsFile('/bin/mtr-packet', '= cap_net_bind_service,cap_net_raw+ep'),
+    CapsFile('/sbin/mtr-packet', '= cap_net_raw+ep'),
 
     # policycoreutils-newrole, https://github.com/SELinuxProject/selinux/wiki
     # https://github.com/SELinuxProject/selinux/tree/master/policycoreutils/newrole
@@ -737,6 +743,7 @@ TRUSTED_CAPS_FILES = [
     # https://code.wireshark.org/review/gitweb?p=wireshark.git;a=tree
     # cap_dac_override is for usbmon, https://bugs.archlinux.org/task/44465
     CapsFile('/bin/dumpcap', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/dumpcap', '= cap_net_admin,cap_net_raw+ep'),
     CapsFile('/bin/dumpcap', '= cap_dac_override,cap_net_admin,cap_net_raw+eip'),
 ]
 
