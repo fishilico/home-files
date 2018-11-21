@@ -273,6 +273,26 @@ mounttable() {
     mount | LC_ALL=C sort -k3 | column -t
 }
 
+# Convert a VMDK disk image to a RAW one
+vmdk2raw() {
+    if [ $# -ne 1 ] ; then
+        echo >&2 "Usage: $0 image.vmdk"
+        echo >&2 "Convert image.vmdk to image.vmdk.converted.raw"
+        return 1
+    fi
+    qemu-img convert -f vmdk -O raw "$1" "$1.converted.raw"
+}
+
+# Convert a QCOW2 disk image to a RAW one
+qcow2raw() {
+    if [ $# -ne 1 ] ; then
+        echo >&2 "Usage: $0 image.qcow2"
+        echo >&2 "Convert image.qcow2 to image.qcow2.converted.raw"
+        return 1
+    fi
+    qemu-img convert -f qcow2 -O raw "$1" "$1.converted.raw"
+}
+
 # Print args or use standard input (mainly for internal use)
 print_args_or_stdin() {
     if [ $# -eq 0 ] || [ "$1" = "-" ] ; then
