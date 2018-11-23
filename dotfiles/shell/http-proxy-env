@@ -43,7 +43,7 @@ else
 
     # Use socat, connect (Debian), connect-proxy (Ubuntu) or netcat for ssh
     export SSH_PROXYCOMMAND=""
-    if false && command -v socat > /dev/null 2>&1
+    if command -v socat > /dev/null 2>&1
     then
         SSH_PROXYCOMMAND="socat - PROXY:$HTTP_PROXY_HOST:%h:%p,proxyport=$HTTP_PROXY_PORT"
     elif command -v connect > /dev/null 2>&1
