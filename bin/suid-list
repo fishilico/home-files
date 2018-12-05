@@ -726,7 +726,7 @@ TRUSTED_CAPS_FILES = [
     # https://github.com/traviscross/mtr
     CapsFile('/bin/mtr', '= cap_net_raw+ep'),
     CapsFile('/bin/mtr-packet', '= cap_net_bind_service,cap_net_raw+ep'),
-    CapsFile('/sbin/mtr-packet', '= cap_net_raw+ep'),
+    CapsFile('/s?bin/mtr-packet', '= cap_net_raw+ep'),
 
     # policycoreutils-newrole, https://github.com/SELinuxProject/selinux/wiki
     # https://github.com/SELinuxProject/selinux/tree/master/policycoreutils/newrole
