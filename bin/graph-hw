@@ -1074,7 +1074,7 @@ def dump_dot_graph(device_tree, stream):
 
     # Dump nodes
     for dev in device_tree.iter_all_depth_by_depth():
-        stream.write('   "{0}" [label="{1}"'.format(dev['sysfs_path'], dev.label))
+        stream.write('    "{0}" [label="{1}"'.format(dev['sysfs_path'], dev.label))
         color = dev.color
         if color is not None:
             stream.write(',fillcolor="{0}"'.format(color))
@@ -1084,7 +1084,7 @@ def dump_dot_graph(device_tree, stream):
     for dev in device_tree.iter_all():
         if dev['children'] is not None:
             for child in dev['children'].values():
-                stream.write('   "{0}" -> "{1}";\n'.format(dev['sysfs_path'], child['sysfs_path']))
+                stream.write('    "{0}" -> "{1}";\n'.format(dev['sysfs_path'], child['sysfs_path']))
     stream.write('}\n')
 
 
