@@ -52,6 +52,7 @@ This information can be recorded by the following commands:
         -name description -o \
         -name devnum -o \
         -name firmware_revision -o \
+        -name fw_ver -o \
         -name model -o \
         -name name -o \
         -name path -o \
@@ -864,6 +865,21 @@ def add_firmware_revisions(device_tree):
             if dev['buskind'] != 'platform':
                 logger.warning(
                     "Found 'firmware_revision' for unexpected device %s (%s)",
+                    dev['sysfs_path'], dev['buskind'])
+        except IOError:
+            pass
+
+        description_path = os.path.join(dev['sysfs_path'], 'fw_ver')
+        try:
+            with open(description_path, 'r') as fd_fwrev:
+                # /sys/class/mei/meiN/fw_ver contains lines in the following format:
+                # <platform>:<major>.<minor>.<milestone>.<build_no>.
+                value_lines = fd_fwrev.read().strip().splitlines()
+                value = ', '.join(sorted(set(value_lines)))
+                dev.add_to_label_desc("FW version: {0}".format(value))
+            if dev['buskind'] != 'mei':
+                logger.warning(
+                    "Found 'fw_ver' for unexpected device %s (%s)",
                     dev['sysfs_path'], dev['buskind'])
         except IOError:
             pass
