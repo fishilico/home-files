@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
 #
-# Copyright (c) 2016-2018 Nicolas Iooss
+# Copyright (c) 2016-2019 Nicolas Iooss
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
