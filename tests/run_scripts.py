@@ -144,7 +144,7 @@ def is_installed(program):
 
 
 def build_cmdline_from_spec(prog, spec):
-    """Build a command-line arugment list from a BIN_SCRIPTS specification
+    """Build a command-line argument list from a BIN_SCRIPTS specification
 
     Return None if the command is not to be run
     """

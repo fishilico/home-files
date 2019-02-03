@@ -23,7 +23,7 @@
 #
 # Remove an entry from ~/.ssh/known_hosts file.
 # When a machine changes its ssh host key (for example when it is reinstalled
-# without restoring a backup of /etc/ssh), the next time a ssh client attemps
+# without restoring a backup of /etc/ssh), the next time a ssh client attempts
 # to connect, it will get the following warning:
 #
 #     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@

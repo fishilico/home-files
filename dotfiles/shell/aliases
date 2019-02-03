@@ -32,7 +32,7 @@ if type alias > /dev/null 2>&1 ; then
     alias umount='umount -v'
     alias ln='ln -v'
     alias rm='rm -v'
-    # Be interactive when overwritting files
+    # Be interactive when overwriting files
     alias cp='cp -iv'
     alias mv='mv -iv'
     # Only show changes, if available
@@ -76,7 +76,7 @@ if type alias > /dev/null 2>&1 ; then
     alias :w='echo "Save is not implemented in ${SHELL##*/} :p"'
     alias :x=':w'
     alias :q='echo "Type exit or ^D if you want to exit ${SHELL##*/}"'
-    alias :wq='echo "Hey! Thats ${SHELL##*/} and *not* VI(M)!"'
+    alias :wq='echo "Hey! That is ${SHELL##*/} and *not* VI(M)!"'
 
     # List files, using available ls options
     get_ls_parameters() {
@@ -269,6 +269,9 @@ if type alias > /dev/null 2>&1 ; then
 
     # Diff for patches: all text, new file, show C function, unified context
     alias diff-patch='diff -aNpu'
+
+    # Check for common misspellings using codespell in a git project
+    alias codespell-git='git ls-files | xargs codespell'
 
     # vman = use vim as a pager
     alias vman="man -P \"/bin/sh -c \\\"col -b -p -x | \

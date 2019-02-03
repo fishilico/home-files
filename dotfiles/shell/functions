@@ -207,7 +207,7 @@ postless() {
     fi
     OUTPUT="$(postcat "$@")"
     STATUS=$?
-    # Use less only if postcat succeded
+    # Use less only if postcat succeeded
     if [ "$STATUS" -eq 0 ] ; then
         echo "$OUTPUT" |less
     else
@@ -243,9 +243,9 @@ case $(grep --help 2> /dev/null) in
 esac
 
 # Escape control characters when cat'ing binary streams to a TTY
-# Automaticaly add -v (for --show-nonprinting) to cat parameters.
+# Automatically add -v (for --show-nonprinting) to cat parameters.
 # This is known to be incompatible with busybox cat, which is detected by
-# testing wether /bin/cat is a symbolic link.
+# testing whether /bin/cat is a symbolic link.
 protected_cat() {
     python -c \
         'import os,sys;a=sys.argv;os.execv(a[1],["cat","-v"][:1+sys.stdout.isatty()]+a[2:])' \

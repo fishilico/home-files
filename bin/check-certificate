@@ -48,7 +48,7 @@ VERBLVL_DEBUG = 2
 def get_notafter(filename, verbose):
     """Get the notAfter field in the specified file"""
     cmdline = [OPENSSL_CMD, 'x509', '-noout', '-dates', '-in', filename]
-    # Guess wether it is PEM or DER by reading the first byte
+    # Guess whether it is PEM or DER by reading the first byte
     with open(filename, 'rb') as certfile:
         beginning = certfile.read(1)
         if beginning == b'-':

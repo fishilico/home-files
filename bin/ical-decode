@@ -180,7 +180,7 @@ def main(argv=None):
     parser.add_argument('-u', '--utc', action='store_true',
                         help="Use UTC time")
     parser.add_argument('-v', '--verbose', action='store_true',
-                        help="Be more verbose in the outputed values")
+                        help="Be more verbose in the outputted values")
     args = parser.parse_args(argv)
 
     if args.timezone:

@@ -32,7 +32,7 @@
 *.nja
 /nbproject/
 
-# Automaticaly generated files
+# Automatically generated files
 .DS_Store
 *.egg
 *.egg-info

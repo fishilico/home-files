@@ -110,7 +110,7 @@ URxvt.keysym.Control-Right: \033[1;5C
 ! * Make URL clickable, open with xdg-open, which can be configured to be
 !   the default browser (eg. /usr/bin/chromium -incognito)
 ! * Copy-paste using Ctrl-Shift-C/V
-! * Toogle fullscreen with F11
+! * Toggle fullscreen with F11
 ! * Open a new terminal window with Ctrl-Shift-N
 URxvt.perl-ext-common: default,clipboard,keycmd,matcher
 URxvt.url-launcher: /usr/bin/xdg-open

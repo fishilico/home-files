@@ -430,7 +430,7 @@ def read_syscalls_from_file(filename, arch):
     if filename.endswith('.tbl'):
         return read_syscalls_from_table_file(filename, arch)
     # This is an internal error in SC_INCLUDE_LOCATIONS
-    raise RuntimeError("Unknwon file extenstion of {0}".format(filename))
+    raise RuntimeError("Unknown file extension of {0}".format(filename))
 
 
 def syscall_number(name, syscalls_name2nr, syscalls_nr2name):

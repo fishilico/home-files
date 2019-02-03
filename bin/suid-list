@@ -1002,7 +1002,7 @@ def main(argv=None):
     # Warn here if libcap was not found
     if libcap is None:
         logger.warning("libcap.so has not been found, not analyzing file caps")
-        logger.debug("libcap.so is usally installed as a dependency of iputils (ping, ping6...)")
+        logger.debug("libcap.so is usually installed as a dependency of iputils (ping, ping6...)")
 
     # Find if we specified special directories
     base_dirs = set()

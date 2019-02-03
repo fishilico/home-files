@@ -82,7 +82,7 @@ def color_index2term(index, colorparams):
     ----------
     index: a color index between 0 and 255
 
-    colorparams: a dictionary of optional paramaters:
+    colorparams: a dictionary of optional parameters:
 
     bold (boolean):
         use bold text

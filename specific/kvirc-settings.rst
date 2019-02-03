@@ -3,7 +3,7 @@ KVIrc configuration
 
 KVIrc default configuration is quite good except the timestamp format of
 messages. This format does not include the full date. The configuration
-paramater which defines this lies in the following menu:
+parameter which defines this lies in the following menu:
 "Settings" -> "Configure Theme..." -> dialog "Text" -> tab "Timestamp" ->
 field "Timestamp format:".
 

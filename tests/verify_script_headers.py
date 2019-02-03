@@ -119,7 +119,7 @@ def check_copyright_license(copytext):
 
 
 def check_copyright_lines(lines):
-    """Chech the content of a file copyright
+    """Check the content of a file copyright
 
     Return what's after the license on success
     """

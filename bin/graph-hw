@@ -549,7 +549,7 @@ def fill_names_with_lspci_output(device_tree):
 
 
 def read_integer_file(path):
-    """Read a file containing an integer, and return None if an error occured"""
+    """Read a file containing an integer, and return None if an error occurred"""
     try:
         with open(path, 'r') as int_fd:
             return int(int_fd.read())

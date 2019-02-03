@@ -65,7 +65,7 @@ if [ "$(fakeroot id -u)" != 0 ] ; then
 fi
 
 # proot<=5.1.0 is not compatible with Linux >= 4.9 because of a change in the
-# way ptrace and seccomp interracts
+# way ptrace and seccomp interacts
 # https://github.com/proot-me/PRoot/issues/106
 # https://github.com/proot-me/PRoot/pull/115
 PROOT_VERSION="$(pacman -Q proot | cut -d' ' -f2)"

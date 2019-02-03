@@ -83,7 +83,7 @@ CAPABILITIES = [
     'CAP_AUDIT_READ',  # 37
 ]
 
-# Transitions accross execve of file F from P to P':
+# Transitions across execve of file F from P to P':
 # * P'(effective) = F(effective) ? P'(permitted) : P'(ambient)
 # * P'(permitted) = (P(inheritable) & F(inheritable)) | (F(permitted) & Bounding) | P'(ambient)
 # * P'(inheritable) = P(inheritable)
@@ -91,9 +91,9 @@ CAPABILITIES = [
 KNOWN_CAPSETS = [
     'Eff',  # Effective
     'Prm',  # Permitted, superset of effective set
-    'Inh',  # Inheritable, preserved accross execve
-    'Amb',  # Ambiant, preserved accross execve of an unprivileged program
-    'Bnd',  # Bounding set, mask a file permitted set accross execve
+    'Inh',  # Inheritable, preserved across execve
+    'Amb',  # Ambiant, preserved across execve of an unprivileged program
+    'Bnd',  # Bounding set, mask a file permitted set across execve
 ]
 
 

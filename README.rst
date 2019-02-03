@@ -23,7 +23,7 @@ Directories
 * ``tests/``: scripts which check the style of the files (PEP8-compliance of
   Python scripts, copyright information, etc.).
 * ``xdgconfig/``: settings for Desktop Environments which do not use plain old
-  text files.  These DE usally build a database and an provide an API which
+  text files.  These DE usually build a database and an provide an API which
   makes saving & restoring settings way harder than it has to be.  Nonetheless
   parts of such a task can be automated.
 
