@@ -82,6 +82,7 @@ BIN_SCRIPTS = {
     'graph-hw': 'direct',
     'gsettings-dump': '(gsettings)direct',
     'ical-decode': 'help',
+    'iommu-chipsec': 'help',
     'iommu-show': 'direct',
     'iptables-rev': 'args[-A INPUT -j DROP]',
     'iptables-stats': '(iptables,ip6tables)direct',

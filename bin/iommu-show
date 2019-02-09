@@ -28,7 +28,17 @@
 #   https://wiki.gentoo.org/wiki/IOMMU_SWIOTLB
 #   https://wiki.archlinux.org/index.php/PCI_passthrough_via_OVMF#Setting_up_IOMMU
 #
+# The result of this script can be used to better understand the output of the
+# following commands from chipsec (https://github.com/chipsec/chipsec):
+#
+#    chipsec_util iommu list
+#    chipsec_util iommu config
+#    chipsec_util iommu pt | tee chipsec_iommu_pt.out.txt
+#
+# Chipsec can detect several IOMMU engines such as GFXVTD and VTD.
+#
 # In order to see how Linux configured the IOMMU at boot time, use:
+#
 #    $ dmesg | grep -i -e IOMMU -e DMAR
 #    Command line: ... intel_iommu=on
 #    ACPI: DMAR 0x0000000087C21D78 0000A8 (v01 INTEL  SKL      00000001 INTL 00000001)

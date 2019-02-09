@@ -1,0 +1,437 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2019 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Make "chipsec_util iommu pt" output human-readable
+
+The output of IOMMU pagetable dump is too verbose to be readable as-is.
+This script aims at simplifying this output and at making it easier to use.
+It can either be run as-is on a system, of launched in an "offline mode" with:
+
+* on the analyzed system, in a root shell:
+
+    chipsec_util iommu pt > chipsec_iommu_pt.out.txt
+    lspci -nnvv > lspci.out.txt
+
+Documentation:
+
+* Fields of Intel VT-d context entries:
+  https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/iommu/intel-pasid.c?h=v4.20
+
+  - DID = Domain Identifier
+  - AVAIL = ?
+  - AW = Address Width
+  - T = ? (might be PGTT(PASID Granular Translation Type, 4 for passthrough))
+  - FPD = Fault Processing Disable
+  - SLPTPTR = Second Level Page Table Pointer
+  - P = Present
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+import argparse
+import collections
+import json
+import logging
+import re
+import subprocess
+import sys
+
+
+logger = logging.getLogger(__name__)
+
+
+def human_size(size):
+    """Format a size into something readable"""
+    units = ('B', 'KB', 'MB', 'GB', 'TB', 'EB')
+    base_unit = (size.bit_length() - 3) // 10  # 4KB but 2048 B
+    rounded_size = '{:.2f}'.format(float(size / (1 << (10 * base_unit))))
+    if rounded_size.endswith('.00'):
+        rounded_size = rounded_size[:-3]
+    return rounded_size + units[base_unit]
+
+
+class Device(object):
+    """Description of a PCI device"""
+    def __init__(self, bdf, description):
+        self.bdf = bdf  # Bus:Device.Function address
+        self.description = description
+        self.has_bus_master = None  # Has Bus Master bit
+
+    def __str__(self):
+        result = self.bdf
+        if self.description:
+            result += ' ' + self.description
+        if self.has_bus_master is None:
+            result += ' (UNKNOWN bus master)'
+        elif self.has_bus_master is False:
+            result += ' (NOT bus master)'
+        return result
+
+
+class DeviceList(object):
+    """List of devices"""
+    def __init__(self):
+        self.devices = {}
+
+    def describe(self, bdf):
+        """Describe a device by its Bus:Device.Function address"""
+        bdf = bdf.lower()
+        device = self.devices.get(bdf)
+        if device is None:
+            return bdf
+        return str(device)
+
+    def parse_lspci_output(self, stream):
+        """Parse a stream from the output of lspci"""
+        current_device = None
+        for byteline in stream:
+            line = byteline.decode('utf-8').rstrip()
+            if not line:
+                continue
+            if line.startswith((' ', '\t')):
+                if current_device is None:
+                    logger.error("Unable to parse lspci output, unexpected device line %r", line)
+                    return
+                # Parse lines from lspci -vv: '\tControl: I/O+ Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop-'...
+                matches = re.match(r'^\s+Control: .*BusMaster([+-])', line)
+                if matches is not None:
+                    bus_master = matches.group(1) == '+'
+                    if current_device.has_bus_master is None:
+                        current_device.has_bus_master = bus_master
+                    elif current_device.has_bus_master != bus_master:
+                        logger.warning("Device with inconsistent bus mastering state: %s", current_device)
+                    continue
+
+                # Parse lines from lspci -v: '\tFlags: bus master, fast devsel, latency 0'...
+                matches = re.match(r'^\s+Flags: (?!PMEClk)', line)
+                if matches is not None:
+                    bus_master = ' bus master,' in line + ','
+                    if current_device.has_bus_master is None:
+                        current_device.has_bus_master = bus_master
+                    elif current_device.has_bus_master != bus_master:
+                        logger.warning("Device with inconsistent bus mastering state: %s", current_device)
+                    continue
+            elif re.match(r'^[0-9a-f]+:[ 0-9a-f]+$', line):
+                # Skip hexadecimal dump from lspci -x
+                continue
+            else:
+                matches = re.match(r'^([0-9a-f:.]+)(.*)$', line)
+                if matches is None:
+                    logger.error("Unable to parse lspci output, unexpected new device line %r", line)
+                    return
+                bdf, desc = matches.groups()
+                if bdf in self.devices:
+                    logger.error("Unable to parse lspci output, duplicate device %s", bdf)
+                    return
+                current_device = Device(bdf, desc.strip())
+                self.devices[bdf] = current_device
+
+        logger.debug("Loaded PCI devices:")
+        for bdf_dev in sorted(self.devices.items()):
+            logger.debug("  %s", bdf_dev[1])
+
+    def load_lspci_output(self, filepath):
+        """Load a file containing the output of lspci"""
+        with open(filepath, 'rb') as stream:
+            self.parse_lspci_output(stream)
+
+    def run_lspci(self):
+        """Run lspci to populate the data"""
+        logger.debug("Running lspci -nnvv")
+        proc = subprocess.Popen(['lspci', '-nnvv'], stdout=subprocess.PIPE)
+        self.parse_lspci_output(proc.stdout)
+        proc.wait()
+
+
+def gather_lines_by_indent(stream):
+    """Gather the parts of the output depending on their indentation level
+
+    Transform:
+        Line1
+        Line2
+            Line2a
+            Line2b
+    Into:
+        [
+            ('Line1', None),
+            ('Line2', [
+                ('Line2a', None),
+                ('Line2b', None)
+            ]),
+        ]
+    """
+    # stack of (indent, parts) with parts list of (line, sub_lines)
+    contexts_stack = [('', [])]
+    last_indent = ''
+    for byteline in stream:
+        line = byteline.decode('utf-8')
+        # Strip escape sequences for colors
+        line = line.replace('\x1b[39m', '').replace('\x1b[0m', '').rstrip()
+        if not line:
+            continue
+        matches = re.match(r'^( *)(.*)', line)
+        indent, line = matches.groups()
+        if indent == last_indent:
+            # Simple case: add a line to the top of the stack
+            assert contexts_stack[-1][0] == indent  # Sanity check
+            contexts_stack[-1][1].append((line, None))
+            continue
+
+        if len(indent) > len(last_indent):
+            # Increment the indentation
+            assert indent.startswith(last_indent)
+            contexts_stack.append((indent, [(line, None)]))
+            last_indent = indent
+            continue
+
+        # Decrement the indentation
+        assert last_indent.startswith(indent)
+        while len(last_indent) > len(indent):
+            indented_parts = contexts_stack.pop()[1]
+            # Replace a tuple
+            super_line_tup = contexts_stack[-1][1].pop()
+            assert len(super_line_tup) == 2
+            assert super_line_tup[1] is None
+            contexts_stack[-1][1].append((super_line_tup[0], indented_parts))
+            last_indent = contexts_stack[-1][0]
+            assert last_indent.startswith(indent)  # Sanity check
+
+        assert last_indent == indent
+        assert contexts_stack[-1][0] == indent
+        contexts_stack[-1][1].append((line, None))
+
+    # Last pops
+    while last_indent:
+        indented_parts = contexts_stack.pop()[1]
+        super_line_tup = contexts_stack[-1][1].pop()
+        assert len(super_line_tup) == 2
+        assert super_line_tup[1] is None
+        contexts_stack[-1][1].append((super_line_tup[0], indented_parts))
+        last_indent = contexts_stack[-1][0]
+
+    assert len(contexts_stack) == 1
+    return contexts_stack[0][1]
+
+
+def gather_chipsec_pte(page_entries_parts):
+    """Collect page table entries from parts"""
+    # Save intervals with RWX rights, for both bus addresses and physical ones
+    # Intervals are stored as: start -> (end=last+1, permission flags)
+    # As there can be duplicate entries (dumping the page tables can be slow
+    # when they are changed quickly for a network card), do not try to
+    # deduplicate when inserting.
+    bus_addresses = {}
+    phys_addresses = {}
+
+    def browse_the_parts(parts):
+        """Recursively browse the given parts"""
+        for line, subparts in parts:
+            line_split = line.split()
+            if len(line_split) == 2:
+                # Ensure there is only the address of the page table
+                assert line_split[0] in ('EPTP:', 'PML4E:', 'PDPTE:', 'PDE:')
+                assert re.match(r'[0-9a-fA-F]+$', line_split[1])
+                if subparts:
+                    browse_the_parts(subparts)
+                continue
+
+            if line_split[0] == 'PTE:':
+                # Usual 4KB page entry
+                # For example: PTE: 00002B5DE0000 - 4KB PAGE  -W- UC  GPA: 00000FE7E8000
+                assert line_split[2:5] == ['-', '4KB', 'PAGE'], "Unexpected PTE line {}".format(line_split)
+                page_size = 0x1000
+            elif line_split[0] == 'PDE:':
+                # Large 2MB page entry
+                # For example: PDE: 0000000E00000 - 2MB PAGE  -WR UC  1:1 mapping
+                assert line_split[2:5] == ['-', '2MB', 'PAGE'], "Unexpected PTE line {}".format(line_split)
+                page_size = 0x200000
+            else:
+                raise ValueError("Unsupported page entry kind {}".format(repr(line)))
+
+            phys_addr = int(line_split[1], 16)
+            page_perms = line_split[5][::-1]
+            if line_split[-2] == '1:1' and line_split[-1] == 'mapping':
+                bus_addr = phys_addr
+            elif line_split[-2] == 'GPA:':
+                bus_addr = int(line_split[-1], 16)
+            else:
+                raise ValueError("Unsupported page entry address {}".format(repr(line)))
+
+            bus_addresses[bus_addr] = (bus_addr + page_size, page_perms)
+            phys_addresses[phys_addr] = (phys_addr + page_size, page_perms)
+
+    def merge_intervals(pages):
+        """Merge the given pages into intervals"""
+        result = []
+        last_start = None
+        last_end = None
+        last_perms = None
+        for cur_start, cur_data in sorted(pages.items()):
+            cur_end, cur_perms = cur_data
+            if last_end == cur_start and last_perms == cur_perms:
+                # Merge
+                last_end = cur_end
+            else:
+                # Do not merge
+                if last_start is not None:
+                    result.append('{:08x} - {:08x}: {} ({})'.format(
+                        last_start, last_end - 1, last_perms, human_size(last_end - last_start)))
+                last_start = cur_start
+                last_end = cur_end
+                last_perms = cur_perms
+        if last_start is not None:
+            result.append('{:08x} - {:08x}: {} ({})'.format(
+                last_start, last_end - 1, last_perms, human_size(last_end - last_start)))
+        return result
+
+    browse_the_parts(page_entries_parts)
+    return collections.OrderedDict((
+        ('bus_addresses', merge_intervals(bus_addresses)),
+        ('phys_addresses', merge_intervals(phys_addresses)),
+    ))
+
+
+def parse_chipsec_iommu_pt_output(stream, devices):
+    """Parse the output of chipsec_util iommu pt"""
+    # First gather the parts of the output
+    output_parts = gather_lines_by_indent(stream)
+
+    # Is there an error message?
+    if output_parts and output_parts[-1][0].startswith('\x1b[31mERROR:'):
+        logger.error("chipsec reported an error: %r", output_parts[-1][0])
+        if output_parts[-1][1]:
+            for subpart in output_parts[-1][1]:
+                logger.error("... %s", subpart[0])
+        return None
+
+    # VT-d domains by physical address
+    vtd_domains = {}
+    for main_line, sublines in output_parts:
+        logger.debug("Parsing %r", main_line)
+
+        matches = re.match(r'^\[iommu\] Translation enabled *: (.*)$', main_line)
+        if matches and matches.group(1) != '1':
+            logger.warning("IOMMU translation is not enabled")
+
+        if main_line == '[paging] VT-d domains:':
+            for hexaddr, subsublines in sublines:
+                assert re.match(r'^0x([0-9a-fA-F]+)$', hexaddr)
+                assert subsublines is None
+                addr = int(hexaddr[2:], 16)
+                vtd_domains[addr] = collections.OrderedDict()
+
+        elif main_line == '[paging] VT-d context entries:':
+            # Find devices for each VT-d domain
+            for entry, subsublines in sublines:
+                assert subsublines is None
+                # Match '00:14.0  DID: 01  AVAIL: 0  AW: 2  T: 0  FPD: 0  SLPTPTR: 000000045BC31000'
+                matches = re.match(r'^([0-9a-fA-F:.]+) +DID: ([0-9a-fA-F]+) .* SLPTPTR: ([0-9a-fA-F]+)$', entry)
+                if matches:
+                    bdf, hexdid, slptptr = matches.groups()
+                    bdf = bdf.lower()
+                    domain_id = int(hexdid, 16)
+                    domain_addr = int(slptptr, 16)
+                    logger.info("VT-d domain %d at %#x with device %s",
+                                domain_id, domain_addr, devices.describe(bdf))
+                    if domain_addr not in vtd_domains:
+                        vtd_domains[domain_addr] = collections.OrderedDict()
+                    vtd_domains[domain_addr]['bdf'] = bdf
+                    vtd_domains[domain_addr]['device'] = devices.describe(bdf)
+                    vtd_domains[domain_addr]['domain_id'] = domain_id
+                    continue
+                logger.error("Unexpected VT-d context entry: %r", entry)
+
+        elif main_line == '[paging] VT-d context pages:':
+            # Ignore the pages used to describe the VT-d context
+            pass
+
+        elif main_line.startswith('[iommu] total VTd domains:'):
+            for sub_line, subsublines in sublines:
+                matches = re.match(r'^Page Tables for domain 0x([0-9a-fA-F]+):', sub_line)
+                if matches is None:
+                    continue
+                logger.debug("Parsing - %r", sub_line)
+                domain_addr = int(matches.group(1), 16)
+                if domain_addr not in vtd_domains:
+                    vtd_domains[domain_addr] = collections.OrderedDict()
+
+                # Parse page table entries
+                vtd_domains[domain_addr]['mapping'] = gather_chipsec_pte(subsublines)
+
+        elif sublines:
+            logger.warning("Skipped unknown part %r with %d sublines", main_line, len(sublines))
+
+    # Sort the entries
+    return collections.OrderedDict(
+        ('domain_{:08x}'.format(domain_addr), values)
+        for domain_addr, values in sorted(vtd_domains.items()))
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Float number encoder")
+    parser.add_argument('chipsec_out_file', metavar='CHIPSEC_OUT_FILE', nargs='?', type=str,
+                        help="output of 'chipsec_util iommu pt'")
+    parser.add_argument('-p', '--pci', metavar='LSPCI_OUT_FILE', type=str,
+                        help="output of 'lspci -nnvv'")
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help="show debug messages")
+    parser.add_argument('-o', '--output', type=str,
+                        help="write the JSON output to this file")
+
+    args = parser.parse_args(argv)
+    logging.basicConfig(format='[%(levelname)-5s] %(message)s',
+                        level=logging.DEBUG if args.debug else logging.INFO)
+
+    # Load a list of PCI devices
+    devices = DeviceList()
+    if args.pci:
+        devices.load_lspci_output(args.pci)
+    elif not args.chipsec_out_file:
+        # Run lspci only when running chipsec too
+        devices.run_lspci()
+
+    # Load chipsec results
+    if args.chipsec_out_file:
+        with open(args.chipsec_out_file, 'rb') as stream:
+            iommu_config = parse_chipsec_iommu_pt_output(stream, devices)
+    else:
+        logger.debug("Running chipsec_util iommu pt")
+        proc = subprocess.Popen(['chipsec_util', 'iommu', 'pt'], stdout=subprocess.PIPE)
+        iommu_config = parse_chipsec_iommu_pt_output(proc.stdout, devices)
+        exit_code = proc.wait()
+        if exit_code != 0:
+            logger.error("chipsec_util failed")
+            return exit_code
+
+    if args.output:
+        logger.info("Writing JSON file %s", args.output)
+        with open(args.output, 'w') as fout:
+            json.dump(iommu_config, fout, indent=2)
+    else:
+        json.dump(iommu_config, sys.stdout, indent=2)
+        sys.stdout.write('\n')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
