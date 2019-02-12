@@ -31,6 +31,10 @@ It can either be run as-is on a system, of launched in an "offline mode" with:
     chipsec_util iommu pt > chipsec_iommu_pt.out.txt
     lspci -nnvv > lspci.out.txt
 
+* on the analyzing system:
+
+    iommu-chipsec -p lspci.out.txt -o iommu.json chipsec_iommu_pt.out.txt
+
 Documentation:
 
 * Fields of Intel VT-d context entries:
