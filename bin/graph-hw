@@ -862,7 +862,7 @@ def add_firmware_revisions(device_tree):
                     logger.warning("Skipping multi-line firmware revision for %s", dev['sysfs_path'])
                     continue
                 dev.add_to_label_desc("FW revision: {0}".format(value))
-            if dev['buskind'] != 'platform':
+            if dev['buskind'] in ('platform', 'scsi_host'):
                 logger.warning(
                     "Found 'firmware_revision' for unexpected device %s (%s)",
                     dev['sysfs_path'], dev['buskind'])
