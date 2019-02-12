@@ -311,10 +311,11 @@ class SysfsDevice(collections.OrderedDict):
 
         # If every child shares the same color, use it too
         if self['children'] is None:
-            return
+            return None
         child_colors = set(child.color for child in self['children'].values())
         if len(child_colors) == 1:
             return list(child_colors)[0]
+        return None
 
 
 def list_directory(dirpath):
@@ -1080,13 +1081,21 @@ def shorten_label_paths(device_tree):
         dev['label_desc'] = '\n'.join(shorten_paths_in_label(l) for l in desc.split('\n'))
 
 
-def dump_dot_graph(device_tree, stream):
+def dump_dot_graph(device_tree, stream, output_tree, output_circle):
     """Produce a dot graph"""
     logger.debug("Producing a DOT graph")
     stream.write('digraph {\n')
     # stream.write('    overlap=false;\n')
-    stream.write('    overlap=prism;\n')
     stream.write('    node [shape=box,style=filled];\n')
+    if output_circle:
+        stream.write('    overlap=prism;\n')
+    elif output_tree:
+        # Top-to-bottom graph (which is the default in Graphviz)
+        stream.write('    rankdir=TB;\n')
+    else:
+        # Left-to-Right graph
+        stream.write('    rankdir=LR;\n')
+        # stream.write('    splines=polyline;\n')
 
     # Dump nodes
     for dev in device_tree.iter_all_depth_by_depth():
@@ -1100,12 +1109,21 @@ def dump_dot_graph(device_tree, stream):
     for dev in device_tree.iter_all():
         if dev['children'] is not None:
             for child in dev['children'].values():
-                stream.write('    "{0}" -> "{1}";\n'.format(dev['sysfs_path'], child['sysfs_path']))
+                if output_circle:
+                    stream.write('    "{0}" -> "{1}";\n'.format(dev['sysfs_path'], child['sysfs_path']))
+                elif output_tree:
+                    # Use compass points as port position for Top-to-bottom graph
+                    stream.write('    "{0}":s -> "{1}":n;\n'.format(dev['sysfs_path'], child['sysfs_path']))
+                else:
+                    # Use compass points as port position for Left-to-Right graph
+                    stream.write('    "{0}":e -> "{1}":w;\n'.format(dev['sysfs_path'], child['sysfs_path']))
     stream.write('}\n')
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Graph hardware components")
+    parser.add_argument('-c', '--circle', action='store_true',
+                        help="output the graph as something that looks like a circle")
     parser.add_argument('-d', '--debug', action='store_true',
                         help="show debug messages")
     parser.add_argument('-i', '--input', type=str,
@@ -1127,7 +1145,7 @@ def main(argv=None):
     parser.add_argument('-S', '--syspath', type=str, default='sys',
                         help="path to the sysfs directory to use (/sys by default)")
     parser.add_argument('-t', '--tree', action='store_true',
-                        help="output the graph as a flat tree")
+                        help="output the graph as a flat top-to-bottom tree")
     parser.add_argument('-T', '--type', type=str,
                         help="specify a Graphviz/dot output format (svg, png...)")
     parser.add_argument('-V', '--no-virtual', action='store_true',
@@ -1273,19 +1291,20 @@ def main(argv=None):
         if args.output:
             logger.info("Writing DOT file %s", args.output)
             with open(args.output, 'w') as fout:
-                dump_dot_graph(device_tree, fout)
+                dump_dot_graph(device_tree, fout, args.tree, args.circle)
         else:
-            dump_dot_graph(device_tree, sys.stdout)
+            dump_dot_graph(device_tree, sys.stdout, args.tree, args.circle)
     else:
         assert args.output  # It should have triggered a parser.error
         # Run graphviz
-        if args.tree:
-            cmdline = ['dot', '-T' + outformat, '-o' + args.output]
-        else:
+        if args.circle:
             cmdline = ['sfdp', '-Goverlap=prism', '-T' + outformat, '-o' + args.output]
+        else:
+            cmdline = ['dot', '-T' + outformat, '-o' + args.output]
+
         logger.info("Running %s", ' '.join(cmdline))
         proc = subprocess.Popen(cmdline, stdin=subprocess.PIPE, universal_newlines=True)
-        dump_dot_graph(device_tree, proc.stdin)
+        dump_dot_graph(device_tree, proc.stdin, args.tree, args.circle)
         proc.stdin.close()
         exitcode = proc.wait()
         if exitcode:
