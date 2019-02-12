@@ -458,6 +458,9 @@ if type alias > /dev/null 2>&1 ; then
     # Open xterm with black-on-white colors
     alias xterm-bow='xterm -fg black -bg white'
 
+    # Show the current keymap
+    alias dump-xmodmap='xmodmap -pke'
+
     # Make Arch Linux package with a temporary directory
     # /etc/fstab may contain something like this if /tmp is mounted with noexec:
     # $USER.makepkg /tmp/makepkg-$USER tmpfs defaults,auto,nodev,exec,nosuid,gid=$GID,uid=$UID,mode=0700 0 0
