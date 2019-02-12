@@ -965,6 +965,8 @@ def add_net_addresses(device_tree):
             logger.debug("Running %s", ' '.join(cmdline))
             try:
                 output = subprocess.check_output(cmdline)
+            except subprocess.CalledProcessError as exc:
+                logger.warning("Command %r failed with exit code %d", ' '.join(cmdline), exc.returncode)
             except OSError as exc:
                 if exc.errno == errno.ENOENT:
                     logger.warning("ifconfig is not installed")
