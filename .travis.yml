@@ -8,68 +8,88 @@ matrix:
     - os: linux
       dist: bionic
       python: "3.7"
+      env: BUILDENV=ubuntu1804-bionic-python3.7
     - os: linux
       dist: bionic
       python: "3.6"
+      env: BUILDENV=ubuntu1804-bionic-python3.6
     - os: linux
       dist: bionic
       python: "3.5"
+      env: BUILDENV=ubuntu1804-bionic-python3.5
     - os: linux
       dist: bionic
       python: "3.4"
+      env: BUILDENV=ubuntu1804-bionic-python3.4
     - os: linux
       dist: bionic
       python: "2.7"
+      env: BUILDENV=ubuntu1804-bionic-python2.7
 
     # Ubuntu 16.04 LTS (Xenial Xerus)
     - os: linux
       dist: xenial
       python: "3.7"
+      env: BUILDENV=ubuntu1604-xenial-python3.7
     - os: linux
       dist: xenial
       python: "3.6"
+      env: BUILDENV=ubuntu1604-xenial-python3.6
     - os: linux
       dist: xenial
       python: "3.5"
+      env: BUILDENV=ubuntu1604-xenial-python3.5
     - os: linux
       dist: xenial
       python: "3.4"
+      env: BUILDENV=ubuntu1604-xenial-python3.4
     - os: linux
       dist: xenial
       python: "2.7"
+      env: BUILDENV=ubuntu1604-xenial-python2.7
 
     # Ubuntu 14.04 LTS (Trusty Tahr)
     - os: linux
       dist: trusty
       python: "3.6"
+      env: BUILDENV=ubuntu1404-trusty-python3.6
     - os: linux
       dist: trusty
       python: "3.5"
+      env: BUILDENV=ubuntu1404-trusty-python3.5
     - os: linux
       dist: trusty
       python: "3.4"
+      env: BUILDENV=ubuntu1404-trusty-python3.4
     - os: linux
       dist: trusty
       python: "3.3"
+      env: BUILDENV=ubuntu1404-trusty-python3.3
     - os: linux
       dist: trusty
       python: "3.2"
+      env: BUILDENV=ubuntu1404-trusty-python3.2
     - os: linux
       dist: trusty
       python: "2.7"
+      env: BUILDENV=ubuntu1404-trusty-python2.7
     - os: linux
       dist: trusty
       python: "2.6"
+      env: BUILDENV=ubuntu1404-trusty-python2.6
 
     # Ubuntu 12.04 LTS (Precise Pangolin)
     - os: linux
       dist: precise
       python: "3.6"
+      env: BUILDENV=ubuntu1204-precise-python3.6
     - os: linux
       dist: precise
       python: "2.7"
+      env: BUILDENV=ubuntu1204-precise-python2.7
     - os: osx
       language: generic
+      env: BUILDENV=macos
 
 sudo: false
 
