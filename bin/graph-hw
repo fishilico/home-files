@@ -122,28 +122,29 @@ BUSKIND_COLORS = {
     'hwmon': VIRTUAL_COLOR,
     'input': INTERFACE_COLOR,
     'iommu': VIRTUAL_COLOR,
-    'mei': FUNCTION_WITH_GUID_COLOR,
-    'pci': PCI_COLOR,
     'leds': INTERFACE_COLOR,
     'machinecheck': VIRTUAL_COLOR,
     'media': INTERFACE_COLOR,
+    'mei': FUNCTION_WITH_GUID_COLOR,
     'mem': VIRTUAL_COLOR,
     'memory': VIRTUAL_COLOR,
+    'memstick_host': STORAGE_COLOR,
     'misc': VIRTUAL_COLOR,
     'mmc_host': STORAGE_COLOR,
-    'memstick_host': STORAGE_COLOR,
     'mtd': STORAGE_COLOR,
     'net': INTERFACE_COLOR,
     'node': VIRTUAL_COLOR,
-    'powercap': VIRTUAL_COLOR,
+    'nvme': STORAGE_COLOR,
+    'pci': PCI_COLOR,
     'power_supply': SENSOR_COLOR,
+    'powercap': VIRTUAL_COLOR,
     'ptp': INTERFACE_COLOR,
     'rfkill': INTERFACE_COLOR,
     'rtc': SENSOR_COLOR,
     'scsi': STORAGE_COLOR,
-    'spi': STORAGE_COLOR,
     'serio': INTERFACE_COLOR,
     'sound': INTERFACE_COLOR,
+    'spi': STORAGE_COLOR,
     'thermal': SENSOR_COLOR,
     'tpm': SENSOR_COLOR,
     'tty': VIRTUAL_COLOR,
@@ -164,6 +165,9 @@ MORE_PRECISE_KINDS = (
     ('drm', 'drm_dp_aux_dev'),
     ('hid', 'hidraw'),
     ('i2c', 'i2c-adapter'),
+    ('nvme', 'nvme-subsystem'),
+    ('pci', 'pci_bus'),
+    ('pci', 'pci_express'),
     ('scsi', 'bsg'),
     ('scsi', 'scsi_device'),
     ('scsi', 'scsi_disk'),
@@ -171,13 +175,11 @@ MORE_PRECISE_KINDS = (
     ('scsi', 'scsi_host'),
     ('spi', 'spi_host'),
     ('spi', 'spi_transport'),
-    ('pci', 'pci_bus'),
-    ('pci', 'pci_express'),
     ('tpm', 'tpmrm'),
     ('usb', 'udc'),  # USB device controller
+    ('usb', 'usb_device'),
     ('usb', 'usbmisc'),
     ('usb', 'usbmon'),
-    ('usb', 'usb_device'),
     ('wmi', 'wmi_bus'),
 )
 
@@ -804,7 +806,7 @@ def add_scsi_models(device_tree):
             with open(model_path, 'r') as fd_model:
                 value = fd_model.read().strip()
                 dev.add_to_label_desc("Model: {0}".format(value))
-            if dev['buskind'] not in ('media', 'nvme', 'scsi'):
+            if dev['buskind'] not in ('media', 'nvme', 'nvme-subsystem', 'scsi'):
                 logger.warning("Found 'model' for non-SCSI device %s", dev['sysfs_path'])
         except IOError:
             pass
@@ -917,6 +919,9 @@ def add_net_addresses(device_tree):
         try:
             with open(address_path, 'r') as fd_address:
                 hwaddr = fd_address.read().strip()
+            if dev['buskind'] == 'nvme':
+                # Ignore address file for NVME disks, as this file shows the PCIe address
+                continue
             if dev['buskind'] != 'net':
                 logger.warning("Found 'address' for non-net device %s", dev['sysfs_path'])
                 continue
