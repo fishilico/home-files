@@ -835,6 +835,325 @@ def add_acpi_path_names(device_tree):
             pass
 
 
+# Known ACPI device IDs, as described by:
+# * http://www.acpi.info/DOWNLOADS/ACPIspec50.pdf
+# * https://uefi.org/sites/default/files/resources/ACPI_6_3_final_Jan30.pdf
+# * https://www.kernel.org/doc/Documentation/acpi/namespace.txt
+# * https://www.kernel.org/doc/Documentation/PCI/acpi-info.txt
+# * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/acpi/acpi_pnp.c?h=v4.20
+# * https://docs.microsoft.com/en-gb/windows-hardware/drivers/hid/acpi-button-device
+# * http://download.microsoft.com/download/1/6/1/161ba512-40e2-4cc9-843a-923143f3456c/devids.txt
+# * http://cvsweb.netbsd.org/bsdweb.cgi/src/sys/dev/acpi/acpidevs?rev=1.35
+# * https://github.com/acpica/acpica/blob/R01_08_19/source/common/ahids.c
+# * /proc/acpi/*
+# * System Information Viewer (provides pnpdevs.txt):
+#   * http://rh-software.com/index_arc.html
+#   * https://chocolatey.org/packages/siv/5.36
+KNOWN_ACPI_DEVICES = {
+    'ABCD0000': 'Dock',
+
+    'ACPI0001': 'SMBus 1.0 Host Controller (SMBUS-HC)',
+    'ACPI0002': 'Smart Battery Subsystem',
+    'ACPI0003': 'Power Source Device',
+    'ACPI0004': 'Module Device',
+    'ACPI0005': 'SMBus 2.0 Host Controller (SMBUS-HC)',
+    'ACPI0006': 'GPE Block Device',
+    'ACPI0007': 'Processor Device',
+    'ACPI0008': 'Ambient Light Sensor Device (ALSD)',
+    'ACPI0009': 'I/OxAPIC Device',
+    'ACPI000A': 'I/O APIC Device',
+    'ACPI000B': 'I/O SAPIC Device',
+    'ACPI000C': 'Processor Aggregator Device (PAGD)',
+    'ACPI000D': 'Power Meter Device (PMT)',
+    'ACPI000E': 'Time and Alarm Device',
+    'ACPI000F': 'User Presence Detection Device',
+    'ACPI0010': 'Processor Container Device',
+    'ACPI0011': 'Generic Button Device',
+    'ACPI0012': 'NVDIMM Root Device (NVDR)',
+    'ACPI0013': 'Generic Event Device (GED)',
+    'ACPI0014': 'Wireless Power Calibration Device',
+
+    'APP0001': 'Apple System Management Controller (SMC)',  # Seen as \_SB_.PCI0.SBRG.SMC_
+
+    'ATML1000': 'Atmel Touchscreen Controller',
+
+    'DELLABCE': 'Dell Airplane Mode Switch',
+
+    'DLL05CB': 'Dell Mouse',
+    'DLLK05CB': 'Samsung PS/2 Keyboard or Dell Latitude E7440 keyboard',
+
+    'HPQ0004': 'Hewlett-Packard 3D DriveGuard accelerometer',
+
+    'IBM0068': 'IBM Hotkey HID',
+    'IBM0079': 'IBM Docking Station',
+
+    'ICO0102': 'Intel Trusted Platform Module (TPM)',
+
+    'ICV0A12': 'Intel NFC Device',
+
+    'IFX0101': 'Infineon Trusted Platform Module (TPM)',
+    'IFX0102': 'Infineon Trusted Platform Module (TPM)',
+
+    # /proc/iomem on an x86-64 computer contains:
+    #   ff000000-ffffffff : INT0800:00
+    'INT0800': 'Intel 82802 Firmware Hub Device (FWHD)',  # Seen on Windows as ACPI\VEN_INT&DEV_0800
+    'INT0E0C': 'Software Guard Extensions Device',  # Seen as \_SB_.EPC_ (Enclave Page Cache)
+    # ftp://supermicro.com/ISO_Extracted/CDR-C7_V1.31_for_Intel_C7_platform/Intel/XTU/XTU%204.2%20BIOS%20Interface%20Specification.pdf
+    'INT3394': 'Intel Extreme Tuning Utility Device (XTU)',  # Seen as \_SB_.PTMD
+    'INT33A0': 'Intel Smart Connect Technology Device',
+    'INT33A1': 'Intel Power Engine (PEPD)',
+    'INT33A2': 'Global Navigation Satellite Systems (GNSS)',  # Seen as \_SB_.PCI0.GNSS
+    'INT33A3': 'ACPI Intel RealSense 3D Camera',  # Seen as \_SB_.ICAM
+    'INT33BE': 'Camera Sensor OV5693',  # Seen on \_SB_.PCI0.LNK1
+    'INT33C0': 'Intel Serial I/O SPI Host Controller',  # Seen as \_SB_.PCI0.SPI0
+    'INT33C1': 'Intel Serial I/O SPI Host Controller',  # Seen as \_SB_.PCI0.SPI1
+    'INT33C2': 'Intel Serial I/O I2C Host Controller',  # Seen as \_SB_.PCI0.I2C0
+    'INT33C3': 'Intel Serial I/O I2C Host Controller',  # Seen as \_SB_.PCI0.I2C1
+    'INT33C4': 'Intel Serial I/O UART Host Controller',  # Seen as \_SB_.PCI0.UA00
+    'INT33C5': 'Intel Serial I/O UART Host Controller',  # Seen as \_SB_.PCI0.UA01
+    'INT33C6': 'Intel SD Host Controller',  # Seen as \_SB_.PCI0.SDHC
+    'INT33C7': 'Intel Serial I/O GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
+    # Seen as \_SB_.PCI0.ADSP
+    'INT33C8': 'Intel Smart Sound Technology Host Controller, or Intel Haswell-ULT DRAM Controller',
+    'INT33C9': 'Wolfson Microelectronics Audio WM5102',  # Seen as \_SB_.PCI0.I2C0.ACD1
+    'INT33CA': 'Intel SPB Peripheral',  # Seen as \_SB_.PCI0.I2C0.ACD0
+    'INT33CB': 'Intel Smart Sound Technology Audio Codec',  # Seen as \_SB_.PCI0.I2C0.ACD2
+    'INT33D0': 'Intel Sensor Solution ACPI Control',  # Seen as \SHAD
+    'INT33D1': 'Intel GPIO Buttons',
+    'INT33D2': 'Intel GPIO Buttons',
+    'INT33D3': 'Intel GPIO Buttons',
+    'INT33D4': 'Intel GPIO Buttons',
+    'INT33D6': 'Intel Virtual Buttons Device',
+    # Seen as \_SB_.PCI0.UA00.BTH0 and \_SB_.PCI0.UA01.BTH1
+    'INT33E0': 'Intel Bluetooth Serial Bus Driver over UART Bus Enumerator',
+    'INT33E1': 'Intel Bluetooth HCI UART',
+    'INT33F4': 'X-Powers AXP288 PMIC (Battery)',
+    'INT3404': 'Fan',
+    'INT340E': 'Motherboard Resources',  # Seen on \_SB_.PTID
+    'INT3420': 'Intel Bluetooth RF Kill (BTKL)',
+    'INT343D': 'Intel Dynamic Platform and Thermal Framework PCH SPT ACPI Participant',  # Seen as \_SB_.PCI0.TERM
+    'INT343E': 'Intel CSI2 Host Controller (CIO2)',  # Seen as \_SB_.PCI0.CIO2
+    'INT3440': 'Intel Serial IO SPI Host Controller',  # Seen as \_SB_.PCI0.SPI0
+    'INT3441': 'Intel Serial IO SPI Host Controller',  # Seen as \_SB_.PCI0.SPI1
+    'INT3442': 'Intel Serial IO I2C Host Controller',  # Seen as \_SB_.PCI0.I2C0
+    'INT3443': 'Intel Serial IO I2C Host Controller',  # Seen as \_SB_.PCI0.I2C1
+    'INT3444': 'Intel Serial IO I2C Host Controller',  # Seen as \_SB_.PCI0.I2C2
+    'INT3445': 'Intel Serial IO I2C Host Controller',  # Seen as \_SB_.PCI0.I2C3
+    'INT3446': 'Intel Serial IO I2C Host Controller',  # Seen as \_SB_.PCI0.I2C4
+    'INT3447': 'Intel Serial IO I2C Host Controller',  # Seen as \_SB_.PCI0.I2C5
+    'INT3448': 'Intel Serial IO UART Host Controller',  # Seen as \_SB_.PCI0.UA00
+    'INT3449': 'Intel Serial IO UART Host Controller',  # Seen as \_SB_.PCI0.UA01
+    'INT344A': 'Intel Serial IO UART Host Controller',  # Seen as \_SB_.PCI0.UA02
+    'INT344B': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
+    'INT345D': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
+    'INT3470': 'Intel AVStream Camera 2500',  # Seen as \_SB_.SKC0
+    'INT3471': 'Intel Camera Sensor IMX135',  # Seen as \_SB_.PCI0.LNK0 and \_SB_.PCI0.LNK2
+    'INT3472': 'TPS68470 Power Management IC (PMIC-CRDG)',
+    'INT3515': 'TI TPS6598x USB Power Delivery Controller (from USB Connection Manager, UCM)',
+    'INT3F0D': 'Intel Watchdog Timer (CWDT)',  # documented as "ACPI Motherboard Resources"
+
+    'INTC0102': 'Intel Trusted Platform Module (iTPM)',
+    'INTC1234': 'Toshiba\'s Bluetooth ACPI',
+
+    'INTL9C60': 'Intel Baytrail SOC DMA Controller',  # Seen as \_SB_.PCI0.SDMA
+
+    # IPMI device is seen as:
+    # * \_SB_.PCI0.LPC0.NIPM on a Dell server (for iDRAC)
+    # * \_SB_.PCI0.LPC0.KCS_ on a HP server (for iLO)
+    'IPI0001': 'Intelligent Platform Management Interface (IPMI)',
+
+    'LEN0017': 'Synaptics touchpad for Lenovo',
+    'LEN0018': 'Synaptics touchpad for Lenovo',
+    'LEN0019': 'Synaptics touchpad for Lenovo',
+    'LEN0023': 'Synaptics touchpad for Lenovo',
+    'LEN002A': 'Synaptics touchpad for Lenovo',
+    'LEN002B': 'Synaptics touchpad for Lenovo',
+    'LEN002C': 'Synaptics touchpad for Lenovo',
+    'LEN002D': 'Synaptics touchpad for Lenovo',
+    'LEN002E': 'Synaptics touchpad for Lenovo',
+    'LEN0033': 'Synaptics touchpad for Lenovo Helix',
+    'LEN0034': 'Synaptics touchpad for Lenovo T431s, L440, L540, T540, W540, X1 Carbon 2nd',
+    'LEN0035': 'Synaptics touchpad for Lenovo X240',
+    'LEN0036': 'Synaptics touchpad for Lenovo T440',
+    'LEN0037': 'Synaptics touchpad for Lenovo X1 Carbon 2nd',
+    'LEN0038': 'Synaptics touchpad for Lenovo',
+    'LEN0039': 'Synaptics touchpad for Lenovo T440s',
+    'LEN0041': 'Synaptics touchpad for Lenovo',
+    'LEN0042': 'Synaptics touchpad for Lenovo Yoga',
+    'LEN0045': 'Synaptics touchpad for Lenovo',
+    'LEN0046': 'Synaptics touchpad for Lenovo X250',
+    'LEN0047': 'Synaptics touchpad for Lenovo',
+    'LEN0048': 'Synaptics touchpad for Lenovo X1 Carbon 3 ',
+    'LEN0049': 'Synaptics touchpad for Lenovo',
+    'LEN004A': 'Synaptics touchpad for Lenovo W541',
+    'LEN005B': 'Synaptics touchpad for Lenovo P50',
+    'LEN005E': 'Synaptics touchpad for Lenovo T560',
+    'LEN0068': 'Lenovo ThinkPad Hotkey HID',
+    'LEN006E': 'Lenovo Synaptics Pointing Device (Mouse)',
+    'LEN0071': 'Synaptics touchpad for Lenovo T480',
+    'LEN0072': 'Synaptics Elan/ALPS trackpoint for Lenovo X1 Carbon Gen 5 (2017)',
+    'LEN0073': 'Synaptics touchpad for Lenovo X1 Carbon G5 (Elantech)',
+    'LEN0092': 'Synaptics touchpad for Lenovo X1 Carbon 6',
+    'LEN0096': 'Synaptics touchpad for Lenovo X280',
+    'LEN0097': 'Synaptics ALPS trackpoint for Lenovo X280',
+    'LEN0268': 'Lenovo ThinkPad Hotkey v2 HID',
+    'LEN2000': 'Synaptics touchpad for Lenovo S540',
+    'LEN2001': 'Synaptics touchpad for Lenovo Edge E431',
+    'LEN2002': 'Synaptics touchpad for Lenovo Edge E531',
+    'LEN2003': 'Synaptics touchpad for Lenovo',
+    'LEN2004': 'Synaptics touchpad for Lenovo L440',
+    'LEN2005': 'Synaptics touchpad for Lenovo',
+    'LEN2006': 'Synaptics touchpad for Lenovo Edge E440/E540',
+    'LEN2007': 'Synaptics touchpad for Lenovo',
+    'LEN2008': 'Synaptics touchpad for Lenovo',
+    'LEN2009': 'Synaptics touchpad for Lenovo',
+    'LEN200A': 'Synaptics touchpad for Lenovo',
+    'LEN200B': 'Synaptics touchpad for Lenovo',
+    'LEN200F': 'Synaptics touchpad for Lenovo T450s',
+
+    # Virtual devices
+    'LNXCPU': 'Logical CPU',
+    'LNXPOWER': 'Power',
+    'LNXPWRBN': 'Power Button',
+    'LNXSLPBN': 'Sleep Button',
+    'LNXSYBUS': 'System Bus',
+    'LNXSYSTM': 'Root Node',
+    'LNXTHERM': 'Thermal Zone',
+    'LNXVIDEO': 'Video Controller',
+
+    'MSFT0101': 'Intel Platform Trust Technology (PTT) TPM 2.0',  # Documented as "TPM 2.0 Security Device"
+
+    'NTRG0001': 'Touchscreen',  # Seen as \_SB_.PCI0.I2C1.TPL2
+
+    'NXP1001': 'NXP NFC',  # Seen as \_SB_.PCI0.I2C0.NFC1
+    'NXP5442': 'NXP 5442 Near Field Communications Controller (NFC)',
+    'NXP5472': 'NXP NFC',
+    'NXP6020': 'NXP NFC',
+    'NXP6022': 'NXP NFC',
+
+    'PNP0000': 'Programmable Interrupt Controller (ISA 8259 PIC)',
+    'PNP0001': 'EISA Programmable Interrupt Controller',
+    'PNP0002': 'MCA Programmable Interrupt Controller',
+    'PNP0003': 'Advanced Programmable Interrupt Controller (IO-APIC)',
+    'PNP0100': 'System Timer (ISA 8254 Timer)',
+    'PNP0101': 'EISA System Timer',
+    'PNP0102': 'MCA System Timer',
+    'PNP0103': 'Intel High Precision Event Timer (HPET)',
+    'PNP0200': 'AT Direct Memory Access Controller (ISA 8237 DMA)',
+    'PNP0201': 'EISA Direct Memory Access Controller',
+    'PNP0202': 'MCA Direct Memory Access Controller',
+    'PNP0300': 'IBM PC/XT Keyboard Controller (83 key) (PS/2=i8042)',
+    'PNP0301': 'IBM PC/XT Keyboard Controller (86 key) (PS/2=i8042)',
+    'PNP0302': 'IBM PC/XT Keyboard Controller (84 key) (PS/2=i8042)',
+    'PNP0303': 'IBM Enhanced Keyboard (101/102-key, PS/2=i8042 Mouse) (PS2K)',
+    'PNP0304': 'PS/2 (i8042) keyboard (PS2K)',
+    'PNP0305': 'PS/2 (i8042) keyboard (PS2K)',
+    'PNP0306': 'PS/2 (i8042) keyboard (PS2K)',
+    'PNP0309': 'PS/2 (i8042) keyboard (PS2K)',
+    'PNP030A': 'PS/2 (i8042) keyboard (PS2K)',
+    'PNP030B': 'PS/2 (i8042) keyboard (PS2K)',
+    'PNP0320': 'PS/2 (i8042) keyboard (PS2K)',
+    'PNP0343': 'PS/2 (i8042) keyboard (PS2K)',
+    'PNP0344': 'PS/2 (i8042) keyboard (PS2K)',
+    'PNP0345': 'PS/2 (i8042) keyboard (PS2K)',
+    'PNP0400': 'Standard LPT Printer Port',
+    'PNP0401': 'ECP Printer Port',
+    'PNP0500': 'Generic standard PC COM port',
+    'PNP0501': 'Generic 16550A-compatible COM port',
+    'PNP0510': 'Generic IRDA-compatible Device',
+    'PNP0600': 'Generic ESDI/IDE/ATA compatible hard disk controller',
+    'PNP0700': 'PS/2 floppy controller',
+    'PNP0800': 'AT speaker',  # documented as "Microsoft Sound System Compatible Device"
+    'PNP0A03': 'PCI host bridge',
+    'PNP0A05': 'ACPI Generic ISA Bus / Generic Container Device',
+    'PNP0A06': 'ACPI Generic EIO Bus',  # EIO = Extended Input/Output
+    'PNP0A08': 'PCI Express host bridge',
+    'PNP0A0A': 'Asus BIOS component',  # https://kb.stonegroup.co.uk/index.php?View=entry&EntryID=227
+    'PNP0B00': 'AT Real-Time Clock Controller (RTC)',
+    'PNP0B01': 'Intel PIIX4-compatible RTC/CMOS Device',
+    'PNP0B02': 'Dallas Semiconductor-compatible RTC/CMOS Device',
+    'PNP0C00': 'PnP BIOS',
+    'PNP0C01': 'System board',
+    'PNP0C02': '(Catch-all devices)',  # not specific to a particular device
+    'PNP0C03': 'PnP BIOS event notification interrupt',
+    'PNP0C04': 'Math Coprocessor (x87 FPU)',  # documented as "x87-compatible Floating Point Processing Unit"
+    'PNP0C05': 'Advanced Power Management (APM) BIOS',
+    'PNP0C08': 'Advanced Configuration and Power Interface (ACPI) BIOS',  # documented as "ACPI Core Hardware"
+    'PNP0C09': 'Embedded Controller (EC)',
+    'PNP0C0A': 'Control Method Battery',
+    'PNP0C0B': 'Fan',
+    'PNP0C0C': 'Power Button (PWRB)',
+    'PNP0C0D': 'Lid Switch',
+    'PNP0C0E': 'Sleep Button (SLPB)',
+    'PNP0C0F': 'PCI Interrupt Link',
+    'PNP0C10': 'System Indicator',
+    'PNP0C11': 'Thermal Zone',
+    'PNP0C12': 'Device Bay Controller',
+    'PNP0C13': 'PnP BIOS (fail safe)',
+    'PNP0C14': 'Windows Management Instrumentation (WMI)',
+    'PNP0C15': 'Docking Station',
+    'PNP0C31': 'Trusted Platform Module (TPM)',
+    'PNP0C33': 'Hardware Error Device (HED)',  # Seen as \_SB_.WERR
+    'PNP0C40': 'Standard Button Controller',
+    'PNP0C50': 'HID Protocol Device (I2C bus)',
+    'PNP0C60': 'Display Sensor',
+    'PNP0C70': 'Dock Sensor',
+    'PNP0C80': 'Memory',
+    'PNP0D80': 'Windows-compatible System Power Management Controller',
+    'PNP0F03': 'Microsoft PS/2-style Mouse (i8042 aux)',
+    'PNP0F0B': 'i8042 aux',
+    'PNP0F0E': 'i8042 aux',
+    'PNP0F12': 'i8042 aux',
+    'PNP0F13': 'PS/2 (i8042) Mouse',
+    'PNP0F19': 'i8042 aux',
+    'PNP0F1C': 'i8042 aux',
+    'PNP8390': 'Generic Network Adapter',
+
+    'QEMU0001': 'QEMU\'s PVPanic',
+    'QEMU0002': 'QEMU\'s Firmware Configuration',
+    'QEMUVGID': 'QEMU Virtual Machine Generation ID',  # Compatible with _CID=VM_Gen_Counter
+
+    'RTL8723': 'Realtek Wireless Controller',
+
+    'SKTD000': 'Intel NFC Device',
+
+    'SMB0349': 'Charger',
+
+    'SMO8800': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8801': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8810': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8811': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8820': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8821': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8830': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8831': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
+
+    'USBC000': 'USB Type C',
+}
+
+# ACPI device IDs that have been seen but are not known
+UNKNWON_ACPI_DEVICES = {
+    'ALP0001': '\\_SB_.PCI0.I2C1.TPD2',
+    'ATML2000': '\\_SB_.PCI0.I2C1.TPFU',
+    'BCM2E20': '\\_SB_.PCI0.UA01.BTH2',
+    'CYP0001': '\\_SB_.PCI0.I2C1.TPD3',
+    'EETI7900': '\\_SB_.PCI0.I2C1.TPL3',
+    'ELAN1000': '\\_SB_.PCI0.I2C1.TPD0',
+    'ELAN1001': '\\_SB_.PCI0.I2C1.TPL1',
+    'ELAN1010': '\\_SB_.PCI0.I2C1.TPD7',
+    'FPNT_DIS': '\\_SB_.PCI0.SPI1.FPNT',
+    'IMPJ0003': '\\_SB_.PCI0.I2C1.IMP3',
+    'INT0000': '\\_SB_.PCI0.I2C0.HDAC',
+    'INT339B': '\\CHUB',
+    'INT33D7': '\\_SB_.PCI0.I2C0.DFUD',
+    'IWC0001': '\\_SB_.WCT0',
+    'MSFT0001': '\\_SB_.PCI0.I2C1.TPD1',
+    'MSFT0002': '\\_SB_.PCI0.I2C1.TPD8',
+    'MSFT1111': '\\_SB_.PCI0.I2C0.TPD4',
+    'XXXX0000': '\\_SB_.PCI0.I2C0.TPD0 and \\_SB_.PCI0.I2C1.TPL1',
+}
+
+
 def add_firmware_nodes(device_tree):
     """Add references to physical_node and firmware_node"""
     node_labels = (
@@ -843,6 +1162,10 @@ def add_firmware_nodes(device_tree):
     )
     sys_devices_path = device_tree['sysfs_path']
     for dev in device_tree.iter_all():
+        acpi_dev_name = None
+        if dev['buskind'] == 'acpi':
+            acpi_dev_name = dev['sysfs_name']
+
         for nodename, label in node_labels:
             node_path = os.path.realpath(os.path.join(dev['sysfs_path'], nodename))
             if not os.path.exists(node_path):
@@ -852,6 +1175,34 @@ def add_firmware_nodes(device_tree):
             else:
                 node_path = node_path[len(sys_devices_path):]
             dev.add_to_label_desc("{0}: {1}".format(label, node_path))
+
+            # Name the ACPI device
+            if nodename == 'firmware_node':
+                acpi_dev_name = os.path.basename(node_path)
+            elif nodename == 'physical_node':
+                acpi_dev_name = dev['sysfs_name']
+
+        if acpi_dev_name:
+            m = re.match(r'^(.*):([0-9A-F][0-9A-F])$', acpi_dev_name.upper())
+            if not m:
+                logger.warning("Unable to parse ACPI device name %r", acpi_dev_name)
+            else:
+                acpi_dev_id, acpi_id = m.groups()
+                acpi_dev_desc = KNOWN_ACPI_DEVICES.get(acpi_dev_id)
+                if acpi_dev_desc:
+                    if acpi_id == '00':
+                        dev.add_to_label_desc("ACPI device: {0}".format(acpi_dev_desc))
+                    else:
+                        dev.add_to_label_desc("ACPI sub-device {0}: {1}".format(acpi_id, acpi_dev_desc))
+                elif acpi_dev_id == 'DEVICE':
+                    pass
+                elif acpi_dev_id in UNKNWON_ACPI_DEVICES:
+                    last_encounter = UNKNWON_ACPI_DEVICES[acpi_dev_id]
+                    logger.debug("Unknown ACPI device ID %s already seen as %r: %r",
+                                 acpi_dev_id, last_encounter, dev.label)
+                    dev.add_to_label_desc("Unknown ACPI device, already seen as {0}".format(last_encounter))
+                else:
+                    logger.warning("Unknown ACPI device ID %s for %r", acpi_dev_id, dev.label)
 
 
 def add_firmware_revisions(device_tree):
