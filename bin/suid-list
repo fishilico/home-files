@@ -734,6 +734,11 @@ TRUSTED_CAPS_FILES = [
              '= cap_chown,cap_dac_override,cap_dac_read_search,cap_fowner,' +
              'cap_setpcap,cap_sys_admin,cap_audit_write+ep'),
 
+    # shadow, http://pkg-shadow.alioth.debian.org/
+    # https://github.com/shadow-maint/shadow
+    CapsFile('/bin/newgidmap', '= cap_setgid+ep'),
+    CapsFile('/bin/newuidmap', '= cap_setuid+ep'),
+
     # systemd, http://www.freedesktop.org/wiki/Software/systemd/
     # https://github.com/systemd/systemd
     CapsFile('/bin/systemd-detect-virt',
