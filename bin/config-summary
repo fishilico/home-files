@@ -24,9 +24,11 @@
 # Build a configuration summary of the currently running system
 # Output a file in ReStructuredText format.
 #
-# Similar project:
+# Similar projects:
 # * dracut rdosreport tool:
 #   https://git.kernel.org/cgit/boot/dracut/dracut.git/tree/modules.d/99base/rdsosreport.sh
+# * inxi, full featured CLI system information tool:
+#   https://github.com/smxi/inxi
 
 has_command() {
     [ -x "/usr/bin/$1" ] || command -v "$1" > /dev/null 2>&1
