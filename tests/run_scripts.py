@@ -96,6 +96,7 @@ BIN_SCRIPTS = {
     'mount-tree': '(/proc)direct',
     'musickbd': 'never',
     'nft-dump': '(nft)direct',
+    'nonet': 'never',
     'noproxy': 'args[true]',
     'ntpd-stats': '(ntpdc)direct',
     'pacman-disowned': 'never',
