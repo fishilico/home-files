@@ -329,8 +329,7 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib(exec)?/openssh/ssh-keysign', groups=('ssh_keys', )),
 
     # pam, http://linux-pam.org/
-    # https://git.fedorahosted.org/cgit/linux-pam.git/tree/
-    # http://archive.ubuntu.com/ubuntu/pool/main/p/pam/pam_1.1.8-3.1ubuntu3.dsc
+    # https://github.com/linux-pam/linux-pam
     SuidFile('/s?bin/pam_timestamp_check'),
     SuidFile('/s?bin/unix_chkpwd', owners=('root', ), groups=('root', )),
     SuidFile('/s?bin/unix_chkpwd', groups=('shadow', )),
