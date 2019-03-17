@@ -93,6 +93,9 @@ def test():
                     firstline = cur_file.readline().rstrip()
                 if 'python' not in firstline:
                     continue
+                # Skip Python3-only files when running Python2
+                if 'python3' in firstline and sys.version_info < (3, ):
+                    continue
             elif not filename.lower().endswith('.py'):
                 continue
 
