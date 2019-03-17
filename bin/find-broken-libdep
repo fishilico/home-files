@@ -1,0 +1,1010 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2016-2019 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Find files with broken library dependency on a system
+
+This is similar to Gentoo's revdep-rebuild script, in a much less powerful way:
+* https://wiki.gentoo.org/wiki/Gentoolkit#revdep-rebuild
+* https://cgit.gentoo.org/proj/gentoolkit.git/tree/bin/revdep-rebuild.sh
+* https://cgit.gentoo.org/proj/gentoolkit.git/tree/pym/gentoolkit/revdep_rebuild
+
+This is similar to Arch Linux's lddd script:
+* https://git.archlinux.org/devtools.git/tree/lddd.in
+
+In order to test loading the output files with symbol resolutions, ldd can be
+used with options --data-relocs and --function-relocs:
+
+    ldd -d -r /path/to/file
+
+@author: Nicolas Iooss
+@license: MIT
+"""
+import argparse
+import ctypes
+import glob
+import logging
+import platform
+import re
+import os
+import os.path
+import stat
+import sys
+
+
+logger = logging.getLogger(__name__)
+
+# ELF machine constants
+EM_386 = 3
+EM_ARM = 40
+EM_X86_64 = 62
+EM_AARCH64 = 183
+
+# (machine, bits) => path
+LIBRARY_PATH_FOR_ARCH = {
+    (EM_386, 32): [],
+    (EM_ARM, 32): [],
+    (EM_X86_64, 64): [],
+    (EM_AARCH64, 64): [],
+}
+
+
+def add_to_library_path(machine, bits, libpath):
+    """Add the given path to the base library path of the given architecture"""
+    for expanded in (os.path.realpath(libpath), os.path.realpath('/usr' + libpath)):
+        if not os.path.exists(expanded):
+            return
+        if expanded in LIBRARY_PATH_FOR_ARCH[(machine, bits)]:
+            return
+        LIBRARY_PATH_FOR_ARCH[(machine, bits)].append(expanded)
+
+
+def initialize_library_path_for_arch(native_machine):
+    """Initialize LIBRARY_PATH_FOR_ARCH"""
+    # Add multilib paths
+    add_to_library_path(EM_386, 32, '/lib/i386-linux-gnu')
+    add_to_library_path(EM_ARM, 32, '/lib/arm-linux-gnueabi')
+    add_to_library_path(EM_ARM, 32, '/lib/arm-linux-gnueabihf')
+    add_to_library_path(EM_X86_64, 64, '/lib/x86_64-linux-gnu')
+    add_to_library_path(EM_AARCH64, 64, '/lib/aarch64-linux-gnu')
+
+    # Add native directories
+    if re.match(r'^i[3-6]86$', native_machine):
+        add_to_library_path(EM_386, 32, '/lib')
+        add_to_library_path(EM_386, 32, '/lib32')
+        add_to_library_path(EM_X86_64, 64, '/lib64')
+    elif re.match(r'^arm(v[1-9]+)?l$', native_machine):
+        add_to_library_path(EM_ARM, 32, '/lib')
+        add_to_library_path(EM_ARM, 32, '/lib32')
+        add_to_library_path(EM_AARCH64, 64, '/lib64')
+    elif native_machine == 'x86_64':
+        add_to_library_path(EM_X86_64, 64, '/lib')
+        add_to_library_path(EM_386, 32, '/lib32')
+        add_to_library_path(EM_X86_64, 64, '/lib64')
+    elif native_machine == 'aarch64':
+        add_to_library_path(EM_AARCH64, 64, '/lib')
+        add_to_library_path(EM_ARM, 32, '/lib32')
+        add_to_library_path(EM_AARCH64, 64, '/lib64')
+    else:
+        sys.stderr.write("Warning: unknown platform {}\n".format(native_machine))
+
+
+initialize_library_path_for_arch(platform.machine())
+
+
+class Elf32_Ehdr(ctypes.Structure):
+    """ELF header for 32-bit files"""
+    _fields_ = [
+        ('e_ident', ctypes.c_uint8 * 16),
+        ('e_type', ctypes.c_uint16),
+        ('e_machine', ctypes.c_uint16),
+        ('e_version', ctypes.c_uint32),
+        ('e_entry', ctypes.c_uint32),
+        ('e_phoff', ctypes.c_uint32),
+        ('e_shoff', ctypes.c_uint32),
+        ('e_flags', ctypes.c_uint32),
+        ('e_ehsize', ctypes.c_uint16),
+        ('e_phentsize', ctypes.c_uint16),
+        ('e_phnum', ctypes.c_uint16),
+        ('e_shentsize', ctypes.c_uint16),
+        ('e_shnum', ctypes.c_uint16),
+        ('e_shstrndx', ctypes.c_uint16),
+    ]
+
+
+assert ctypes.sizeof(Elf32_Ehdr) == 0x34
+
+
+class Elf64_Ehdr(ctypes.Structure):
+    """ELF header for 64-bit files"""
+    _fields_ = [
+        ('e_ident', ctypes.c_uint8 * 16),
+        ('e_type', ctypes.c_uint16),
+        ('e_machine', ctypes.c_uint16),
+        ('e_version', ctypes.c_uint32),
+        ('e_entry', ctypes.c_uint64),
+        ('e_phoff', ctypes.c_uint64),
+        ('e_shoff', ctypes.c_uint64),
+        ('e_flags', ctypes.c_uint32),
+        ('e_ehsize', ctypes.c_uint16),
+        ('e_phentsize', ctypes.c_uint16),
+        ('e_phnum', ctypes.c_uint16),
+        ('e_shentsize', ctypes.c_uint16),
+        ('e_shnum', ctypes.c_uint16),
+        ('e_shstrndx', ctypes.c_uint16),
+    ]
+
+
+assert ctypes.sizeof(Elf64_Ehdr) == 0x40
+
+
+class Elf32_Phdr(ctypes.Structure):
+    """Entry in ELF program header for 32-bit files"""
+    _fields_ = [
+        ('p_type', ctypes.c_uint32),
+        ('p_offset', ctypes.c_uint32),
+        ('p_vaddr', ctypes.c_uint32),
+        ('p_paddr', ctypes.c_uint32),
+        ('p_filesz', ctypes.c_uint32),
+        ('p_memsz', ctypes.c_uint32),
+        ('p_flags', ctypes.c_uint32),
+        ('p_align', ctypes.c_uint32),
+    ]
+
+
+assert ctypes.sizeof(Elf32_Phdr) == 0x20
+
+
+class Elf64_Phdr(ctypes.Structure):
+    """Entry in ELF program header for 64-bit files"""
+    _fields_ = [
+        ('p_type', ctypes.c_uint32),
+        ('p_flags', ctypes.c_uint32),
+        ('p_offset', ctypes.c_uint64),
+        ('p_vaddr', ctypes.c_uint64),
+        ('p_paddr', ctypes.c_uint64),
+        ('p_filesz', ctypes.c_uint64),
+        ('p_memsz', ctypes.c_uint64),
+        ('p_align', ctypes.c_uint64),
+    ]
+
+
+assert ctypes.sizeof(Elf64_Phdr) == 0x38
+
+
+class Elf32_Dyn(ctypes.Structure):
+    """Entry in ELF dynamic header for 32-bit files"""
+    _fields_ = [
+        ('d_tag', ctypes.c_int32),
+        ('d_val', ctypes.c_uint32),
+    ]
+
+
+assert ctypes.sizeof(Elf32_Dyn) == 8
+
+
+class Elf64_Dyn(ctypes.Structure):
+    """Entry in ELF dynamic header for 64-bit files"""
+    _fields_ = [
+        ('d_tag', ctypes.c_int64),
+        ('d_val', ctypes.c_uint64),
+    ]
+
+
+assert ctypes.sizeof(Elf64_Dyn) == 0x10
+
+
+class Elf32_Sym(ctypes.Structure):
+    """Entry in ELF symbol table for 32-bit files"""
+    _fields_ = [
+        ('st_name', ctypes.c_int32),
+        ('st_value', ctypes.c_uint32),
+        ('st_size', ctypes.c_uint32),
+        ('st_info', ctypes.c_uint8),
+        ('st_other', ctypes.c_uint8),
+        ('st_shndx', ctypes.c_uint16),
+    ]
+
+
+assert ctypes.sizeof(Elf32_Sym) == 0x10
+
+
+class Elf64_Sym(ctypes.Structure):
+    """Entry in ELF symbol table for 64-bit files"""
+    _fields_ = [
+        ('st_name', ctypes.c_int32),
+        ('st_info', ctypes.c_uint8),
+        ('st_other', ctypes.c_uint8),
+        ('st_shndx', ctypes.c_uint16),
+        ('st_value', ctypes.c_uint64),
+        ('st_size', ctypes.c_uint64),
+    ]
+
+
+assert ctypes.sizeof(Elf64_Sym) == 0x18
+
+
+class Elf_Verdef(ctypes.Structure):
+    """Entry in ELF version definition"""
+    _fields_ = [
+        ('vd_version', ctypes.c_int16),
+        ('vd_flags', ctypes.c_int16),
+        ('vd_ndx', ctypes.c_int16),
+        ('vd_cnt', ctypes.c_int16),
+        ('vd_hash', ctypes.c_int32),
+        ('vd_aux', ctypes.c_int32),
+        ('vd_next', ctypes.c_int32),
+    ]
+
+
+assert ctypes.sizeof(Elf_Verdef) == 0x14
+
+
+class Elf_Verdaux(ctypes.Structure):
+    """Entry in ELF version definition auxiliary data"""
+    _fields_ = [
+        ('vda_name', ctypes.c_int32),
+        ('vda_next', ctypes.c_int32),
+    ]
+
+
+assert ctypes.sizeof(Elf_Verdaux) == 8
+
+
+class Elf_Verneed(ctypes.Structure):
+    """Entry in ELF version need"""
+    _fields_ = [
+        ('vn_version', ctypes.c_int16),
+        ('vn_cnt', ctypes.c_int16),
+        ('vn_file', ctypes.c_int32),
+        ('vn_aux', ctypes.c_int32),
+        ('vn_next', ctypes.c_int32),
+    ]
+
+
+assert ctypes.sizeof(Elf_Verneed) == 0x10
+
+
+class Elf_Vernaux(ctypes.Structure):
+    """Entry in ELF version need auxiliary data"""
+    _fields_ = [
+        ('vna_hash', ctypes.c_int32),
+        ('vna_flags', ctypes.c_int16),
+        ('vna_other', ctypes.c_int16),
+        ('vna_name', ctypes.c_int32),
+        ('vna_next', ctypes.c_int32),
+    ]
+
+
+assert ctypes.sizeof(Elf_Vernaux) == 0x10
+
+
+class VirtualMem:
+    """Virtual memory of an ELF file"""
+    def __init__(self):
+        self.mappings = []
+
+    def load_from_phdr(self, ph_entry, elf_content):
+        """Map a segment to the virtual memory"""
+        assert ph_entry.p_type == 1  # PT_LOAD
+        # Get the index of mappings for the inserted entry
+        vaddr = ph_entry.p_vaddr
+        vaddr_end = vaddr + ph_entry.p_memsz
+        map_index = 0
+        while map_index < len(self.mappings) and self.mappings[map_index][0] < vaddr:
+            map_index += 1
+        if map_index < len(self.mappings) and self.mappings[map_index][0] < vaddr_end:
+            return False
+
+        file_size = min(ph_entry.p_filesz, ph_entry.p_memsz)
+        if file_size:
+            file_offset = ph_entry.p_offset
+            segment_content = elf_content[file_offset:file_offset + file_size]
+            self.mappings.insert(map_index, (vaddr, vaddr + file_size, segment_content))
+        if file_size < ph_entry.p_memsz:
+            # Add zero-initialized segment
+            self.mappings.insert(map_index, (vaddr + file_size, vaddr_end, None))
+        return True
+
+    def read_data(self, vaddr, size):
+        """Read from data from the mapped regions"""
+        if size == 0:
+            # Do not dereference anything if no byte were requested
+            return b''
+        for vaddr_start, vaddr_end, segment_content in self.mappings:
+            if vaddr_start <= vaddr and vaddr + size <= vaddr_end:
+                return segment_content[vaddr - vaddr_start:vaddr + size - vaddr_start]
+        raise IndexError("Unable to dereference virtual address %#x for %#x bytes" % (vaddr, size))
+
+    def read_struct(self, vaddr, struct_cls):
+        """Read a structure from the data"""
+        data = self.read_data(vaddr, ctypes.sizeof(struct_cls))
+        return struct_cls.from_buffer(data)
+
+
+class ElfFile:
+    """Load an ELF file and find issues about it"""
+
+    def __init__(self, path, first_bytes, resolve_symbols):
+        self.path = path
+        self.resolve_symbols = resolve_symbols
+        self.has_issue = False
+        self.archbits = None
+        self.ehdr = None
+        self.interp = None
+        self.dyn_needed = []
+        self.library_paths = []
+        self.extern_symbols = {}  # # Symbols required by the file
+        self.local_symbols = {}  # Symbols defined in the file
+        self.defined_symbols = {}  # Symbols defined either in this file or in one of its dependency
+
+        # Ensure there has been some filtering
+        assert first_bytes[:4] == b'\x7fELF'
+
+        # Is it a 32-bit ELF or a 64-bit one?
+        if len(first_bytes) < 16:  # EI_NIDENT is 16
+            logger.error("truncated ELF file: %r", path)
+            return
+        if first_bytes[4] == 1:
+            # ELFCLASS32
+            self.archbits = 32
+            ehdr_class = Elf32_Ehdr
+            phdr_class = Elf32_Phdr
+            dyn_class = Elf32_Dyn
+            sym_class = Elf32_Sym
+            c_uint_type = ctypes.c_uint32
+        elif first_bytes[4] == 2:
+            # ELFCLASS64
+            self.archbits = 64
+            ehdr_class = Elf64_Ehdr
+            phdr_class = Elf64_Phdr
+            dyn_class = Elf64_Dyn
+            sym_class = Elf64_Sym
+            c_uint_type = ctypes.c_uint64
+        else:
+            logger.error("unknown ELF class %d for %r", first_bytes[4], path)
+            return
+
+        # Load the ELF header
+        ehdr_size = ctypes.sizeof(ehdr_class)
+        phdr_entsize = ctypes.sizeof(phdr_class)
+        if len(first_bytes) < ehdr_size:
+            logger.error("truncated ELF file: %r", path)
+            return
+        self.ehdr = ehdr_class.from_buffer_copy(first_bytes[:ehdr_size])
+        if self.ehdr.e_ehsize < ehdr_size:
+            logger.error("unexpected Ehdr size: %d < %d in %r", self.ehdr.e_ehsize, ehdr_size, path)
+            return
+        if self.ehdr.e_phnum == 0:
+            # No program header. This may be an object file (such as /usr/lib/crt1.o)
+            return
+        if self.ehdr.e_phentsize != phdr_entsize:
+            logger.error("unexpected Phdr entry size: %d vs %d in %r", self.ehdr.e_phentsize, phdr_entsize, path)
+            return
+
+        # Parse the machine and adjust the library path accordingly
+        try:
+            self.library_paths += LIBRARY_PATH_FOR_ARCH[(self.ehdr.e_machine, self.archbits)]
+        except KeyError:
+            logger.warning("unknown ELF machine %d (for arch bits %d) in %r",
+                           self.ehdr.e_machine, self.archbits, path)
+
+        # Load the whole ELF file in order to load the program header
+        with open(path, 'rb') as fd:
+            elf_content = bytearray(fd.read())
+        assert elf_content.startswith(first_bytes)
+
+        phdr_size = self.ehdr.e_phnum * phdr_entsize
+        phdr_offset = self.ehdr.e_phoff
+        if phdr_offset + phdr_size > len(elf_content):
+            logger.error("truncated ELF file: %r", path)
+            return
+
+        virtual_mem = VirtualMem()
+        dyn_offset = None
+        dyn_needed_offsets = []
+        dyn_strtab_vaddr = None
+        dyn_symtab_vaddr = None
+        dyn_rela_vaddr = None
+        dyn_relasz = None
+        dyn_relaent = 3 * self.archbits // 8
+        dyn_strsz = None
+        dyn_syment_size = ctypes.sizeof(sym_class)
+        # dyn_soname_offset = None
+        dyn_rpath_offset = None
+        dyn_rel_vaddr = None
+        dyn_relsz = 2 * self.archbits // 8
+        dyn_relent = None
+        dyn_runpath_offset = None
+        dyn_gnu_hash_vaddr = None
+        dyn_versym_vaddr = None
+        dyn_verdef_vaddr = None
+        dyn_verdefnum = None
+        dyn_verneed_vaddr = None
+        dyn_verneednum = None
+
+        for offset in range(phdr_offset, phdr_offset + phdr_size, phdr_entsize):
+            ph_entry = phdr_class.from_buffer(elf_content[offset:offset + phdr_entsize])
+            if ph_entry.p_type == 1:  # PT_LOAD
+                if ph_entry.p_filesz and ph_entry.p_offset + ph_entry.p_filesz > len(elf_content):
+                    # This occurs in some firmware
+                    if path.startswith('/usr/lib/firmware/qcom/'):
+                        logger.debug("truncated ELF segment for firmware (%#x + %#x > size %#x) %r",
+                                     ph_entry.p_offset, ph_entry.p_filesz, len(elf_content), path)
+                    else:
+                        logger.warning("truncated ELF segment (%#x + %#x > size %#x) %r",
+                                       ph_entry.p_offset, ph_entry.p_filesz, len(elf_content), path)
+                    continue
+                if not virtual_mem.load_from_phdr(ph_entry, elf_content):
+                    logger.warning("virtual memory error while loading ELF segments: %r", path)
+                    return
+            elif ph_entry.p_type == 2:  # PT_DYNAMIC
+                dyn_offset = ph_entry.p_offset
+                dyn_size = ph_entry.p_filesz
+                dyn_entsize = ctypes.sizeof(dyn_class)
+                if dyn_size == 0:
+                    # This occurs with debuginfo files
+                    if path.endswith(('.debug', '.debuginfo')):
+                        return
+                    logger.warning("empty DYNAMIC header: %r", path)
+                    continue
+                if dyn_offset + dyn_size > len(elf_content):
+                    logger.warning("truncated DYNAMIC header: %r", path)
+                    continue
+                if dyn_size % dyn_entsize:
+                    logger.warning("unaligned DYNAMIC header: %r", path)
+                    continue
+                for offset in range(dyn_offset, dyn_offset + dyn_size, dyn_entsize):
+                    dyn_entry = dyn_class.from_buffer(elf_content[offset:offset + dyn_entsize])
+                    if dyn_entry.d_tag == 1:  # DT_NEEDED
+                        dyn_needed_offsets.append(dyn_entry.d_val)
+                    elif dyn_entry.d_tag == 5:  # DT_STRTAB
+                        dyn_strtab_vaddr = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 6:  # DT_SYMTAB
+                        dyn_symtab_vaddr = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 7:  # DT_RELA
+                        dyn_rela_vaddr = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 8:  # DT_RELASZ
+                        dyn_relasz = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 9:  # DT_RELAENT
+                        dyn_relaent = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 10:  # DT_STRSZ
+                        dyn_strsz = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 11:  # DT_SYMENT
+                        dyn_syment_size = dyn_entry.d_val
+                    # elif dyn_entry.d_tag == 14:  # DT_SONAME
+                    #    dyn_soname_offset = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 15:  # DT_RPATH
+                        dyn_rpath_offset = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 17:  # DT_REL
+                        dyn_rel_vaddr = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 18:  # DT_RELSZ
+                        dyn_relsz = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 19:  # DT_RELENT
+                        dyn_relent = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 29:  # DT_RUNPATH
+                        dyn_runpath_offset = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 0x6ffffef5:  # DT_GNU_HASH
+                        dyn_gnu_hash_vaddr = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 0x6ffffff0:  # DT_VERSYM
+                        dyn_versym_vaddr = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 0x6ffffffc:  # DT_VERDEF
+                        dyn_verdef_vaddr = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 0x6ffffffd:  # DT_VERDEFNUM
+                        dyn_verdefnum = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 0x6ffffffe:  # DT_VERNEED
+                        dyn_verneed_vaddr = dyn_entry.d_val
+                    elif dyn_entry.d_tag == 0x6fffffff:  # DT_VERNEEDNUM
+                        dyn_verneednum = dyn_entry.d_val
+            if ph_entry.p_type == 3:  # PT_INTERP
+                offset = ph_entry.p_offset
+                size = ph_entry.p_filesz
+                if offset + size > len(elf_content):
+                    logger.warning("truncated ELF interpreter: %r", path)
+                    continue
+                self.interp = elf_content[offset:offset + size].rstrip(b'\0').decode('utf-8')
+
+        if dyn_offset is None:
+            # It was a static executable
+            logger.debug("statically-linked executable: %r", path)
+            return
+
+        # Process the dynamic header
+        if dyn_strtab_vaddr is None or dyn_strsz is None:
+            # This is normal for Go files, that do not have a read DYNAMIC header
+            if path.endswith('.go'):
+                return
+            logger.warning("no DYNAMIC string table: %r", path)
+            return
+        dyn_strtab = virtual_mem.read_data(dyn_strtab_vaddr, dyn_strsz)
+
+        def dyn_str(str_offset):
+            """Get a string from DYNAMIC's string table"""
+            idx_end_of_string = dyn_strtab.index(b'\0', str_offset)
+            return dyn_strtab[str_offset:idx_end_of_string].decode('utf-8')
+
+        # For files in a library directory, add the current path to the library search path
+        if path.startswith(('/lib', '/usr/lib')):
+            self.library_paths.insert(0, os.path.dirname(path))
+
+            # Hard-code some libraries
+            base_name = os.path.basename(path)
+            if base_name.startswith('libsmbldap.so'):
+                self.library_paths.insert(0, os.path.join(os.path.dirname(path), 'samba'))
+
+            # Eye of Gnome's libeog.so is in /usr/lib/eog/libeog.so
+            m = re.match(r'^((/usr)?/lib(32|64)?/eog)/plugins', path)
+            if m:
+                self.library_paths.insert(0, m.group(1))
+
+            # Java's libjvm.so is in /usr/lib/jvm/java-8-openjdk/jre/lib/amd64/server/libjvm.so
+            m = re.match(r'^((/usr)?/lib(32|64)?/jvm/java-[^/]+/jre/lib/[^/]+/).*\.so', path)
+            if not m:
+                # Try /usr/lib/jvm/java-10-openjdk/lib/lib*.so, that require
+                # /usr/lib/jvm/java-10-openjdk/lib/server/libjvm.so
+                m = re.match(r'^((/usr)?/lib(32|64)?/jvm/java-[^/]+/lib/).*\.so', path)
+            if m:
+                self.library_paths.insert(0, os.path.join(m.group(1), 'headless'))
+                self.library_paths.insert(0, os.path.join(m.group(1), 'server'))
+            m = re.match(r'^((/usr)?/lib(32|64)?/jvm/java-[^/]+/jre/lib/[^/]+/)[^/]+/.*\.so[^/]*$', path)
+            if m:
+                self.library_paths.insert(0, m.group(1))
+
+            # R's libR.so is in /usr/lib/R/lib/libR.so
+            m = re.match(r'^((/usr)?/lib(32|64)?/R/)', path)
+            if m:
+                self.library_paths.insert(0, os.path.join(m.group(1), 'lib'))
+
+            # VirtualBox's extension packs use /usr/lib/virtualbox/VBoxRT.so
+            m = re.match(r'^((/usr)?/lib(32|64)?/virtualbox)/ExtensionPacks/', path)
+            if m:
+                self.library_paths.insert(0, m.group(1))
+
+            # VMWare Workstation uses directories for each library: /usr/lib/vmware/lib/lib${NAME}.so/lib${NAME}.so
+            m = re.match(r'^((/usr)?/lib(32|64)?/vmware/lib/)lib[^/]+\.so', path)
+            if m:
+                self.library_paths = list(glob.glob(os.path.join(m.group(1), "lib*.so*/"))) + self.library_paths
+
+        if path.startswith('/opt'):
+            # Android Studio's libc++.so is in /opt/android-sdk/emulator/lib64/qt/lib/libc++.so
+            m = re.match(r'^(/opt/android-sdk/emulator/lib(32|64)?/qt)/.*\.so', path)
+            if m:
+                self.library_paths.insert(0, os.path.join(m.group(1), 'lib'))
+
+            # Android Studio's libc++.so.1 is in /opt/android-sdk/emulator/lib64/libc++.so.1
+            m = re.match(r'^(/opt/android-sdk/emulator/lib(32|64)?)/.*\.so', path)
+            if m:
+                self.library_paths.insert(0, m.group(1))
+            # Android Studio's emulators require the same libc++.so.1
+            m = re.match(r'^(/opt/android-sdk/emulator/)qemu/linux-x86_64/qemu-system-[^/]+$', path)
+            if m:
+                self.library_paths.insert(0, os.path.join(m.group(1), 'lib64'))
+
+            # Microsoft's ODBC Driver for SQL Server uses its custom libraries
+            # https://docs.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-2017
+            m = re.match(r'^(/opt/microsoft/msodbcsql/lib64)/', path)
+            if m:
+                self.library_paths.insert(0, m.group(1))
+
+        # Add RPATH and RUNPATH to the library path
+        for runpath_offset in (dyn_rpath_offset, dyn_runpath_offset):
+            if runpath_offset is not None:
+                for lib_path in dyn_str(runpath_offset).split(':'):
+                    if lib_path.startswith('$ORIGIN'):
+                        lib_path = os.path.dirname(path) + lib_path[7:]
+                    self.library_paths.insert(0, lib_path)
+
+        # Find out the needed libraries
+        for offset in dyn_needed_offsets:
+            lib_path = self.find_library_path(dyn_str(offset))
+            if not lib_path:
+                logger.error("unable to find a dependency of %r: %r", path, dyn_str(offset))
+                self.has_issue = True
+                continue
+            self.dyn_needed.append(lib_path)
+
+        # Now, start parsing the dynamic symbol table.
+        # There is no count/length/size in any header, so use heuristics in order to compute it.
+        if dyn_symtab_vaddr is None:
+            logger.error("no dynamic symbols in %r", path)
+            return
+        if dyn_syment_size != ctypes.sizeof(sym_class):
+            logger.error("unexpected DT_SYMENT value: %#x != %#x in %r",
+                         dyn_syment_size, ctypes.sizeof(sym_class), path)
+            return
+
+        if not self.resolve_symbols:
+            return
+
+        # Find out the maximum number used by REL and RELA relocations
+        max_sym_from_reloc = 0
+        if dyn_rel_vaddr is not None:
+            rel_class = 2 * c_uint_type
+            if dyn_relent != ctypes.sizeof(rel_class):
+                logger.error("unexpected DT_RELENT value: %#x != %#x in %r",
+                             dyn_syment_size, ctypes.sizeof(rel_class), path)
+                return
+            if dyn_relsz is None or dyn_relsz % dyn_relent:
+                logger.error("missing DT_RELSZ or inconsistent entry in %r", path)
+                return
+            for offset in range(dyn_rel_vaddr, dyn_rel_vaddr + dyn_relsz, dyn_relent):
+                r_offset, r_info = virtual_mem.read_struct(offset, rel_class)
+                r_sym = r_info >> (32 if self.archbits == 64 else 8)
+                if r_sym > max_sym_from_reloc:
+                    max_sym_from_reloc = r_sym
+        if dyn_rela_vaddr is not None:
+            rela_class = 3 * c_uint_type
+            if dyn_relaent != ctypes.sizeof(rela_class):
+                logger.error("unexpected DT_RELAENT value: %#x != %#x in %r",
+                             dyn_syment_size, ctypes.sizeof(rela_class), path)
+                return
+            if dyn_relasz is None or dyn_relasz % dyn_relaent:
+                logger.error("missing DT_RELASZ or inconsistent entry in %r", path)
+                return
+            for offset in range(dyn_rela_vaddr, dyn_rela_vaddr + dyn_relasz, dyn_relaent):
+                r_offset, r_info, r_addend = virtual_mem.read_struct(offset, rela_class)
+                r_sym = r_info >> (32 if self.archbits == 64 else 8)
+                if r_sym > max_sym_from_reloc:
+                    max_sym_from_reloc = r_sym
+
+        # Compute the number of dynamic symbols from the hash table
+        number_of_dynsym_entries = max_sym_from_reloc + 1
+        if dyn_gnu_hash_vaddr is not None:
+            gnu_hash_header = virtual_mem.read_struct(dyn_gnu_hash_vaddr, 4 * ctypes.c_uint32)
+            nbuckets, symbias, bitmask_nwords, gnu_shift = gnu_hash_header
+            gnu_bitmask_vaddr = dyn_gnu_hash_vaddr + 0x10
+            gnu_buckets_vaddr = gnu_bitmask_vaddr + (self.archbits // 8) * bitmask_nwords
+            gnu_chain_zero_vaddr = gnu_buckets_vaddr + (nbuckets - symbias) * 4
+            if nbuckets == 0:
+                logger.error("invalid GNU hash table for %r", path)
+                self.has_issue = True
+                return
+            if nbuckets > 1:
+                gnu_buckets = virtual_mem.read_struct(gnu_buckets_vaddr, nbuckets * ctypes.c_uint32)
+                # logger.debug("gnu.hash buckets of %r (nbuckets=%d, symbias=%d): %r",
+                #              path, nbuckets, symbias, list(gnu_buckets))
+                max_gnu_buckets = max(gnu_buckets)
+                # gnu_chain_zero = virtual_mem.read_struct(gnu_chain_zero_vaddr, (max_gnu_buckets + 1)*ctypes.c_uint32)
+                gnu_chain_zero_last_vaddr = gnu_chain_zero_vaddr + 4 * max_gnu_buckets
+                gnu_chain_zero_last = virtual_mem.read_struct(gnu_chain_zero_last_vaddr, ctypes.c_uint32)
+                while (gnu_chain_zero_last.value & 1) == 0:
+                    # Continue the chain
+                    gnu_chain_zero_last_vaddr += 4
+                    gnu_chain_zero_last = virtual_mem.read_struct(gnu_chain_zero_last_vaddr, ctypes.c_uint32)
+                gnu_chain_zero_length = (gnu_chain_zero_last_vaddr + 4 - gnu_chain_zero_vaddr) // 4
+                if gnu_chain_zero_length > number_of_dynsym_entries:
+                    number_of_dynsym_entries = gnu_chain_zero_length
+
+        # Load version definition array
+        dyn_verdef_table = []
+        if dyn_verdef_vaddr is not None:
+            verdef_ent_vaddr = dyn_verdef_vaddr
+            while True:
+                verdef_ent = virtual_mem.read_struct(verdef_ent_vaddr, Elf_Verdef)
+                verdefaux_ent_vaddr = verdef_ent_vaddr + verdef_ent.vd_aux
+                current_names = []
+                while True:
+                    verdefaux_ent = virtual_mem.read_struct(verdefaux_ent_vaddr, Elf_Verdaux)
+                    current_names.append(dyn_str(verdefaux_ent.vda_name))
+                    if not verdefaux_ent.vda_next:
+                        break
+                    verdefaux_ent_vaddr += verdefaux_ent.vda_next
+                dyn_verdef_table.append(current_names)
+                if dyn_verdefnum is not None and dyn_verdefnum < len(dyn_verdef_table):
+                    logger.error("inconsistent DT_VERDEFNUM entry in %r", path)
+                    self.has_issue = True
+                    return
+                if not verdef_ent.vd_next:
+                    break
+                verdef_ent_vaddr += verdef_ent.vd_next
+
+        dyn_version_table = {
+            0: '',  # local
+            1: '',  # global
+        }
+        for version_names in dyn_verdef_table:
+            dyn_version_table[len(dyn_version_table)] = version_names[0]
+
+        # Load version need array
+        if dyn_verneed_vaddr is not None:
+            verneed_ent_vaddr = dyn_verneed_vaddr
+            dyn_verneed_count = 0
+            while True:
+                verneed_ent = virtual_mem.read_struct(verneed_ent_vaddr, Elf_Verneed)
+                verneedaux_ent_vaddr = verneed_ent_vaddr + verneed_ent.vn_aux
+                while True:
+                    verneedaux_ent = virtual_mem.read_struct(verneedaux_ent_vaddr, Elf_Vernaux)
+                    tbl_idx = verneedaux_ent.vna_other & 0x7fff  # Bit 15 is "hidden"
+                    dyn_version_table[tbl_idx] = dyn_str(verneedaux_ent.vna_name)
+                    if not verneedaux_ent.vna_next:
+                        break
+                    verneedaux_ent_vaddr += verneedaux_ent.vna_next
+                dyn_verneed_count += 1
+                if dyn_verneednum is not None and dyn_verneednum < dyn_verneed_count:
+                    logger.error("inconsistent DT_VERNEEDNUM entry in %r", path)
+                    self.has_issue = True
+                    return
+                if not verneed_ent.vn_next:
+                    break
+                verneed_ent_vaddr += verneed_ent.vn_next
+
+        # Load versym
+        dyn_versym = None
+        if dyn_versym_vaddr is not None:
+            dyn_versym = virtual_mem.read_struct(dyn_versym_vaddr, number_of_dynsym_entries * ctypes.c_uint16)
+
+        # Gather the defined and undefined dynamic symbols
+        logger.debug("Assuming %d entries in DT_SYMTAB (max used %d in relocs) for %r",
+                     number_of_dynsym_entries, max_sym_from_reloc, path)
+        dyn_symtab_size = number_of_dynsym_entries * dyn_syment_size
+        for symidx, offset in enumerate(range(dyn_symtab_vaddr, dyn_symtab_vaddr + dyn_symtab_size, dyn_syment_size)):
+            syment = virtual_mem.read_struct(offset, sym_class)
+            if symidx == 0 and syment.st_info == 0:
+                # First item is ST_NULL
+                continue
+            sym_version = None
+            if dyn_versym:
+                version_index = (dyn_versym[symidx] & 0x7fff) - 1
+                if version_index < 0:
+                    pass  # No version
+                elif version_index in dyn_version_table:
+                    # known version
+                    sym_version = dyn_version_table[version_index]
+                else:
+                    logger.error("inconsistent DT_VERSYM table in %r", path)
+                    logger.debug("... defined: %r", dyn_verdef_table)
+                    logger.debug("... all: %r", dyn_version_table)
+                    logger.debug("... used index: %d + 1", version_index)
+                    self.has_issue = True
+
+            sym_st_type = syment.st_info & 0xf
+            sym_st_bind = (syment.st_info & 0xf0) >> 4
+            try:
+                sym_name = dyn_str(syment.st_name)
+            except ValueError:
+                continue
+
+            if syment.st_shndx == 0:
+                # Extern symbol
+                if sym_st_bind != 2:  # STB_WEAK
+                    if sym_st_type == 2:  # Only insert STT_FUNC
+                        if not sym_name:
+                            logger.fatal("%r %d", path, symidx)
+                        self.extern_symbols[sym_name] = sym_version
+            else:
+                # Local symbol
+                self.local_symbols[sym_name] = sym_version
+                self.defined_symbols[sym_name] = sym_version
+
+    def find_library_path(self, lib_name):
+        """Find where a dependent library is installed"""
+        for base_dir in self.library_paths:
+            tested_path = os.path.join(base_dir, lib_name)
+            if os.path.exists(os.path.realpath(tested_path)):
+                return tested_path
+        return None
+
+
+class FileDatabase:
+    """Database of files that have been analyzed"""
+    def __init__(self, resolve_symbols=False):
+        self.files = {}
+        self.resolve_symbols = resolve_symbols
+
+    def load_elf(self, path, first_bytes):
+        """Load an ELF file and analyze it"""
+        file_obj = ElfFile(path, first_bytes, resolve_symbols=self.resolve_symbols)
+        self.files[path] = file_obj  # Insert now in order to prevent recursions
+        if file_obj.interp and self.file_has_issues(file_obj.interp, need_present=True):
+            file_obj.has_issue = True
+
+        for needed_lib in file_obj.dyn_needed:
+            if self.file_has_issues(needed_lib, need_present=True):
+                file_obj.has_issue = True
+            else:
+                # The library has to be loaded, because need_present was True
+                needed_lib_obj = self.files[needed_lib]
+                if needed_lib_obj.archbits != file_obj.archbits:
+                    # This is normal with Virtual Box extension packs
+                    if re.match(r'^((/usr)?/lib(32|64)?/virtualbox)/ExtensionPacks/', path):
+                        logger.debug("mismatched arch bits between %r and its dependency %r: %r != %r",
+                                     path, needed_lib, needed_lib_obj.archbits, file_obj.archbits)
+                    else:
+                        logger.error("mismatched arch bits between %r and its dependency %r: %r != %r",
+                                     path, needed_lib, needed_lib_obj.archbits, file_obj.archbits)
+                        file_obj.has_issue = True
+
+                if self.resolve_symbols:
+                    # Propagate defined symbols
+                    file_obj.defined_symbols.update(needed_lib_obj.defined_symbols)
+
+        # Find out undefined symbols if there is no other issue
+        if self.resolve_symbols and not file_obj.has_issue:
+            undefined_symbols = set(file_obj.extern_symbols.keys()) - set(file_obj.defined_symbols.keys())
+            if undefined_symbols:
+                if len(undefined_symbols) > 5:
+                    repr_symbols = repr(sorted(undefined_symbols)[:5]) + '...'
+                else:
+                    repr_symbols = repr(sorted(undefined_symbols))
+                logger.error("%d undefined symbols in %r: %s", len(undefined_symbols), path, repr_symbols)
+                file_obj.has_issue = True
+        return file_obj
+
+    def file_has_issues(self, file_path, need_present):
+        """Report library/linking issues about a file
+
+        Test whether the fiven file is a binary file with libraries, and if yes,
+        run more analyses.
+        """
+        # If the file has already been analyzed, do not analyze it again
+        previous = self.files.get(file_path)
+        if previous is not None:
+            return previous.has_issue
+
+        # Resolve symbolic links
+        real_path = os.path.realpath(file_path)
+        previous = self.files.get(real_path)
+        if previous is not None:
+            # Link the objects together and return the result
+            self.files[file_path] = previous
+            return previous.has_issue
+
+        # Stat the file
+        try:
+            filestat = os.lstat(real_path)
+        except FileNotFoundError:
+            # Broken symlink
+            if need_present:
+                logger.error("file not found: %r", file_path)
+            return need_present
+        except PermissionError:
+            # Symlink to a forbidden target
+            if need_present:
+                logger.error("access denied to file: %r", file_path)
+            return need_present
+
+        # If the file is special, ignore it
+        if not stat.S_ISREG(filestat.st_mode):
+            return need_present
+
+        # Read the first bytes of a file, which usually contains the ELF headers
+        try:
+            with open(real_path, 'rb') as fd:
+                first_bytes = fd.read(8196)
+        except PermissionError:
+            if need_present:
+                logger.error("not allowed to read %r", file_path)
+            else:
+                logger.debug("not allowed to read %r", file_path)
+            return need_present
+
+        # Filter only ELF files
+        if not first_bytes.startswith(b'\x7fELF'):
+            return need_present
+
+        if real_path == file_path:
+            logger.debug("Loading %r", real_path)
+        else:
+            logger.debug("Loading %r for %r", real_path, file_path)
+        file_obj = self.load_elf(real_path, first_bytes)
+        self.files[file_path] = file_obj
+        return file_obj.has_issue
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Find files with broken library dependency on a system")
+    parser.add_argument('dirs', metavar='DIR', nargs='*',
+                        help="files and directories to explore")
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help="show debug messages")
+    parser.add_argument('-l', '--lib', action='store_true',
+                        help="Only show files from library paths (eg. /lib)")
+    parser.add_argument('-p', '--path', action='store_true',
+                        help="Only show files from $PATH")
+    parser.add_argument('-s', '--symbols', action='store_true',
+                        help="resolve symbols (slow and consumes much memory)")
+    parser.add_argument('-x', '--xdev', action='store_true',
+                        help="do not cross mountpoints under / and /usr")
+    args = parser.parse_args(argv)
+
+    # Configure the logging
+    logging.basicConfig(
+        format='[%(levelname)s] %(message)s',
+        level=logging.DEBUG if args.debug else logging.INFO)
+
+    # Configure the directories
+    dirs = []
+    if args.dirs:
+        dirs += args.dirs
+    if args.lib:
+        for libdir in ('/lib', '/lib32', '/lib64', '/libexec'):
+            lib_realpath = os.path.realpath(libdir)
+            if os.path.exists(lib_realpath) and lib_realpath not in dirs:
+                dirs.append(lib_realpath)
+            lib_realpath = os.path.realpath('/usr' + libdir)
+            if os.path.exists(lib_realpath) and lib_realpath not in dirs:
+                dirs.append(lib_realpath)
+    if args.path:
+        for dir_path in os.environ.get('PATH', '').split(os.pathsep):
+            dir_path = os.path.realpath(dir_path)
+            if not os.path.exists(dir_path):
+                logger.warning("non-existing PATH component %s", dir_path)
+            elif dir_path not in dirs:
+                dirs.append(dir_path)
+    if not dirs:
+        # By default, walk a bunch of directories
+        default_dirs = set()
+        for defdir in ('/bin', '/etc', '/lib', '/lib32', '/lib64', '/opt',
+                       '/sbin', '/usr', '/var'):
+            default_dirs.add(os.path.realpath(defdir))
+            default_dirs.add(os.path.realpath('/usr' + defdir))
+        dirs = [d for d in default_dirs if os.path.exists(d)]
+        dirs.sort()
+
+    logger.debug("Using files and dirs: %s", ", ".join(dirs))
+
+    if args.xdev:
+        def filter_out_dir(dirpath):
+            """Filter to walk dirs without crossing mountpoints nor other
+            directories
+            """
+            return dirpath in dirs or os.path.ismount(dirpath)
+    else:
+        def filter_out_dir(dirpath):
+            """Filter to walk dirs without crossing other specified
+            directories"""
+            return dirpath in dirs
+
+    db = FileDatabase(resolve_symbols=args.symbols)
+    files_with_issues = []
+
+    # Walk through the files and directories
+    for basedir in dirs:
+        if os.path.isfile(basedir):
+            if db.file_has_issues(basedir, need_present=True):
+                files_with_issues.append(basedir)
+        elif os.path.isdir(basedir):
+            for root, dirs, files in os.walk(basedir, topdown=True):
+                # Always ignore files in /proc
+                if root == '/' and 'proc' in dirs:
+                    dirs.remove('proc')
+                dirs[:] = sorted(
+                    dirname for dirname in dirs
+                    if not filter_out_dir(os.path.join(root, dirname)))
+                files.sort()
+                for filename in files:
+                    path = os.path.join(root, filename)
+                    if db.file_has_issues(path, need_present=False):
+                        files_with_issues.append(path)
+        else:
+            logger.error("neither a file nor a directory: %r", basedir)
+            files_with_issues.append(basedir)
+
+    # List files with issues
+    for path in sorted(files_with_issues):
+        print(path)
+
+    return 1 if files_with_issues else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
