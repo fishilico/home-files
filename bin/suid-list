@@ -354,7 +354,9 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib/qemu/qemu-bridge-helper'),
 
     # s-nail, http://sdaoden.users.sourceforge.net/code.html#s-nail
+    # https://git.sdaoden.eu/cgit/s-nail.git/
     # http://sourceforge.net/p/s-nail/code/ci/master/tree/
+    SuidFile('/lib/mail-dotlock'),
     SuidFile('/lib/mail-privsep'),
     SuidFile('/lib/s-nail/s-nail-privsep'),
 
