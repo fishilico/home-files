@@ -235,6 +235,10 @@ TRUSTED_SUID_FILES = [
     LinkToSuidFile('/sbin/runq', '/sbin/exim4'),
     LinkToSuidFile('/sbin/sendmail', '/sbin/exim4'),
 
+    # firejail, https://firejail.wordpress.com/
+    # https://github.com/netblue30/firejail
+    SuidFile('/bin/firejail'),
+
     # fuse, https://github.com/libfuse/libfuse/wiki
     # https://github.com/libfuse/libfuse
     SuidFile('/bin/fusermount'),
