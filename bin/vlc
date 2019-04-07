@@ -21,26 +21,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# Launch a program (or a new shell) without any access to the Internet, using
-# a new network namespace.
-#
-# In order to allow user "me" to use this program without a password prompt,
-# this could be added to /etc/sudoers:
-#
-#    me ALL=(root) NOPASSWD: /usr/bin/unshare --net /usr/bin/sudo -u me *
-#
-# This feature can also be provided by a tool such as Firejail:
-#
-#    firejail --net=none ...
-
-if [ $# -lt 1 ]
+# Spawn VLC using a firejail sandbox and no network access, if it is installed
+if command -v firejail
 then
-    # Launch the shell by default
-    set -- "${SHELL:-sh}"
-fi
-if [ "$(id -u)" = 0 ]
-then
-    exec unshare --net "$@"
+    exec firejail --net=none -- /usr/bin/vlc "$@"
 else
-    exec /usr/bin/sudo unshare --net /usr/bin/sudo -u "$(id -nu)" "$@"
+    echo >&2 'Warning: using VLC without Firejail'
+    /usr/bin/vlc "$@"
 fi
