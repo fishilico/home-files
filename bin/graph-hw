@@ -845,6 +845,7 @@ def add_acpi_path_names(device_tree):
 # * http://download.microsoft.com/download/1/6/1/161ba512-40e2-4cc9-843a-923143f3456c/devids.txt
 # * http://cvsweb.netbsd.org/bsdweb.cgi/src/sys/dev/acpi/acpidevs?rev=1.35
 # * https://github.com/acpica/acpica/blob/R01_08_19/source/common/ahids.c
+# * https://wiki.linaro.org/LEG/ServerArchitecture/ACPI/LinaroRegistry
 # * /proc/acpi/*
 # * System Information Viewer (provides pnpdevs.txt):
 #   * http://rh-software.com/index_arc.html
@@ -874,6 +875,9 @@ KNOWN_ACPI_DEVICES = {
     'ACPI0014': 'Wireless Power Calibration Device',
 
     'APP0001': 'Apple System Management Controller (SMC)',  # Seen as \_SB_.PCI0.SBRG.SMC_
+
+    'ARMH0011': 'ARM PrimeCell UART (PL011 model)',
+    'ARMH0061': 'ARM PrimeCell GPIO (PL061 model)',
 
     'ATML1000': 'Atmel Touchscreen Controller',
 
@@ -1010,6 +1014,15 @@ KNOWN_ACPI_DEVICES = {
     'LEN200A': 'Synaptics touchpad for Lenovo',
     'LEN200B': 'Synaptics touchpad for Lenovo',
     'LEN200F': 'Synaptics touchpad for Lenovo T450s',
+
+    # Linaro ACPI Registry
+    'LNRO0003': 'Linaro smc91x',
+    'LNRO0005': 'Linaro Virtio MMIO device',  # Seen on AArch64 QEMU virtual machine
+    'LNRO0015': 'Linaro Flash MTD',  # MTD = Memory Technology Device
+    'LNRO001D': 'Linaro GPIO (PL061 model)',
+    'LNRO001E': 'Linaro AHCI',
+    'LNRO001F': 'Linaro non-standard ITS frames',
+    'LNRO0020': 'Linaro OP-TEE secure world OS',
 
     # Virtual devices
     'LNXCPU': 'Logical CPU',
