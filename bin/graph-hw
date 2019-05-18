@@ -47,8 +47,21 @@ This information can be recorded by the following commands:
     find /sys -type l -exec ls -ld {} \; > sysfs_symlinks.txt
     find /sys -perm -400 -type f \( \
         -name address -o \
+        -name bios_date -o \
+        -name bios_vendor -o \
+        -name bios_version -o \
         -name block_size_bytes -o \
+        -name board_asset_tag -o \
+        -name board_name -o \
+        -name board_serial -o \
+        -name board_vendor -o \
+        -name board_version -o \
         -name busnum -o \
+        -name chassis_asset_tag -o \
+        -name chassis_serial -o \
+        -name chassis_type -o \
+        -name chassis_vendor -o \
+        -name chassis_version -o \
         -name class_id -o \
         -name description -o \
         -name devnum -o \
@@ -59,6 +72,12 @@ This information can be recorded by the following commands:
         -name path -o \
         -name phys_device -o \
         -name phys_index -o \
+        -name product_family -o \
+        -name product_name -o \
+        -name product_serial -o \
+        -name product_sku -o \
+        -name product_uuid -o \
+        -name product_version -o \
         -name removable -o \
         -name state -o \
         -name uevent -o \
@@ -1505,6 +1524,51 @@ def add_dev_descriptions(device_tree):
             pass
 
 
+def add_dmi_info(device_tree):
+    """Add files that are specific to DMI (Desktop Management Interface)"""
+    dmi_files = (
+        'bios_date',
+        'bios_vendor',
+        'bios_version',
+        'board_asset_tag',
+        'board_name',
+        'board_serial',
+        'board_vendor',
+        'board_version',
+        'chassis_asset_tag',
+        'chassis_serial',
+        'chassis_type',
+        'chassis_vendor',
+        'chassis_version',
+        'product_family',
+        'product_name',
+        'product_serial',
+        'product_sku',
+        'product_uuid',
+        'product_version',
+    )
+    for dev in device_tree.iter_all():
+        for file_name in dmi_files:
+            file_path = os.path.join(dev['sysfs_path'], file_name)
+            try:
+                with open(file_path, 'r') as fd:
+                    value = fd.read().strip()
+                    if '\n' in value:
+                        logger.warning("Skipping multi-line %s for %s", file_name, dev['sysfs_path'])
+                        continue
+                    label_name = ' '.join(
+                        part.upper() if part in ('bios', 'sku') else part.title()
+                        for part in file_name.split('_')
+                    )
+                    dev.add_to_label_desc("{0}: {1}".format(label_name, value))
+                if dev['buskind'] != 'dmi':
+                    logger.warning(
+                        "Found %r for unexpected device %s (%s)",
+                        dev['sysfs_path'], dev['buskind'])
+            except IOError:
+                pass
+
+
 def add_net_addresses(device_tree):
     """Add addresses for network devices"""
     # Only run commands when using the live system
@@ -1838,6 +1902,7 @@ def main(argv=None):
         add_firmware_nodes(device_tree)
         add_firmware_revisions(device_tree)
         add_dev_descriptions(device_tree)
+        add_dmi_info(device_tree)
         add_net_addresses(device_tree)
         add_mem_info(device_tree)
 
