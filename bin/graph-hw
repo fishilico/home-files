@@ -622,7 +622,7 @@ KNOWN_MEI_UUIDS = {
     '6b5205b9-8185-4519-b889-d98724b58607': 'QST',
     '8c2f4425-77d6-4755-aca3-891fdbc66a58': 'ICC (Integrated Clock Controller)',
     '8e6a6715-9abc-4043-88ef-9e39c6f63e0f': 'MKHI (ME Kernel Host Interface)',
-    'b638ab7e-94e2-4ea2-a552-d1c54b627f04': 'PAVP (Protected Audio Video Path)',
+    'b638ab7e-94e2-4ea2-a552-d1c54b627f04': 'PAVP (Protected Audio Video Path, with HDCP)',
     'd2de1625-382d-417d-48a4-efabba8a1206': 'NFC Info',
     'd2ea63bc-5f04-4997-9454-8cadf4e3ef8a': 'Thermal',
     'f908627d-13bf-4a04-b91f-a64e9245323d': 'CLS (Capability Licensing Service)',
