@@ -49,6 +49,7 @@ This information can be recorded by the following commands:
         -name address -o \
         -name block_size_bytes -o \
         -name busnum -o \
+        -name class_id -o \
         -name description -o \
         -name devnum -o \
         -name firmware_revision -o \
@@ -437,7 +438,7 @@ def add_device_holders(device_tree):
                         lnkdev = device_tree.resolve_path(symlink, create=True)
                         tgtdev = device_tree.resolve_path(target_path)
                         lnkdev['buskind'] = tgtdev['buskind']
-                        lnkdev['label_desc'] = tgtdev['label_desc']
+                        lnkdev.add_to_label_desc(tgtdev['label_desc'])
                         need_rescan = True  # scan of holder's children
 
                     if dev['buskind'] != 'block':
@@ -606,6 +607,7 @@ def fill_names_with_lsusb_output(device_tree):
         dev.add_to_label_desc('USB ID: {0}\n{1}'.format(usbid, desc.strip()))
 
 
+# Intel's Management Engine Interface UUIDs
 KNOWN_MEI_UUIDS = {
     '05b79a6f-4628-4d7f-899d-a91514cb32ab': 'WD (Watchdog)',
     '0bb17a78-2a8e-4c50-94d4-50266723775c': 'NFC HCI',
@@ -639,13 +641,84 @@ def fill_mei_names(device_tree):
             mei_uuid = m.group(1)
             desc = KNOWN_MEI_UUIDS.get(mei_uuid)
             if desc:
-                dev['label_desc'] = desc
+                dev.add_to_label_desc(desc)
+
+
+# Microsoft's Hyper-V VMBus device UUIDs
+# UUIDs in Linux kernel:
+# - https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/hyperv.h
+KNOWN_HV_VMBUS_UUIDS = {
+    '0e0b6031-5213-4934-818b-38d90ced39db': 'Shutdown',  # HV_SHUTDOWN_GUID
+    '15c04dc0-a8ca-461c-9c23-f43da76208f5': 'SCSI Storage device',  # hv_storvsc driver
+    '1eccfd72-4b41-45ef-b73a-4a6e44c12924': 'Dynamic Memory',  # hv_balloon driver
+    '242ff919-07db-4180-9c2e-b86cb68c8c55': 'Key Value Pair (KVP) device',  # hv_util driver
+    '2450ee40-33bf-4fbd-892e-9fb06e9214cf': 'VSS (Backup/Restore) device',  # hv_util driver
+    '276aacf4-ac15-426c-98dd-7521ad3f01fe': 'Remote Desktop Virtualization',  # HV_RDV_GUID
+    '2dd1ce17-079e-403c-b352-a1921ee207ee': 'Time Synch device',  # hv_util driver
+    '2f9bcc4a-0069-4af3-b76b-6fd0be528cda': 'Synthetic FC',  # HV_SYNTHFC_GUID
+    '32412632-86cb-44a2-9b5c-50d1417354f5': 'IDE',  # HV_IDE_GUID
+    '3375baf4-9e15-4b30-b765-67acb10d607b': 'Automatic Virtual Machine Activation 2',  # HV_AVMA2_GUID
+    '34d14be3-dee4-41c8-9ae7-6b174977c192': 'Guest File Copy Service',  # HV_FCOPY_GUID
+    '35fa2e29-ea23-4236-96ae-3a6ebacba440': 'VSS (Backup/Restore)',  # HV_VSS_GUID
+    '4487b255-b88c-403f-bb51-d1f69cf17f87': 'Automatic Virtual Machine Activation 2 device',
+    '44c4f61d-4444-4400-9d52-802e27ede19f': 'PCI Express Pass Through',  # HV_PCIE_GUID
+    '525074dc-8985-46e2-8057-a307dc18a502': 'Dynamic Memory',  # HV_DM_GUID
+    '5620e0c7-8062-4dce-aeb7-520c7ef76171': 'Frame Buffer',  # hyperv_fb driver
+    '57164f39-9115-4e78-ab55-382f3bd5422d': 'Heartbeat',  # HV_HEART_BEAT_GUID
+    '58f75a6d-d949-4320-99e1-a2a2576d581c': 'Mouse device',  # hid_hyperv driver
+    '6310e6a7-4cf3-4035-ba8d-19c571e5697c': 'Network device',  # hv_netvsc driver
+    '8c2eaf3d-32a7-4b09-ab99-bd1f1c86b501': 'NetworkDirect (Guest RDMA service)',  # HV_ND_GUID
+    '9527e630-d0ae-497b-adce-e80ab0175caf': 'Time Synch',  # HV_TS_GUID
+    '99221fa0-24ad-11e2-be98-001aa01bbf6e': 'Automatic Virtual Machine Activation 1 device',
+    'a9a0f4e7-5a45-4d96-b827-8a841e8c03e6': 'Key Value Pair (KVP)',  # HV_KVP_GUID
+    'b6650ff7-33bc-4840-8048-e0676786f393': 'Shutdown device',  # hv_util driver
+    'ba6163d9-04a1-4d29-b605-72e2ffb1dc7f': 'SCSI',  # HV_SCSI_GUID
+    'cfa8b69e-5b4a-4cc0-b98b-8ba1a1f3f95a': 'Mouse',  # HV_MOUSE_GUID
+    'd34b2567-b9b6-42b9-8778-0a4ec0b955bf': 'Keyboard device',  # hyperv_keyboard driver
+    'da0a7802-e377-4aac-8e77-0558eb1073f8': 'Synthetic Video',  # HV_SYNTHVID_GUID
+    'f5bee29c-1741-4aad-a4c2-8fdedb46dcc2': 'Remote Desktop Virtualization device',
+    'f8615163-df3e-46c5-913f-f2d2f965ed0e': 'Network',  # HV_NIC_GUID
+    'f8e65716-3cb3-4a06-9a60-1889c5cccab5': 'Automatic Virtual Machine Activation 1',  # HV_AVMA1_GUID
+    'f912ad6d-2b17-48ea-bd65-f927a61c7684': 'Keyboard',  # HV_KBD_GUID
+    'fd149e91-82e0-4a7d-afa6-2a4166cbd7c0': 'Heartbeat device',  # hv_util driver
+}
+
+
+def fill_vmbus_names(device_tree):
+    """Fill names from Microsoft's Hyper-V VMBus device UUIDs"""
+    for dev in device_tree.iter_all():
+        if dev['buskind'] == 'vmbus':
+            m = re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', dev['sysfs_name'])
+            if m is None:
+                logger.warning("Invalid VMBus device name %s", dev['sysfs_name'])
+                continue
+            vmbus_uuid = dev['sysfs_name']
+            desc = KNOWN_HV_VMBUS_UUIDS.get(vmbus_uuid)
+            if desc:
+                dev.add_to_label_desc(desc)
+
+            # Gather the class ID, if found. Its values is {UUID}
+            class_id_path = os.path.join(dev['sysfs_path'], 'class_id')
+            try:
+                with open(class_id_path, 'r') as fd_class_id:
+                    value = fd_class_id.read().strip()
+                    dev.add_to_label_desc("VMBus Class ID: {0}".format(value))
+                    m = re.match(r'\{([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\}$', value)
+                    if m is None:
+                        logger.warning("Invalid VMBus class ID %s", value)
+                    else:
+                        class_id_uuid = m.group(1)
+                        desc = KNOWN_HV_VMBUS_UUIDS.get(class_id_uuid)
+                        if desc:
+                            dev.add_to_label_desc("VMBus Class: {0}".format(desc))
+            except IOError:
+                pass
 
 
 # Decode the content of
 # /sys/devices/platform/PNP0C14:00/wmi_bus/wmi_bus-PNP0C14:00/05901221-D566-11D1-B2F0-00A0C9062910/bmof
 # using bmf2mof from https://github.com/pali/bmfdec
-# and UUIDS found in:
+# and UUIDs found in:
 # - Linux kernel
 # - https://bitbucket.org/tuxedocomputers/clevo-xsm-wmi/src/
 #       37c470bc8c3c31c7487964c26861a4ee5969ff2b/module/clevo-xsm-wmi.c
@@ -713,15 +786,14 @@ def fill_wmi_names(device_tree):
     """
     for dev in device_tree.iter_all():
         if dev['buskind'] == 'wmi':
-            m = re.match(r'[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}', dev['sysfs_name'])
+            m = re.match(r'^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$', dev['sysfs_name'])
             if m is None:
-                if not re.match(r'mei[0-9]$', dev['sysfs_name']):
-                    logger.warning("Invalid WMI device name %s", dev['sysfs_name'])
+                logger.warning("Invalid WMI device name %s", dev['sysfs_name'])
                 continue
             wmi_uuid = dev['sysfs_name']
             desc = KNOWN_WMI_UUIDS.get(wmi_uuid)
             if desc:
-                dev['label_desc'] = desc.replace('\\', '\\\\')
+                dev.add_to_label_desc(desc.replace('\\', '\\\\'))
 
 
 def add_uevent_names(device_tree):
@@ -843,6 +915,7 @@ def add_acpi_path_names(device_tree):
 # * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/acpi/acpi_pnp.c?h=v4.20
 # * https://docs.microsoft.com/en-gb/windows-hardware/drivers/hid/acpi-button-device
 # * http://download.microsoft.com/download/1/6/1/161ba512-40e2-4cc9-843a-923143f3456c/devids.txt
+#   (from https://uefi.org/PNP_ACPI_Registry )
 # * http://cvsweb.netbsd.org/bsdweb.cgi/src/sys/dev/acpi/acpidevs?rev=1.35
 # * https://github.com/acpica/acpica/blob/R01_08_19/source/common/ahids.c
 # * https://wiki.linaro.org/LEG/ServerArchitecture/ACPI/LinaroRegistry
@@ -887,6 +960,9 @@ KNOWN_ACPI_DEVICES = {
     'DLLK05CB': 'Samsung PS/2 Keyboard or Dell Latitude E7440 keyboard',
 
     'HPQ0004': 'Hewlett-Packard 3D DriveGuard accelerometer',
+
+    'HYPER_V_GEN_COUN': 'Microsoft Hyper-V Generation Counter',
+    'HYPER_V_GEN_COUNTER_V1': 'Microsoft Hyper-V Generation Counter v1',
 
     'IBM0068': 'IBM Hotkey HID',
     'IBM0079': 'IBM Docking Station',
@@ -1044,10 +1120,12 @@ KNOWN_ACPI_DEVICES = {
     'NXP6020': 'NXP NFC',
     'NXP6022': 'NXP NFC',
 
+    # PNP0xxx are system devices
     'PNP0000': 'Programmable Interrupt Controller (ISA 8259 PIC)',
     'PNP0001': 'EISA Programmable Interrupt Controller',
     'PNP0002': 'MCA Programmable Interrupt Controller',
     'PNP0003': 'Advanced Programmable Interrupt Controller (IO-APIC)',
+    'PNP0004': 'Cyrix SLiC MP interrupt controller',
     'PNP0100': 'System Timer (ISA 8254 Timer)',
     'PNP0101': 'EISA System Timer',
     'PNP0102': 'MCA System Timer',
@@ -1059,15 +1137,27 @@ KNOWN_ACPI_DEVICES = {
     'PNP0301': 'IBM PC/XT Keyboard Controller (86 key) (PS/2=i8042)',
     'PNP0302': 'IBM PC/XT Keyboard Controller (84 key) (PS/2=i8042)',
     'PNP0303': 'IBM Enhanced Keyboard (101/102-key, PS/2=i8042 Mouse) (PS2K)',
-    'PNP0304': 'PS/2 (i8042) keyboard (PS2K)',
-    'PNP0305': 'PS/2 (i8042) keyboard (PS2K)',
-    'PNP0306': 'PS/2 (i8042) keyboard (PS2K)',
-    'PNP0309': 'PS/2 (i8042) keyboard (PS2K)',
-    'PNP030A': 'PS/2 (i8042) keyboard (PS2K)',
-    'PNP030B': 'PS/2 (i8042) keyboard (PS2K)',
-    'PNP0320': 'PS/2 (i8042) keyboard (PS2K)',
-    'PNP0343': 'PS/2 (i8042) keyboard (PS2K)',
-    'PNP0344': 'PS/2 (i8042) keyboard (PS2K)',
+    'PNP0304': 'Olivetti Keyboard (83-key) ; PS/2 (i8042) keyboard (PS2K)',
+    'PNP0305': 'Olivetti Keyboard (102-key) ; PS/2 (i8042) keyboard (PS2K)',
+    'PNP0306': 'Olivetti Keyboard (86-key) ; PS/2 (i8042) keyboard (PS2K)',
+    'PNP0307': 'Microsoft Windows(R) Keyboard',
+    'PNP0308': 'General Input Device Emulation Interface (GIDEI) legacy',
+    'PNP0309': 'Olivetti Keyboard (A101/102 key) ; PS/2 (i8042) keyboard (PS2K)',
+    'PNP030A': 'AT&T 302 keyboard ; PS/2 (i8042) keyboard (PS2K)',
+    'PNP030B': 'Reserved by Microsoft ; PS/2 (i8042) keyboard (PS2K)',
+    'PNP0320': 'Japanese 101-key keyboard ; PS/2 (i8042) keyboard (PS2K)',
+    'PNP0321': 'Japanese AX keyboard',
+    'PNP0322': 'Japanese 106-key keyboard A01',
+    'PNP0323': 'Japanese 106-key keyboard 002/003',
+    'PNP0324': 'Japanese 106-key keyboard 001',
+    'PNP0325': 'Japanese Toshiba Desktop keyboard',
+    'PNP0326': 'Japanese Toshiba Laptop keyboard',
+    'PNP0327': 'Japanese Toshiba Notebook keyboard',
+    'PNP0340': 'Korean 84-key keyboard',
+    'PNP0341': 'Korean 86-key keyboard',
+    'PNP0342': 'Korean Enhanced keyboard',
+    'PNP0343': 'Korean Enhanced keyboard 101b or 101c ; PS/2 (i8042) keyboard (PS2K)',
+    'PNP0344': 'Korean Enhanced keyboard 103 ; PS/2 (i8042) keyboard (PS2K)',
     'PNP0345': 'PS/2 (i8042) keyboard (PS2K)',
     'PNP0400': 'Standard LPT Printer Port',
     'PNP0401': 'ECP Printer Port',
@@ -1075,9 +1165,50 @@ KNOWN_ACPI_DEVICES = {
     'PNP0501': 'Generic 16550A-compatible COM port',
     'PNP0510': 'Generic IRDA-compatible Device',
     'PNP0600': 'Generic ESDI/IDE/ATA compatible hard disk controller',
-    'PNP0700': 'PS/2 floppy controller',
+    'PNP0601': 'Plus Hardcard II',
+    'PNP0602': 'Plus Hardcard IIXL/EZ',
+    'PNP0603': 'Generic IDE supporting Microsoft Device Bay Specification',
+    'PNP0700': 'PC standard floppy disk controller',
+    'PNP0701': 'Standard floppy controller supporting MS Device Bay Spec',
     'PNP0800': 'AT speaker',  # documented as "Microsoft Sound System Compatible Device"
+    'PNP0802': 'Microsoft Sound System compatible device',
+    'PNP0900': 'VGA Compatible',
+    'PNP0901': 'Video Seven VRAM/VRAM II/1024i',
+    'PNP0902': '8514/A Compatible',
+    'PNP0903': 'Trident VGA',
+    'PNP0904': 'Cirrus Logic Laptop VGA',
+    'PNP0905': 'Cirrus Logic VGA',
+    'PNP0906': 'Tseng ET4000',
+    'PNP0907': 'Western Digital VGA',
+    'PNP0908': 'Western Digital Laptop VGA',
+    'PNP0909': 'S3 Inc. 911/924',
+    'PNP090A': 'ATI Ultra Pro/Plus (Mach 32)',
+    'PNP090B': 'ATI Ultra (Mach 8)',
+    'PNP090C': 'XGA Compatible',
+    'PNP090D': 'ATI VGA Wonder',
+    'PNP090E': 'Weitek P9000 Graphics Adapter',
+    'PNP090F': 'Oak Technology VGA',
+    'PNP0910': 'Compaq QVision',
+    'PNP0911': 'XGA/2',
+    'PNP0912': 'Tseng Labs W32/W32i/W32p',
+    'PNP0913': 'S3 Inc. 801/928/964',
+    'PNP0914': 'Cirrus Logic 5429/5434 (memory mapped)',
+    'PNP0915': 'Compaq Advanced VGA (AVGA)',
+    'PNP0916': 'ATI Ultra Pro Turbo (Mach64)',
+    'PNP0917': 'Reserved by Microsoft',
+    'PNP0918': 'Matrox MGA',
+    'PNP0919': 'Compaq QVision 2000',
+    'PNP091A': 'Tseng W128',
+    'PNP0930': 'Chips & Technologies Super VGA',
+    'PNP0931': 'Chips & Technologies Accelerator',
+    'PNP0940': 'NCR 77c22e Super VGA',
+    'PNP0941': 'NCR 77c32blt',
+    'PNP09FF': 'Plug and Play Monitors (VESA DDC)',
+    'PNP0A00': 'ISA Bus',
+    'PNP0A01': 'EISA Bus',
+    'PNP0A02': 'MCA Bus',
     'PNP0A03': 'PCI host bridge',
+    'PNP0A04': 'VESA/VL Bus',
     'PNP0A05': 'ACPI Generic ISA Bus / Generic Container Device',
     'PNP0A06': 'ACPI Generic EIO Bus',  # EIO = Extended Input/Output
     'PNP0A08': 'PCI Express host bridge',
@@ -1091,6 +1222,8 @@ KNOWN_ACPI_DEVICES = {
     'PNP0C03': 'PnP BIOS event notification interrupt',
     'PNP0C04': 'Math Coprocessor (x87 FPU)',  # documented as "x87-compatible Floating Point Processing Unit"
     'PNP0C05': 'Advanced Power Management (APM) BIOS',
+    'PNP0C06': 'Reserved for identification of early Plug and Play',
+    'PNP0C07': 'Reserved for identification of early Plug and Play',
     'PNP0C08': 'Advanced Configuration and Power Interface (ACPI) BIOS',  # documented as "ACPI Core Hardware"
     'PNP0C09': 'Embedded Controller (EC)',
     'PNP0C0A': 'Control Method Battery',
@@ -1105,22 +1238,119 @@ KNOWN_ACPI_DEVICES = {
     'PNP0C13': 'PnP BIOS (fail safe)',
     'PNP0C14': 'Windows Management Instrumentation (WMI)',
     'PNP0C15': 'Docking Station',
+    'PNP0C20': 'SMI_CMD',
+    'PNP0C21': 'PM1a_EVT_BLK / X_PM1a_EVT_BLK',
+    'PNP0C22': 'PM1b_EVT_BLK / X_PM1b_EVT_BLK',
+    'PNP0C23': 'PM1a_CNT_BLK / X_PM1a_CNT_BLK',
+    'PNP0C24': 'PM1b_CNT_BLK / X_PM1b_CNT_BLK',
+    'PNP0C25': 'PM2_CNT_BLK / X_PM2_CNT_BLK',
+    'PNP0C26': 'PM_TMR_BLK / X_PM_TMR_BLK',
+    'PNP0C27': 'GPE0_BLK / X_GPE0_BLK',
+    'PNP0C28': 'GPE1_BLK / X_GPE1_BLK',
+    'PNP0C30': 'Trusted Mobile Keyboard Controller (TMKBC)',
     'PNP0C31': 'Trusted Platform Module (TPM)',
+    'PNP0C32': 'HIDACPI Button',
     'PNP0C33': 'Hardware Error Device (HED)',  # Seen as \_SB_.WERR
+    'PNP0C34': 'Metering Device / Microsoft Virtual S3 Generic VGA Device',
     'PNP0C40': 'Standard Button Controller',
     'PNP0C50': 'HID Protocol Device (I2C bus)',
-    'PNP0C60': 'Display Sensor',
+    'PNP0C60': 'Convertible Laptop Display Sensor',
     'PNP0C70': 'Dock Sensor',
     'PNP0C80': 'Memory',
+    'PNP0D00': 'Multifunction 3.0 PC Card',
+    'PNP0D10': 'XHCI-compliant USB Controller without Std. Debug support',
+    'PNP0D15': 'XHCI-compliant USB Controller with Std. Debug support',
+    'PNP0D20': 'EHCI-compliant USB Controller without Std. Debug support',
+    'PNP0D25': 'EHCI-compliant USB Controller with Std. Debug support',
+    'PNP0D40': 'SDA Standard Compliant SD Host Controller',
     'PNP0D80': 'Windows-compatible System Power Management Controller',
+    'PNP0E00': 'Intel 82365-Compatible PCMCIA Controller',
+    'PNP0E01': 'Cirrus Logic CL-PD6720 PCMCIA Controller',
+    'PNP0E02': 'VLSI VL82C146 PCMCIA Controller',
+    'PNP0E03': 'Intel 82365-compatible CardBus controller',
+    'PNP0F00': 'Microsoft Bus Mouse',
+    'PNP0F01': 'Microsoft Serial Mouse',
+    'PNP0F02': 'Microsoft InPort Mouse',
     'PNP0F03': 'Microsoft PS/2-style Mouse (i8042 aux)',
-    'PNP0F0B': 'i8042 aux',
-    'PNP0F0E': 'i8042 aux',
-    'PNP0F12': 'i8042 aux',
+    'PNP0F04': 'Mouse Systems Mouse',
+    'PNP0F05': 'Mouse Systems 3-Button Mouse (COM2)',
+    'PNP0F06': 'Genius Mouse (COM1)',
+    'PNP0F07': 'Genius Mouse (COM2)',
+    'PNP0F08': 'Logitech Serial Mouse',
+    'PNP0F09': 'Microsoft BallPoint Serial Mouse',
+    'PNP0F0A': 'Microsoft Plug and Play Mouse',
+    'PNP0F0B': 'Microsoft Plug and Play BallPoint Mouse ; i8042 aux',
+    'PNP0F0C': 'Microsoft-compatible Serial Mouse',
+    'PNP0F0D': 'Microsoft-compatible InPort-compatible Mouse',
+    'PNP0F0E': 'Microsoft-compatible PS/2-style Mouse ; i8042 aux',
+    'PNP0F0F': 'Microsoft-compatible Serial BallPoint-compatible Mouse',
+    'PNP0F10': 'Texas Instruments QuickPort Mouse',
+    'PNP0F11': 'Microsoft-compatible Bus Mouse',
+    'PNP0F12': 'Logitech PS/2-style Mouse ; i8042 aux',
     'PNP0F13': 'PS/2 (i8042) Mouse',
-    'PNP0F19': 'i8042 aux',
-    'PNP0F1C': 'i8042 aux',
+    'PNP0F14': 'Microsoft Kids Mouse',
+    'PNP0F15': 'Logitech bus mouse',
+    'PNP0F16': 'Logitech SWIFT device',
+    'PNP0F17': 'Logitech-compatible serial mouse',
+    'PNP0F18': 'Logitech-compatible bus mouse',
+    'PNP0F19': 'Logitech-compatible PS/2-style Mouse ; i8042 aux',
+    'PNP0F1B': 'HP Omnibook Mouse',
+    'PNP0F1C': 'Compaq LTE Trackball PS/2-style Mouse ; i8042 aux',
+    'PNP0F1D': 'Compaq LTE Trackball Serial Mouse',
+    'PNP0F1E': 'Microsoft Kids Trackball Mouse',
+    'PNP0F1F': 'Reserved by Microsoft Input Device Group',
+    'PNP0F20': 'Reserved by Microsoft Input Device Group',
+    'PNP0F21': 'Reserved by Microsoft Input Device Group',
+    'PNP0F22': 'Reserved by Microsoft Input Device Group',
+    'PNP0F23': 'Reserved by Microsoft Input Device Group',
+    'PNP0FFC': 'Reserved (temporarily) by Microsoft Kernel team',
+    'PNP0FFF': 'Reserved by Microsoft Systems (SDA Standard Compliant SD Host Controller Vendor)',
+
+    # PNP8xxx are network adapters
     'PNP8390': 'Generic Network Adapter',
+
+    # PNPAxxx are SCSI, proprietary CD adapters
+    'PNPA002': 'Future Domain 16-700 compatible controller',
+    'PNPA003': 'Panasonic proprietary CD-ROM adapter (SBPro/SB16)',
+    'PNPA01B': 'Trantor 128 SCSI Controller',
+    'PNPA01D': 'Trantor T160 SCSI Controller',
+    'PNPA01E': 'Trantor T338 Parallel SCSI controller',
+    'PNPA01F': 'Trantor T348 Parallel SCSI controller',
+    'PNPA020': 'Trantor Media Vision SCSI controller',
+    'PNPA022': 'Always IN-2000 SCSI controller',
+    'PNPA02B': 'Sony proprietary CD-ROM controller',
+    'PNPA02D': 'Trantor T13b 8-bit SCSI controller',
+    'PNPA02F': 'Trantor T358 Parallel SCSI controller',
+    'PNPA030': 'Mitsumi LU-005 Single Speed CD-ROM controller + drive',
+    'PNPA031': 'Mitsumi FX-001 Single Speed CD-ROM controller + drive',
+    'PNPA032': 'Mitsumi FX-001 Double Speed CD-ROM controller + drive',
+
+    # PNPBxxx are sound, video capture, multimedia
+    'PNPB000': 'Sound Blaster 1.5-compatible sound device',
+    'PNPB001': 'Sound Blaster 2.0-compatible sound device',
+    'PNPB002': 'Sound Blaster Pro-compatible sound device',
+    'PNPB003': 'Sound Blaster 16-compatible sound device',
+    'PNPB004': 'Thunderboard-compatible sound device',
+    'PNPB005': 'Adlib-compatible FM synthesizer device',
+    'PNPB006': 'MPU401 compatible ',
+    'PNPB007': 'Microsoft Windows Sound System-compatible sound device',
+    'PNPB008': 'Compaq Business Audio',
+    'PNPB009': 'Plug and Play Microsoft Windows Sound System Device',
+    'PNPB00A': 'MediaVision Pro Audio Spectrum',
+    'PNPB00B': 'MediaVision Pro Audio 3D',
+    'PNPB00C': 'MusicQuest MQX-32M',
+    'PNPB00D': 'MediaVision Pro Audio Spectrum Basic',
+    'PNPB00E': 'MediaVision Pro Audio Spectrum',
+    'PNPB00F': 'MediaVision Jazz-16 chipset (OEM Versions)',
+    'PNPB010': 'Auravision VxP500 chipset - Orchid Videola',
+    'PNPB018': 'MediaVision Pro Audio Spectrum 8-bit',
+    'PNPB019': 'MediaVision Pro Audio Spectrum Basic',
+    'PNPB020': 'Yamaha OPL3-compatible FM synthesizer device',
+    'PNPB02F': 'Joystick/Game port',
+
+    # PNPCxxx and PNPDxxx are modems
+    'PNPC000': 'Compaq 14400 Modem (TBD)',
+    'PNPC001': 'Compaq 2400/9600 Modem (TBD)',
 
     'QEMU0001': 'QEMU\'s PVPanic',
     'QEMU0002': 'QEMU\'s Firmware Configuration',
@@ -1142,6 +1372,8 @@ KNOWN_ACPI_DEVICES = {
     'SMO8831': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
 
     'USBC000': 'USB Type C',
+
+    'VMBUS': 'Microsoft Hyper-V Virtual Machine Bus',
 }
 
 # ACPI device IDs that have been seen but are not known
@@ -1595,6 +1827,7 @@ def main(argv=None):
             fill_names_with_lspci_output(device_tree)
             fill_names_with_lsusb_output(device_tree)
         fill_mei_names(device_tree)
+        fill_vmbus_names(device_tree)
         fill_wmi_names(device_tree)
         add_uevent_names(device_tree)
         add_dm_names(device_tree)
