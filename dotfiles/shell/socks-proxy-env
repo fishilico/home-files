@@ -49,8 +49,8 @@ export RSYNC_CONNECT_PROG=false
 export SSH_PROXYCOMMAND=""
 if command -v socat > /dev/null 2>&1
 then
-    RSYNC_CONNECT_PROG="socat - SOCKS4A:$SOCKS_PROXY_HOST:%H:873,proxyport=$SOCKS_PROXY_PORT"
-    SSH_PROXYCOMMAND="socat - SOCKS4A:$SOCKS_PROXY_HOST:%h:%p,proxyport=$SOCKS_PROXY_PORT"
+    RSYNC_CONNECT_PROG="socat - SOCKS4A:$SOCKS_PROXY_HOST:%H:873,socksport=$SOCKS_PROXY_PORT"
+    SSH_PROXYCOMMAND="socat - SOCKS4A:$SOCKS_PROXY_HOST:%h:%p,socksport=$SOCKS_PROXY_PORT"
 elif command -v nc > /dev/null 2>&1
 then
     RSYNC_CONNECT_PROG="nc -X 5 -x $SOCKS_PROXY_HOST:$SOCKS_PROXY_PORT %H 873"
