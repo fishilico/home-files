@@ -71,9 +71,9 @@ def add_to_library_path(machine, bits, libpath):
     """Add the given path to the base library path of the given architecture"""
     for expanded in (os.path.realpath(libpath), os.path.realpath('/usr' + libpath)):
         if not os.path.exists(expanded):
-            return
+            continue
         if expanded in LIBRARY_PATH_FOR_ARCH[(machine, bits)]:
-            return
+            continue
         LIBRARY_PATH_FOR_ARCH[(machine, bits)].append(expanded)
 
 
