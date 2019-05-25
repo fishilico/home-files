@@ -80,6 +80,7 @@ This information can be recorded by the following commands:
         -name product_version -o \
         -name removable -o \
         -name state -o \
+        -name sys_vendor -o \
         -name uevent -o \
         -name valid_zones \) -print -exec hexdump -Cv {} \; -exec echo EOF \; > sysfs_files.txt
 """
@@ -1546,6 +1547,7 @@ def add_dmi_info(device_tree):
         'product_sku',
         'product_uuid',
         'product_version',
+        'sys_vendor',
     )
     for dev in device_tree.iter_all():
         for file_name in dmi_files:
@@ -1555,6 +1557,9 @@ def add_dmi_info(device_tree):
                     value = fd.read().strip()
                     if '\n' in value:
                         logger.warning("Skipping multi-line %s for %s", file_name, dev['sysfs_path'])
+                        continue
+                    if not value:
+                        # Skip empty value
                         continue
                     label_name = ' '.join(
                         part.upper() if part in ('bios', 'sku') else part.title()
