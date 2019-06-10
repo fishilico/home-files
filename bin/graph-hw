@@ -83,6 +83,12 @@ This information can be recorded by the following commands:
         -name sys_vendor -o \
         -name uevent -o \
         -name valid_zones \) -print -exec hexdump -Cv {} \; -exec echo EOF \; > sysfs_files.txt
+    cat /proc/self/mountinfo > proc_self_mountinfo.txt
+    cat /proc/swaps > proc_swaps.txt
+    lspci > lspci.txt
+    lsusb > lsusb.txt
+    ip addr > ip-addr.txt
+    ifconfig > ifconfig.txt
 """
 import argparse
 import collections
@@ -818,8 +824,45 @@ def fill_wmi_names(device_tree):
                 dev.add_to_label_desc(desc.replace('\\', '\\\\'))
 
 
-def add_uevent_names(device_tree):
+def add_uevent_names(device_tree, with_mountinfo=False):
     """Add names from uevent file"""
+    mountpoints_for_devnum = {}  # Map major:minor number to (mountpoint, relative path)
+    swap_dev_paths = set()  # Path relative to /dev (such as "sda1") for swap devices
+    if with_mountinfo:
+        # Add mount path from /proc/self/mountinfo file
+        mountinfo_path = os.path.join(device_tree['sysfs_path'], os.path.pardir, os.path.pardir,
+                                      'proc', 'self', 'mountinfo')
+        logger.debug("Reading %s", mountinfo_path)
+        try:
+            with open(mountinfo_path, 'r') as fd_mountinfo:
+                for line in fd_mountinfo:
+                    parts = line.split(' ')
+                    dev_number = parts[2]
+                    if dev_number not in mountpoints_for_devnum:
+                        mountpoints_for_devnum[dev_number] = []
+                    mountpoints_for_devnum[dev_number].append((parts[4], parts[3]))
+        except IOError:
+            # This may occur if /proc is not mounted
+            logger.warning("Unable to read %s in order to gather mountpoints", mountinfo_path)
+
+        # Parse swap partitions from /proc/swaps
+        swaps_path = os.path.join(device_tree['sysfs_path'], os.path.pardir, os.path.pardir, 'proc', 'swaps')
+        logger.debug("Reading %s", swaps_path)
+        try:
+            with open(swaps_path, 'r') as fd_swaps:
+                for lineno, line in enumerate(fd_swaps):
+                    if lineno == 0:
+                        if not line.startswith('Filename'):
+                            logger.warning("%s does not start with 'Filename' but with %r", swaps_path, line)
+                        continue
+                    filename = line.split(None, 1)[0]
+                    if filename.startswith('/dev/'):
+                        swap_dev_paths.add(filename[5:])
+                    else:
+                        logger.warning("Unexpected file name in /proc/swaps: %r", filename)
+        except IOError:
+            logger.warning("Unable to read %s in order to gather swaps", swaps_path)
+
     for dev in device_tree.iter_all():
         # Use .../name to gather the name of some devices (mtd, sound I/O,
         # graphics card, etc.), which might be repeated in uevent.
@@ -876,6 +919,15 @@ def add_uevent_names(device_tree):
                 devname,
                 devmajor if devmajor is not None else '?',
                 devminor if devminor is not None else '?'))
+            if devname in swap_dev_paths:
+                dev.add_to_label_desc("Used as swap")
+        if devmajor is not None and devminor is not None:
+            dev_number = '{0}:{1}'.format(devmajor, devminor)
+            for mountpoint, relative_path in mountpoints_for_devnum.get(dev_number, []):
+                if relative_path == '/':
+                    dev.add_to_label_desc("Mounted on {0}".format(mountpoint))
+                else:
+                    dev.add_to_label_desc("Mounted on {0} (from {1})".format(mountpoint, relative_path))
 
 
 def add_dm_names(device_tree):
@@ -888,6 +940,16 @@ def add_dm_names(device_tree):
                 dev.add_to_label_desc("DM Name: {0}".format(value))
             if dev['buskind'] != 'block':
                 logger.warning("Found 'dm/name' for non-block device %s", dev['sysfs_path'])
+        except IOError:
+            pass
+
+        dm_uuid_path = os.path.join(dev['sysfs_path'], 'dm', 'uuid')
+        try:
+            with open(dm_uuid_path, 'r') as fd_dm_uuid:
+                value = fd_dm_uuid.read().strip()
+                dev.add_to_label_desc("DM UUID: {0}".format(value))
+            if dev['buskind'] != 'block':
+                logger.warning("Found 'dm/uuid' for non-block device %s", dev['sysfs_path'])
         except IOError:
             pass
 
@@ -2225,10 +2287,10 @@ def main(argv=None):
             # Only run commands when using the live system
             fill_names_with_lspci_output(device_tree)
             fill_names_with_lsusb_output(device_tree)
+
         fill_mei_names(device_tree)
         fill_vmbus_names(device_tree)
         fill_wmi_names(device_tree)
-        add_uevent_names(device_tree)
         add_dm_names(device_tree)
         add_scsi_models(device_tree)
         add_acpi_path_names(device_tree)
@@ -2238,6 +2300,7 @@ def main(argv=None):
         add_dmi_info(device_tree)
         add_net_addresses(device_tree)
         add_mem_info(device_tree)
+        add_uevent_names(device_tree, with_mountinfo=(sysfs_path == '/sys'))
 
         # Now that we are done collecting, remove the root from the path.
         # This makes the graph cleaner
