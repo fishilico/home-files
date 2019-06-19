@@ -24,7 +24,7 @@ Using a single connection
 
 When opening several connections to a SSH server (e.g. for remote shell, file
 copy, tunneling, etc.), it is possible to speed up the start-up time by using
-several channels of a single connexion. A quick way to perform with is by adding
+several channels of a single connection. A quick way to perform with is by adding
 the following lines in the Host session::
 
     ControlMaster auto
