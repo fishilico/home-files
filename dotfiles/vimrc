@@ -74,7 +74,8 @@ if has('gui_running')
 endif
 
 
-" Don't eval modelines by default. See Gentoo bugs #14088 and #73715.
+" Don't eval modelines by default. See Gentoo bugs #14088 and #73715 and
+" CVE-2019-12735 (https://github.com/numirias/security/blob/master/doc/2019-06-04_ace-vim-neovim.md)
 set modelines=0
 set nomodeline
 
