@@ -750,25 +750,35 @@ def fill_vmbus_names(device_tree):
 # - Linux kernel
 # - https://bitbucket.org/tuxedocomputers/clevo-xsm-wmi/src/
 #       37c470bc8c3c31c7487964c26861a4ee5969ff2b/module/clevo-xsm-wmi.c
+# - https://github.com/iksaif/thinkpad-wmi/blob/8818f69faddb315b76adcf1a2b44eab5faf48393/
+#       drivers/platform/x86/thinkpad-wmi.c
 KNOWN_WMI_UUIDS = {
     '02314822-307C-4F66-BF0E-48AEAEB26CC8': 'Dell All-In-One WMI Event (Linux)',
     '05901221-D566-11D1-B2F0-00A0C9062910': 'BMOF (Embedded Binary Managed Object Format)',
     '0B3CBB35-E3C2-45ED-91C2-4C5A6D195D1C': 'ASUS_NB_WMI_EVENT (Linux)',
+    '2651D9FD-911C-4B69-B94E-D0DED5963BD7': 'Lenovo_SetBiosPassword (Lenovo Thinkpad)',
     '284A0E6B-380E-472A-921F-E52786257FB4': 'Dell All-In-One WMI Event (Linux)',
     '35AA3CE0-7EEF-4CCA-A88E-A653A81910DA':
     '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_Button\n(according to BMOF)',
     '41227C2D-80E1-423F-8B8E-87E32755A0EB':
     '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_PlatformEvents\n(according to BMOF)',
+    '51F5230E-9677-46CD-A1CF-C0B23EE34DB7': 'Lenovo_BiosSetting (Lenovo Thinkpad)',
     '551A1F84-FBDD-4125-91DB-3EA8F44F1D45': 'MSIWMI_BIOS (Linux)',
     '59142400-C6A3-40FA-BADB-8A2652834100': 'TOSHIBA_WMI_EVENT (Linux)',
     '5B3CC38A-40D9-7245-8AE6-1145B751BE3F': 'MSIWMI_WIND_EVENT (Linux)',
     '5FB7F034-2C63-45E9-BE91-3D44E2C707E4':
     '\\\\.\\root\\wmi\\hpqBIntM\n(according to BMOF)\nHPWMI_BIOS (Linux)',
     '61EF69EA-865C-4BC3-A502-A0DEBA0CB531': 'Acer WMID (Linux)',
+    '6A4B54EF-A5ED-4D33-9455-B0D9B48DF4B3': 'Lenovo_SaveBiosSettings (Lenovo Thinkpad)',
     '6AF4F258-B401-42FD-BE91-3D4AC2D7C0D3': 'Acer WMID (Linux)',
     '676AA15E-6A47-4D9F-A2CC-1E6D18D14026': 'ACERWMID_EVENT (Linux)',
     '6FB7F034-2C63-45E9-BE91-3D44E2C707E4':
     '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSPassword\n(according to BMOF)',
+    '7364651A-132F-4FE7-ADAA-40C6C7EE2E3B': 'Lenovo_GetBiosSelections (Lenovo Thinkpad)',
+    '7430019A-DCE9-4548-BAB0-9FDE0935CAFF': 'Lenovo_PlatformSetting (Lenovo Thinkpad)',
+    '74F1EBB6-927A-4C7D-95DF-698E21E80EB5': 'Lenovo_DiscardChangedBiosSettings (Lenovo Thinkpad)',
+    '7EEF04FF-4328-447C-B5BB-D449925D538D': 'Lenovo_LoadDefaultSettings (Lenovo Thinkpad)',
+    '7FF47003-3B6C-4E5E-A227-E979824A85D1': 'Lenovo_SetPlatformSettings (Lenovo Thinkpad)',
     '8232DE3C-663D-4327-A8F4-E293ADB9BF05':
     '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSString\n(according to BMOF)',
     '8232DE3D-663D-4327-A8F4-E293ADB9BF05':
@@ -779,6 +789,7 @@ KNOWN_WMI_UUIDS = {
     '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSOrderedList\n(according to BMOF)',
     '82C54990-DB9F-4AEF-91BE-175D84386AC4':
     '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_ButtonInterface\n(according to BMOF)',
+    '8ADB159E-1E32-455C-BC93-308A7ED98246': 'Lenovo_BiosPasswordSettings (Lenovo Thinkpad)',
     '8D9DDCBC-A997-11DA-B012-B622A1EF5492': 'DELL_DESCRIPTOR (Linux)',
     '8F1F6435-9F42-42C8-BADC-0E9424F20C9A':
     '\\\\.\\root\\HP\\InstrumentedBIOS\\HPBIOS_BIOSNumericSensor\n(according to BMOF)',
@@ -788,6 +799,7 @@ KNOWN_WMI_UUIDS = {
     '95F24279-4D7B-4334-9387-ACCDC67EF61C':
     '\\\\.\\root\\wmi\\HPBIOS_BIOSEvent\n(according to BMOF)\nHPWMI_EVENT (Linux)',
     '97845ED0-4E6D-11DE-8A39-0800200C9A66': 'ASUS_WMI_MGMT (Linux)',
+    '98479A64-33F5-4E33-A707-8E251EBBC3A1': 'Lenovo_SetBiosSetting (Lenovo Thinkpad)',
     '9DBB5994-A997-11DA-B012-B622A1EF5492': 'DELL_EVENT (Linux)',
     'A70591CE-A997-11DA-B012-B622A1EF5492': 'Alienware WMAX_CONTROL (Linux)',
     'A80593CE-A997-11DA-B012-B622A1EF5492': 'Alienware LEGACY_POWER_CONTROL (Linux)',
@@ -1038,6 +1050,9 @@ KNOWN_ACPI_DEVICES = {
 
     'ATML1000': 'Atmel Touchscreen Controller',
 
+    # Broadcom
+    'BCM2F1A': 'Broadcom NFC SMBus Device',  # Seen as \_SB_.PCI0.SMBU.NFC_
+
     'DELLABCE': 'Dell Airplane Mode Switch',
 
     'DLL05CB': 'Dell Mouse',
@@ -1149,7 +1164,8 @@ KNOWN_ACPI_DEVICES = {
     'INT33E1': 'Intel Bluetooth HCI UART',
     'INT33F4': 'X-Powers AXP288 PMIC (Battery)',
     'INT3404': 'Fan',
-    'INT340E': 'Motherboard Resources',  # Seen on \_SB_.PTID
+    'INT340E': 'Motherboard Resources',  # Seen as \_SB_.PTID
+    'INT340F': 'Intel Collaborative Processor Performance Control (CPPC)',  # Seen as \_SB_.PCCD
     'INT3420': 'Intel Bluetooth RF Kill (BTKL)',
     'INT343D': 'Intel Dynamic Platform and Thermal Framework PCH SPT ACPI Participant',  # Seen as \_SB_.PCI0.TERM
     'INT343E': 'Intel CSI2 Host Controller (CIO2)',  # Seen as \_SB_.PCI0.CIO2
@@ -1507,14 +1523,16 @@ KNOWN_ACPI_DEVICES = {
 
     'SMB0349': 'Charger',
 
-    'SMO8800': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
-    'SMO8801': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
-    'SMO8810': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
-    'SMO8811': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
-    'SMO8820': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
-    'SMO8821': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
-    'SMO8830': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
-    'SMO8831': 'ST Microelectronics Free Fall Sensor for Dell Latitude',
+    # STMicroelectronics
+    'SMO1200': 'STMicroelectronics Trusted Platform Module',  # Seen as \_SB_.PCI0.LPC_.TPM_
+    'SMO8800': 'STMicroelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8801': 'STMicroelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8810': 'STMicroelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8811': 'STMicroelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8820': 'STMicroelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8821': 'STMicroelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8830': 'STMicroelectronics Free Fall Sensor for Dell Latitude',
+    'SMO8831': 'STMicroelectronics Free Fall Sensor for Dell Latitude',
 
     # Sentelic Corporation
     'STL3842': 'Finger Sensing Pad',
