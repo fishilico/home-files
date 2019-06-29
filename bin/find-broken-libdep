@@ -404,8 +404,15 @@ class ElfFile:
         try:
             self.library_paths += LIBRARY_PATH_FOR_ARCH[(self.ehdr.e_machine, self.archbits)]
         except KeyError:
-            logger.warning("unknown ELF machine %d (for arch bits %d) in %r",
-                           self.ehdr.e_machine, self.archbits, path)
+            if self.ehdr.e_machine == 0 and path.endswith('.go'):
+                # Compiled go files use an ELF header with an invalid machine
+                pass
+            elif path.startswith('/usr/lib/firmware/'):
+                # Ignore firmware files that are for other architectures
+                pass
+            else:
+                logger.warning("unknown ELF machine %d (for arch bits %d) in %r",
+                               self.ehdr.e_machine, self.archbits, path)
 
         # Load the whole ELF file in order to load the program header
         with open(path, 'rb') as fd:
@@ -555,6 +562,12 @@ class ElfFile:
             if m:
                 self.library_paths.insert(0, m.group(1))
 
+            # Gedit is GNOME editor. libgedit-${VERSION}.so is in /usr/lib/gedit
+            # but plugins are in /usr/lib/gedit/plugins/
+            m = re.match(r'^((/usr)?/lib(32|64)?/gedit/)plugins/', path)
+            if m:
+                self.library_paths.insert(0, m.group(1))
+
             # Java's libjvm.so is in /usr/lib/jvm/java-8-openjdk/jre/lib/amd64/server/libjvm.so
             m = re.match(r'^((/usr)?/lib(32|64)?/jvm/java-[^/]+/jre/lib/[^/]+/).*\.so', path)
             if not m:
@@ -572,6 +585,13 @@ class ElfFile:
             m = re.match(r'^((/usr)?/lib(32|64)?/R/)', path)
             if m:
                 self.library_paths.insert(0, os.path.join(m.group(1), 'lib'))
+
+            # Tracker is GNOME filesystem indexer. libtracker-extract.so is in /usr/lib/tracker-miners-2.0
+            # but plugins are in /usr/lib/tracker-miners-2.0/extract-modules/
+            # and /usr/lib/tracker-miners-2.0/writeback-modules/
+            m = re.match(r'^((/usr)?/lib(32|64)?/tracker-miners-2\.0/)[^/]+-modules/', path)
+            if m:
+                self.library_paths.insert(0, m.group(1))
 
             # VirtualBox's extension packs use /usr/lib/virtualbox/VBoxRT.so
             m = re.match(r'^((/usr)?/lib(32|64)?/virtualbox)/ExtensionPacks/', path)
