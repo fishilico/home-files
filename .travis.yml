@@ -15,14 +15,6 @@ matrix:
       env: BUILDENV=ubuntu1804-bionic-python3.6
     - os: linux
       dist: bionic
-      python: "3.5"
-      env: BUILDENV=ubuntu1804-bionic-python3.5
-    - os: linux
-      dist: bionic
-      python: "3.4"
-      env: BUILDENV=ubuntu1804-bionic-python3.4
-    - os: linux
-      dist: bionic
       python: "2.7"
       env: BUILDENV=ubuntu1804-bionic-python2.7
 
