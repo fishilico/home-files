@@ -90,7 +90,6 @@ This information can be recorded by the following commands:
     ip addr > ip-addr.txt
     ifconfig > ifconfig.txt
 """
-import argparse
 import collections
 import errno
 import json
@@ -100,6 +99,13 @@ import os.path
 import re
 import subprocess
 import sys
+
+# Python 2.6 did not have argparse by default
+try:
+    import argparse
+    HAVE_ARGPARSE = True
+except ImportError:
+    HAVE_ARGPARSE = False
 
 # Python 2.7 on OpenWRT does not provide webbrowser
 try:
@@ -2203,40 +2209,62 @@ def dump_dot_graph(device_tree, stream, output_tree, output_circle):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Graph hardware components")
-    parser.add_argument('-c', '--circle', action='store_true',
-                        help="output the graph as something that looks like a circle")
-    parser.add_argument('-d', '--debug', action='store_true',
-                        help="show debug messages")
-    parser.add_argument('-i', '--input', type=str,
-                        help="load a JSON format instead of scanning /sys")
-    parser.add_argument('-j', '--json', action='store_true',
-                        help="output the tree in JSON format")
-    parser.add_argument('-M', '--no-memory', action='store_true',
-                        help="remove /sys/devices/system/memory nodes")
-    parser.add_argument('-o', '--output', type=str,
-                        help="write the output to this file")
-    parser.add_argument('-O', '--open', action='store_true',
-                        help="open the output file once it is written")
-    parser.add_argument('-p', '--pci', action='store_true',
-                        help="restrict to PCI devices")
-    parser.add_argument('-r', '--root', type=str, default='/',
-                        help="path to the root directory to use")
-    parser.add_argument('-s', '--shorten-paths', action='store_true',
-                        help="shorten the long paths in labels")
-    parser.add_argument('-S', '--syspath', type=str, default='sys',
-                        help="path to the sysfs directory to use (/sys by default)")
-    parser.add_argument('-t', '--tree', action='store_true',
-                        help="output the graph as a flat top-to-bottom tree")
-    parser.add_argument('-T', '--type', type=str,
-                        help="specify a Graphviz/dot output format (svg, png...)")
-    parser.add_argument('-V', '--no-virtual', action='store_true',
-                        help="remove /sys/devices/virtual nodes")
-    parser.add_argument('-W', '--web-browser', action='store_true',
-                        help="open the output file in a browser")
-    parser.add_argument('-X', '--xdot', action='store_true',
-                        help="open the output file in xdot")
-    args = parser.parse_args(argv)
+    if HAVE_ARGPARSE:
+        parser = argparse.ArgumentParser(description="Graph hardware components")
+        parser.add_argument('-c', '--circle', action='store_true',
+                            help="output the graph as something that looks like a circle")
+        parser.add_argument('-d', '--debug', action='store_true',
+                            help="show debug messages")
+        parser.add_argument('-i', '--input', type=str,
+                            help="load a JSON format instead of scanning /sys")
+        parser.add_argument('-j', '--json', action='store_true',
+                            help="output the tree in JSON format")
+        parser.add_argument('-M', '--no-memory', action='store_true',
+                            help="remove /sys/devices/system/memory nodes")
+        parser.add_argument('-o', '--output', type=str,
+                            help="write the output to this file")
+        parser.add_argument('-O', '--open', action='store_true',
+                            help="open the output file once it is written")
+        parser.add_argument('-p', '--pci', action='store_true',
+                            help="restrict to PCI devices")
+        parser.add_argument('-r', '--root', type=str, default='/',
+                            help="path to the root directory to use")
+        parser.add_argument('-s', '--shorten-paths', action='store_true',
+                            help="shorten the long paths in labels")
+        parser.add_argument('-S', '--syspath', type=str, default='sys',
+                            help="path to the sysfs directory to use (/sys by default)")
+        parser.add_argument('-t', '--tree', action='store_true',
+                            help="output the graph as a flat top-to-bottom tree")
+        parser.add_argument('-T', '--type', type=str,
+                            help="specify a Graphviz/dot output format (svg, png...)")
+        parser.add_argument('-V', '--no-virtual', action='store_true',
+                            help="remove /sys/devices/virtual nodes")
+        parser.add_argument('-W', '--web-browser', action='store_true',
+                            help="open the output file in a browser")
+        parser.add_argument('-X', '--xdot', action='store_true',
+                            help="open the output file in xdot")
+        args = parser.parse_args(argv)
+    else:
+        # Fake an argparse object to produce a JSON output that can be loaded
+        # on an up-to-date system.
+        class FakeArguments(object):
+            circle = False
+            debug = True
+            input = None
+            json = True
+            no_memory = False
+            output = None
+            open = False
+            pci = False
+            root = '/'
+            shorten_paths = False
+            syspath = 'sys'
+            tree = False
+            type = None
+            no_virtual = False
+            web_browser = False
+            xdot = False
+        args = FakeArguments()
 
     if args.open and not args.output:
         parser.error("--open requires an output file (option -o)")
