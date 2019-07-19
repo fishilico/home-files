@@ -1982,7 +1982,7 @@ def add_dmi_info(device_tree):
                     dev.add_to_label_desc("{0}: {1}".format(label_name, value))
                 if dev['buskind'] != 'dmi':
                     logger.warning(
-                        "Found %r for unexpected device %s (%s)",
+                        "Found 'dmi' for unexpected device %s (%s)",
                         dev['sysfs_path'], dev['buskind'])
             except IOError:
                 pass
