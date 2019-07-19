@@ -214,6 +214,10 @@ TRUSTED_SUID_FILES = [
     # http://cgit.freedesktop.org/dbus/dbus/tree/
     SuidFile('/lib(32|64|exec)?/dbus-1(.0)?/dbus-daemon-launch-helper'),
 
+    # dma, DragonFly Mail Agent, https://www.dragonflybsd.org/handbook/mta/
+    # https://github.com/corecode
+    SuidFile('/lib/dma/dma-mbox-create'),
+
     # ecryptfs-utils, https://launchpad.net/ecryptfs
     # http://bazaar.launchpad.net/~ecryptfs/ecryptfs/trunk/files
     SuidFile('/s?bin/mount.ecryptfs_private',
@@ -455,6 +459,14 @@ TRUSTED_SGID_FILES = [
     LinkToSuidFile('/etc/alternatives/write', '/bin/bsd-write',
                    groups=('tty', )),
 
+    # dma, DragonFly Mail Agent, https://www.dragonflybsd.org/handbook/mta/
+    # https://github.com/corecode
+    LinkToSuidFile('/bin/mailq', '/sbin/dma', groups=('mail', )),
+    LinkToSuidFile('/bin/newaliases', '/sbin/dma', groups=('mail', )),
+    LinkToSuidFile('/lib/sendmail', '/sbin/dma', groups=('mail', )),
+    SuidFile('/sbin/dma', groups=('mail', )),
+    LinkToSuidFile('/sbin/sendmail', '/sbin/dma', groups=('mail', )),
+
     # emacs, https://www.gnu.org/software/emacs/
     # http://git.savannah.gnu.org/cgit/emacs.git/tree/
     SuidFile('/lib/emacs/[0-9]+.[0-9]+/[-_a-zA-Z0-9]+/movemail',
@@ -623,8 +635,10 @@ KNOWN_SUID_FILES = [
     # https://github.com/vmware/open-vm-tools
     LinkToSuidFile('/bin/vmware-user', '/bin/vmware-user-suid-wrapper',
                    owners=('root', ), groups=('root', )),
+    LinkToSuidFile('/bin/vmware-user', '/lib/vmware-tools/bin(32|64)/vmware-user-suid-wrapper'),
     SuidFile('/bin/vmware-user-suid-wrapper',
              owners=('root', ), groups=('root', )),
+    SuidFile('/lib/vmware-tools/bin(32|64)/vmware-user-suid-wrapper'),
 
     # pmount, https://launchpad.net/pmount
     # https://bazaar.launchpad.net/~fourmond/pmount/main/files/head:/
