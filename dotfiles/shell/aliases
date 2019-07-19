@@ -239,6 +239,9 @@ if type alias > /dev/null 2>&1 ; then
     alias isodatedot='date +"%Y.%m.%d"'
     alias isotimefile='date --utc +"%Y-%m-%d-%H%M%S"'
 
+    # Show progress with dd
+    alias ddprog='dd status=progress'
+
     # OpenSSL shortcuts
     # View a certificate request (add -verify to check it)
     alias openssl-csr='openssl req -noout -text -in'
