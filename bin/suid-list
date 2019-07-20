@@ -526,7 +526,11 @@ TRUSTED_SGID_FILES = [
     # mailutils, https://mailutils.org/
     # https://git.savannah.gnu.org/cgit/mailutils.git/tree/
     SuidFile('/bin/dotlock.mailutils', groups=('mail', )),
+    SuidFile('/bin/dotlock.mailutils', groups=('root', )),
     LinkToSuidFile('/bin/dotlock', '/bin/dotlock.mailutils', groups=('mail', )),
+    LinkToSuidFile('/bin/dotlock', '/bin/dotlock.mailutils', groups=('root', )),
+    LinkToSuidFile('/etc/alternatives/dotlock', '/bin/dotlock.mailutils',
+                   groups=('root', )),
 
     # mlocate, https://fedorahosted.org/mlocate/
     # https://fedorahosted.org/mlocate/browser
