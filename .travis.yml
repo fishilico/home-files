@@ -155,6 +155,8 @@ install:
 
 script:
 # Run automated tests
+  - ./bin/graph-hw --json -d > /dev/null
+  - if [ -d /proc ] ; then ./bin/mount-tree ; fi
 # Make sure that /bin is before /usr/bin, otherwise on Ubuntu 20.04 it fails with:
 # "dpkg-query: no path found matching pattern /usr/bin/grep"
   - |

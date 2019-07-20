@@ -50,6 +50,8 @@ jobs:
           - ~/.cabal
           - ~/.virtualenv
 
+    - run: ./bin/suid-list -lp ; true
+    - run: ./bin/suid-list ; true
     - run: ./run_tests.sh
     - run:
         name: Install the files after removing conflicting local files
