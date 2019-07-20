@@ -41,7 +41,7 @@ jobs:
         name: Install shellcheck with cabal
         command: |
           cabal update
-          cabal install shellcheck
+          cabal install ShellCheck
     - run: shellcheck --version
 
     - save_cache:
