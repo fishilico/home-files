@@ -448,8 +448,8 @@ class ElfFile:
         dyn_verneed_vaddr = None
         dyn_verneednum = None
 
-        for offset in range(phdr_offset, phdr_offset + phdr_size, phdr_entsize):
-            ph_entry = phdr_class.from_buffer(elf_content[offset:offset + phdr_entsize])
+        for phent_offset in range(phdr_offset, phdr_offset + phdr_size, phdr_entsize):
+            ph_entry = phdr_class.from_buffer(elf_content[phent_offset:phent_offset + phdr_entsize])
             if ph_entry.p_type == 1:  # PT_LOAD
                 if ph_entry.p_filesz and ph_entry.p_offset + ph_entry.p_filesz > len(elf_content):
                     # This occurs in some firmware
@@ -479,8 +479,8 @@ class ElfFile:
                 if dyn_size % dyn_entsize:
                     logger.warning("unaligned DYNAMIC header: %r", path)
                     continue
-                for offset in range(dyn_offset, dyn_offset + dyn_size, dyn_entsize):
-                    dyn_entry = dyn_class.from_buffer(elf_content[offset:offset + dyn_entsize])
+                for dynent_offset in range(dyn_offset, dyn_offset + dyn_size, dyn_entsize):
+                    dyn_entry = dyn_class.from_buffer(elf_content[dynent_offset:dynent_offset + dyn_entsize])
                     if dyn_entry.d_tag == 1:  # DT_NEEDED
                         dyn_needed_offsets.append(dyn_entry.d_val)
                     elif dyn_entry.d_tag == 5:  # DT_STRTAB
