@@ -77,7 +77,6 @@ Links:
 import argparse
 import binascii
 import struct
-import sys
 
 
 class HexValue(object):
@@ -176,4 +175,4 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    main()
