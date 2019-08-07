@@ -613,10 +613,14 @@ class ElfFile:
             m = re.match(r'^(/opt/android-sdk/emulator/lib(32|64)?)/.*\.so', path)
             if m:
                 self.library_paths.insert(0, m.group(1))
-            # Android Studio's emulators require the same libc++.so.1
+            # Android Studio's emulators require the same libc++.so.1, as well as Qt libraries
             m = re.match(r'^(/opt/android-sdk/emulator/)qemu/linux-x86_64/qemu-system-[^/]+$', path)
             if m:
                 self.library_paths.insert(0, os.path.join(m.group(1), 'lib64'))
+                self.library_paths.insert(0, os.path.join(m.group(1), 'lib64', 'qt', 'lib'))
+            m = re.match(r'^(/opt/android-sdk/emulator/)emulator64-crash-service$', path)
+            if m:
+                self.library_paths.insert(0, os.path.join(m.group(1), 'lib64', 'qt', 'lib'))
 
             # Microsoft's ODBC Driver for SQL Server uses its custom libraries
             # https://docs.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-2017
