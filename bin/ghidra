@@ -55,7 +55,7 @@ exec firejail \
     --private-bin=bash,env,expr,ghidra,java,readlink,sleep,uname \
     --private-cache \
     --private-dev \
-    --private-etc='java-openjdk,java-7-openjdk,java-8-openjdk,java10-openjdk,passwd' \
+    --private-etc='java-openjdk,java10-openjdk,passwd' \
     --private-srv=EMPTY \
     --private-tmp \
     --protocol=unix,inet,inet6 \
