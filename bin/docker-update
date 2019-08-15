@@ -26,5 +26,5 @@
 set -o pipefail
 
 docker images | \
-    awk '{ if(NR > 1 && $2 != "latest" && $2 != "<none>")print $1 ":" $2 }' | \
+    awk '{ if(NR > 1 && ($1 ~ /^gentoo\/stage3-/ || $2 != "latest") && $2 != "<none>")print $1 ":" $2 }' | \
     xargs -r -L1 docker pull
