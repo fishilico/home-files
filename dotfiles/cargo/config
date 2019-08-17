@@ -1,0 +1,12 @@
+# From https://github.com/rust-lang/rust/issues/32859
+# and https://stackoverflow.com/questions/31492799/cross-compile-a-rust-application-from-linux-to-windows
+# and https://wiki.archlinux.org/index.php/Rust#Windows
+[target.i686-pc-windows-gnu]
+linker = "/usr/bin/i686-w64-mingw32-gcc"
+ar = "/usr/i686-w64-mingw32/bin/ar"
+# cf. https://github.com/rust-lang/rust/issues/32859#issuecomment-284308455
+rustflags = "-C panic=abort"
+
+[target.x86_64-pc-windows-gnu]
+linker = "/usr/bin/x86_64-w64-mingw32-gcc"
+ar = "/usr/x86_64-w64-mingw32/bin/ar"
