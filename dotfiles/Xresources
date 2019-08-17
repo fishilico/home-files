@@ -7,6 +7,10 @@
 ! * Arch Linux https://wiki.archlinux.org/index.php/Rxvt-unicode
 ! * Gentoo http://wiki.gentoo.org/wiki/Rxvt-unicode
 
+! Start in Unicode
+XTerm*utf8: 1
+UXTerm*utf8: 1
+
 ! Terminal colors for xterm and urxvt.
 ! Initially a mix of Tango and White-on-Black themes.
 ! xfce-terminal color themes can be found on:
@@ -105,6 +109,12 @@ URxvt.keysym.Control-Right: \033[1;5C
 *URxvt*keysym.F2: \033OQ
 *URxvt*keysym.F3: \033OR
 *URxvt*keysym.F4: \033OS
+
+! Fix backspace key according to http://www.hypexr.org/linux_ruboff.php
+XTerm*ttyModes: erase ^?
+XTerm*VT100.Translations: \
+        #override <Key>BackSpace: string(0x7f) \n\
+          <Key>Delete:    string(0x1b) string("[3~")
 
 ! Perl extensions:
 ! * Make URL clickable, open with xdg-open, which can be configured to be
