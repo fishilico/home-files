@@ -256,7 +256,7 @@ def test():
                     # Skip special files
                     pass
                 elif ext == 'swp':
-                    # Skip ViM swap filed
+                    # Skip ViM swap files
                     pass
                 elif dirpath.endswith('/specific/irssi'):
                     # irssi config are text files
@@ -273,7 +273,7 @@ def test():
                 elif dirpath.endswith('/bin') and not ext:
                     # binary files can be of several types
                     verify_bin(filepath)
-                elif dirpath.endswith('/dotfiles'):
+                elif dirpath.endswith(('/dotfiles', '/dotfiles/cargo')):
                     # dotfiles contains text files
                     pass
                 elif dirpath.endswith('/dotfiles/shell'):
