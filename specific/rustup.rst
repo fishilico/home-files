@@ -1,6 +1,9 @@
 Install Rust compiler with Rustup
 =================================
 
+Basic setup
+-----------
+
 Install commands in order to install a stable toolchain with ``rustup`` (as advised by https://anssi-fr.github.io/rust-guide/02_devenv.html):
 
 .. code-block:: sh
@@ -14,22 +17,52 @@ Install commands in order to install a stable toolchain with ``rustup`` (as advi
     # * clippy to catch common mistakes
     # * cargo-outdated to display out-of-date Rust dependencies
     # * cargo-audit to easily check for security vulnerabilities reported to the RustSec Advisory Database
+    # * cargo-deps to graph the dependencies of a project
+    # * cargo-geiger to list the dependencies with unsafe code
     rustup component add rustfmt
     rustup component add clippy
     cargo install cargo-outdated
     cargo install cargo-audit
+    cargo install cargo-deps
+    cargo install cargo-geiger
 
-Then, building, testing and running a Rsut project is a mater of:
+    # Install miri to catch issues in Rust's mid-level intermediate representation (MIR)
+    MIRI_NIGHTLY="nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/miri)"
+    rustup toolchain install "$MIRI_NIGHTLY"
+    rustup component add --toolchain="$MIRI_NIGHTLY" miri
+
+When using nightly instead of stable, the available Rustup components are documented on https://rust-lang.github.io/rustup-components-history/.
+
+In order to work on a project (build, run, test, etc.), here are some commands.
 
 .. code-block:: sh
 
-    cargo fmt
+    # Build, test and run
     cargo build
     cargo test
     cargo run
+
+    # Build in release mode
     cargo build --release
 
-In order to build a Rust project as statically-linked executable, a Musl target can be installed:
+    # Reformat the source files according to Rust's best practices
+    cargo fmt
+
+    # Check whether the files are formatted correctly (--check in nightly)
+    cargo fmt --all -- --write-mode=diff
+
+    # Show the expanded macro definitions of a file
+    ~/.rustup/toolchains/nightly-$(uname -m)-unknown-linux-gnu/bin/rustc --pretty=expanded -Z unstable-options file.rs
+
+    # Graph the dependencies of a project
+    cargo deps --all-deps | dot -Tsvg > cargo-deps.svg
+    cargo deps --all-deps | xdot -
+
+
+Other targets
+-------------
+
+In order to build a Rust project as statically-linked executable on Linux, a Musl target can be installed:
 
 .. code-block:: sh
 
@@ -43,7 +76,7 @@ In order to cross-compile for other architectures such as ARM:
     rustup target add arm-unknown-linux-gnueabi
     cargo build --release --target arm-unknown-linux-gnueabi
 
-Or to cross-compile for Windows:
+To cross-compile a project for Windows, from a system that has MinGW-w64:
 
 .. code-block:: sh
 
@@ -65,5 +98,5 @@ Or to cross-compile for Windows:
         done;
     done
 
-    # Register Wine to run Windows executables automatically
+    # Register Wine to run Windows executables automatically on Linux
     echo ':DOSWin:M::MZ::/usr/bin/wine:' > /proc/sys/fs/binfmt_misc/register
