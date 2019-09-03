@@ -58,6 +58,10 @@ In order to work on a project (build, run, test, etc.), here are some commands.
     cargo deps --all-deps | dot -Tsvg > cargo-deps.svg
     cargo deps --all-deps | xdot -
 
+    # Build the documentation of a project, including the private types
+    # and excluding the dependencies
+    cargo doc --no-deps --document-private-items
+
 
 Other targets
 -------------
