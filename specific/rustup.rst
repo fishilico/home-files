@@ -73,6 +73,12 @@ In order to build a Rust project as statically-linked executable on Linux, a Mus
     rustup target add x86_64-unknown-linux-musl
     cargo build --release --target x86_64-unknown-linux-musl
 
+Rust can be compiled to many architectures. In order to list all the supported ones, several methods exist:
+
+* by running ``rustup target list``
+* by running ``rustc --print target-list``
+* by browsing https://rust-lang.github.io/rustup-components-history/
+
 In order to cross-compile for other architectures such as ARM:
 
 .. code-block:: sh
