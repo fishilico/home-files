@@ -159,6 +159,15 @@ if [ -n "$LD_LIBRARY_PATH" ] ; then
     echo >&2 'Warning: LD_LIBRARY_PATH is set!'
     tput sgr0 2> /dev/null
 fi
+if [ -n "$LD_AUDIT" ] ; then
+    # LD_AUDIT is dangerous:
+    # * man 7 rtld-audit : http://man7.org/linux/man-pages/man7/rtld-audit.7.html
+    # * https://lwn.net/Articles/412048/
+    # * https://www.spinics.net/lists/linux-api/msg37011.html
+    (tput bold && tput setaf 1) 2> /dev/null
+    echo >&2 'Warning: LD_AUDIT is set!'
+    tput sgr0 2> /dev/null
+fi
 
 # Disable creating symlinks in VirtualBox shared folders when running Vagrant
 # https://github.com/phoenhex/files/blob/master/slides/unboxing_your_virtualboxes.pdf
