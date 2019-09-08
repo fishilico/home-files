@@ -162,3 +162,37 @@ Here are some useful ones:
 
       wget -O ~/.weechat/python/autoload/buffer_autoset.py https://raw.githubusercontent.com/weechat/scripts/master/python/buffer_autoset.py
       # Then in WeeChat: /python autoload
+
+WeeChat Relay
+-------------
+
+In order to use WeeChat on a phone or in a browser, a relay needs to be configured.
+This is documented on https://weechat.org/files/doc/stable/weechat_user.en.html#relay_plugin.
+
+* Create an SSL certificate for the relay:
+
+  .. code-block:: sh
+
+      mkdir -p ~/.weechat/ssl
+      cd ~/.weechat/ssl
+      openssl req -nodes -newkey rsa:2048 -keyout relay.pem -x509 -days 365 -out relay.pem
+
+      # In WeeChat: /relay sslcertkey
+
+* Configure which client is allowed to connect to the relay (here, for localhost or SSH port forwarding only)::
+
+      /set relay.network.allowed_ips 127.0.0.1
+      /set relay.network.bind_address 127.0.0.1
+      /set relay.network.ipv6 off
+
+* Configure a relay password and start it!
+
+  ::
+
+      /set relay.network.password "mypassword"
+      /relay add ssl.weechat 9000
+      # To remove a relay: /relay del weechat
+
+* List the relays::
+
+      /relay listrelay
