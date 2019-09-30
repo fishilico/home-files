@@ -63,24 +63,26 @@ done
 # Dump the ssh config into a temporary file
 SSHCONFIG=$(mktemp --tmpdir vagrant-ssh.XXXXXXXXXX.conf)
 trap 'rm -f "$SSHCONFIG"' EXIT HUP INT QUIT TERM
-vagrant ssh-config > "$SSHCONFIG"
 
 # Get the machine
 if [ -z "$MACHINE" ]
 then
+    vagrant ssh-config > "$SSHCONFIG"
     MACHINE="$(sed -n 's/^Host //p' "$SSHCONFIG" | sed -n 1p)"
+else
+    vagrant ssh-config "$MACHINE" > "$SSHCONFIG"
 fi
 
 if ssh -F "$SSHCONFIG" "$MACHINE" dumpcap --version > /dev/null 2>&1
 then
     # Use tshark
     ssh -F "$SSHCONFIG" "$MACHINE" dumpcap -P -i "$IFACE" -w - -f "'not tcp port 22'" | \
-        wireshark-gtk -k -i -
+        wireshark -k -i -
 elif ssh -F "$SSHCONFIG" "$MACHINE" sudo tcpdump --version > /dev/null 2>&1
 then
     # Use tcpdump (packet-buffered output, default snaplen)
     ssh -F "$SSHCONFIG" "$MACHINE" sudo tcpdump -U -s0 -i "$IFACE" -w - 'not tcp port 22' | \
-        wireshark-gtk -k -i -
+        wireshark -k -i -
 else
     echo >&2 "Error: unable to find tshark or tcpdump on the virtual machine."
     exit 1
