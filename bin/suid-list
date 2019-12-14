@@ -201,6 +201,7 @@ TRUSTED_SUID_FILES = [
     # chromium, http://www.chromium.org/Home
     # https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master
     SuidFile('/lib/chromium/chrome-sandbox'),
+    SuidFile('/lib/electron6?/chrome-sandbox'),
     SuidFile('/lib/x86_64-linux-gnu/oxide-qt/chrome-sandbox'),
     SuidFile('/opt/google/chrome/chrome-sandbox'),
 
@@ -665,6 +666,19 @@ KNOWN_SUID_FILES = [
     # https://github.com/QubesOS/qubes-core-agent-linux
     SuidFile('/lib/qubes/qfile-unpacker'),
 
+    # shadow, http://pkg-shadow.alioth.debian.org/
+    # https://github.com/shadow-maint/shadow
+    # These files can work well without being setuid-root
+    SuidFile('/bin/chgpasswd'),
+    SuidFile('/bin/chpasswd'),
+    SuidFile('/bin/groupadd'),
+    SuidFile('/bin/groupdel'),
+    SuidFile('/bin/groupmod'),
+    SuidFile('/bin/newusers'),
+    SuidFile('/bin/useradd'),
+    SuidFile('/bin/userdel'),
+    SuidFile('/bin/usermod'),
+
     # systemtap, https://sourceware.org/systemtap/
     # https://sourceware.org/git/gitweb.cgi?p=systemtap.git;a=tree
     SuidFile('/bin/staprun'),
@@ -734,6 +748,21 @@ TRUSTED_CAPS_FILES = [
                    '= cap_net_raw+ep'),
     LinkToCapsFile('/etc/alternatives/traceroute6', '/bin/traceroute6.iputils',
                    '= cap_net_raw+ep'),
+
+    # kismet, https://www.kismetwireless.net/
+    # https://github.com/kismetwireless/kismet.git
+    CapsFile('/bin/kismet_cap_freaklabs_zigbee', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_kismetdb', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_linux_bluetooth', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_linux_wifi', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_nrf_mousejack', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_pcapfile', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_sdr_rtl433', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_sdr_rtl433_mqtt', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_sdr_rtladsb', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_sdr_rtladsb_mqtt', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_sdr_rtlamr', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_sdr_rtlamr_mqtt', '= cap_net_admin,cap_net_raw+eip'),
 
     # monitoring-plugins, https://www.monitoring-plugins.org/
     # https://github.com/monitoring-plugins/monitoring-plugins
