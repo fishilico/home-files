@@ -72,6 +72,7 @@ BIN_SCRIPTS = {
     'enter-container': 'never',
     'errno': 'args[42]',
     'escat': 'help',
+    'eth-disable-offload': 'never',
     'find-broken-libdep': '(python3)help',
     'firefox-private': '(firefox)help',
     'flatpak-steam-valve': 'never',
