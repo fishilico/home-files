@@ -19,12 +19,14 @@ Install commands in order to install a stable toolchain with ``rustup`` (as advi
     # * cargo-audit to easily check for security vulnerabilities reported to the RustSec Advisory Database
     # * cargo-deps to graph the dependencies of a project
     # * cargo-geiger to list the dependencies with unsafe code
+    # * cargo-tarpaulin to report the code coverage of tests (with "cargo tarpaulin -v -o Html")
     rustup component add rustfmt
     rustup component add clippy
     cargo install cargo-outdated
     cargo install cargo-audit
     cargo install cargo-deps
     cargo install cargo-geiger
+    cargo install cargo-tarpaulin
 
     # Install miri to catch issues in Rust's mid-level intermediate representation (MIR)
     MIRI_NIGHTLY="nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/miri)"
