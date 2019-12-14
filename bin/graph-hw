@@ -1027,6 +1027,17 @@ def add_acpi_path_names(device_tree):
 #   * http://rh-software.com/index_arc.html
 #   * https://chocolatey.org/packages/siv/5.36
 KNOWN_ACPI_DEVICES = {
+    '10EC5640': 'Realtek I2S Audio Codec',  # Seen as \_SB_.I2C2.RTEK
+
+    # Intel Atom
+    '80860F09': 'Intel Atom/Celeron/Pentium Processor Serial IO (SIO) PWM',  # Seen as \_SB_.PWM1 an  \_SB_.PWM2
+    '80860F0A': 'Intel Atom Processor UART Controller',  # Seen as \_SB_.URT1 and \_SB_.URT2
+    '80860F0E': 'Intel Atom Processor SPI Controller',  # Seen as \_SB_.SPI1
+    '80860F14': 'Intel eMMC Controller (SD Host Controller)',  # Seen as \_SB_.SDHA and \_SB_.SDHD
+    '80860F16': 'Intel SD Card Controller (SD Host Controller)',  # Seen as \_SB_.SDHC
+    '80860F28': 'Intel SST Audio DSP',  # Seen as \_SB_.LPEA
+    '80860F41': 'Intel Atom Processor I2C Controller',  # Seen as \_SB_.I2C1, \_SB_.I2C2, etc.
+
     'ABCD0000': 'Dock',
 
     'ACPI0001': 'SMBus 1.0 Host Controller (SMBUS-HC)',
@@ -1064,6 +1075,8 @@ KNOWN_ACPI_DEVICES = {
 
     'DLL05CB': 'Dell Mouse',
     'DLLK05CB': 'Samsung PS/2 Keyboard or Dell Latitude E7440 keyboard',
+
+    'DMA0F28': 'Intel Audio DMA0',  # Seen as \_SB_.LPA2.ADMA
 
     # ELAN Microelectronics Corp.
     'ETD0000': 'ELAN PS/2 Port Input Device',
@@ -1136,16 +1149,19 @@ KNOWN_ACPI_DEVICES = {
     'IFX0101': 'Infineon Trusted Platform Module (TPM)',
     'IFX0102': 'Infineon Trusted Platform Module (TPM)',
 
+    'INT0002': 'Virtual GPIO Controller',  # Seen as \_SB_.GPED
     # /proc/iomem on an x86-64 computer contains:
     #   ff000000-ffffffff : INT0800:00
     'INT0800': 'Intel 82802 Firmware Hub Device (FWHD)',  # Seen on Windows as ACPI\VEN_INT&DEV_0800
     'INT0E0C': 'Software Guard Extensions Device',  # Seen as \_SB_.EPC_ (Enclave Page Cache)
     # ftp://supermicro.com/ISO_Extracted/CDR-C7_V1.31_for_Intel_C7_platform/Intel/XTU/XTU%204.2%20BIOS%20Interface%20Specification.pdf
     'INT3394': 'Intel Extreme Tuning Utility Device (XTU)',  # Seen as \_SB_.PTMD
+    'INT3396': 'Intel Atom/Celeron/Pentium Processor Power Engine Plug-in Device (PEP)',  # Seen as \_SB_.PEPD
     'INT33A0': 'Intel Smart Connect Technology Device',
     'INT33A1': 'Intel Power Engine (PEPD)',
     'INT33A2': 'Global Navigation Satellite Systems (GNSS)',  # Seen as \_SB_.PCI0.GNSS
     'INT33A3': 'ACPI Intel RealSense 3D Camera',  # Seen as \_SB_.ICAM
+    'INT33BB': 'Intel Baytrail SD Host Controller',  # Seen as \_SB_.SDHB
     'INT33BE': 'Camera Sensor OV5693',  # Seen on \_SB_.PCI0.LNK1
     'INT33C0': 'Intel Serial I/O SPI Host Controller',  # Seen as \_SB_.PCI0.SPI0
     'INT33C1': 'Intel Serial I/O SPI Host Controller',  # Seen as \_SB_.PCI0.SPI1
@@ -1170,6 +1186,7 @@ KNOWN_ACPI_DEVICES = {
     'INT33E0': 'Intel Bluetooth Serial Bus Driver over UART Bus Enumerator',
     'INT33E1': 'Intel Bluetooth HCI UART',
     'INT33F4': 'X-Powers AXP288 PMIC (Battery)',
+    'INT33FC': 'Intel Baytrail GPIO Controller',  # Seen as \_SB_.GPO0, \_SB_.GPO1, \_SB_.GPO2...
     'INT3404': 'Fan',
     'INT340E': 'Motherboard Resources',  # Seen as \_SB_.PTID
     'INT340F': 'Intel Collaborative Processor Performance Control (CPPC)',  # Seen as \_SB_.PCCD
@@ -1254,6 +1271,8 @@ KNOWN_ACPI_DEVICES = {
     'LEN200B': 'Synaptics touchpad for Lenovo',
     'LEN200F': 'Synaptics touchpad for Lenovo T450s',
 
+    'LPE0F28': 'Intel(R) SST Audio device',  # Seen as \_SB_.LPA2
+
     # Linaro ACPI Registry
     'LNRO0003': 'Linaro smc91x',
     'LNRO0005': 'Linaro Virtio MMIO device',  # Seen on AArch64 QEMU virtual machine
@@ -1279,6 +1298,8 @@ KNOWN_ACPI_DEVICES = {
     'MSFT0003': 'PS/2 Port Compatible Pointing Device for Dell',  # Seen as \_SB_.PCI0.LPCB.PS2M
     'MSFT0101': 'Intel Platform Trust Technology (PTT) TPM 2.0',  # Documented as "TPM 2.0 Security Device"
     'MSFT1111': '(Unknown HID Device related to Dell Touchpad)',  # Seen as \_SB_.PCI0.I2C0.TPD4
+    # https://docs.microsoft.com/en-us/windows/uwp/devices-sensors/enable-usermode-access : "devcon status *msft8000"
+    'MSFT8000': 'Microsoft Resource Hub Proxy device (RHPX)',  # Seen as \_SB_.RHPX
 
     'NTRG0001': 'Touchscreen',  # Seen as \_SB_.PCI0.I2C1.TPL2
 
