@@ -665,8 +665,17 @@ def fill_mei_names(device_tree):
     """Fill names from MEI (Intel's Management Engine Interface) UUIDs"""
     for dev in device_tree.iter_all():
         if dev['buskind'] == 'mei':
-            m = re.match(r'mei:[^:]*:([^:]*):', dev['sysfs_name'])
+            # Match "mei:name:UUID:.*"
+            m = re.match(r'^mei:[^:]*:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):',
+                         dev['sysfs_name'])
             if m is None:
+                # Match "0000:00:16.0-UUID" from Linux 5.3
+                m = re.match(
+                    r'^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]-' +
+                    r'([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$',
+                    dev['sysfs_name'])
+            if m is None:
+                # Ignore "mei0", "mei1"... directories
                 if not re.match(r'mei[0-9]$', dev['sysfs_name']):
                     logger.warning("Invalid MEI device name %s", dev['sysfs_name'])
                 continue
@@ -1209,6 +1218,7 @@ KNOWN_ACPI_DEVICES = {
     'INT3470': 'Intel AVStream Camera 2500',  # Seen as \_SB_.SKC0
     'INT3471': 'Intel Camera Sensor IMX135',  # Seen as \_SB_.PCI0.LNK0 and \_SB_.PCI0.LNK2
     'INT3472': 'TPS68470 Power Management IC (PMIC-CRDG)',
+    'INT3474': 'Camera Sensor OV2740',  # Seen as \_SB_.PCI0.I2C4.CAM1
     'INT3515': 'TI TPS6598x USB Power Delivery Controller (from USB Connection Manager, UCM)',
     'INT3F0D': 'Intel Watchdog Timer (CWDT)',  # documented as "ACPI Motherboard Resources"
 
