@@ -455,6 +455,9 @@ if type alias > /dev/null 2>&1 ; then
     alias virtualenv2='virtualenv --python=python2'
     alias virtualenv3='python3 -m venv'
 
+    # Enumerate serial ports from pySerial
+    alias pyserial-enum='python -m serial.tools.list_ports'
+
     # Python linter of 120-character-wide lines
     alias flake8-120='flake8 --max-line-length=120'
     alias pylint-120='pylint --max-line-length=120'
