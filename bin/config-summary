@@ -102,6 +102,10 @@ for FILE in /sys/class/dmi/id/*_vendor /sys/class/dmi/id/uevent ; do
         echo "* $FILE: $(cat "$FILE")"
     fi
 done
+if has_command fwupdmgr ; then
+    echo '* fwupdmgr get-devices::'
+    fwupdmgr get-devices 2>&1 | indent_out
+fi
 
 echo ''
 echo 'Network information'
@@ -204,6 +208,10 @@ if has_command lvm ; then
         echo "  - lvm $CMD::"
         lvm "$CMD" 2>&1 | indent_out '      '
     done
+fi
+if [ -r /proc/mtd ] ; then
+    echo '* /proc/mtd::'
+    indent_out < /proc/mtd
 fi
 
 echo ''
