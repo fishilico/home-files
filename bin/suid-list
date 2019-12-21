@@ -669,15 +669,17 @@ KNOWN_SUID_FILES = [
     # shadow, http://pkg-shadow.alioth.debian.org/
     # https://github.com/shadow-maint/shadow
     # These files can work well without being setuid-root
-    SuidFile('/bin/chgpasswd'),
-    SuidFile('/bin/chpasswd'),
-    SuidFile('/bin/groupadd'),
-    SuidFile('/bin/groupdel'),
-    SuidFile('/bin/groupmod'),
-    SuidFile('/bin/newusers'),
-    SuidFile('/bin/useradd'),
-    SuidFile('/bin/userdel'),
-    SuidFile('/bin/usermod'),
+    # ... and they were not intended to be setuid-root (CVE-2019-19882)
+    # https://security.archlinux.org/ASA-201912-4
+    # SuidFile('/bin/chgpasswd'),
+    # SuidFile('/bin/chpasswd'),
+    # SuidFile('/bin/groupadd'),
+    # SuidFile('/bin/groupdel'),
+    # SuidFile('/bin/groupmod'),
+    # SuidFile('/bin/newusers'),
+    # SuidFile('/bin/useradd'),
+    # SuidFile('/bin/userdel'),
+    # SuidFile('/bin/usermod'),
 
     # systemtap, https://sourceware.org/systemtap/
     # https://sourceware.org/git/gitweb.cgi?p=systemtap.git;a=tree
