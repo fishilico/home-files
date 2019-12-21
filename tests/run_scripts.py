@@ -111,6 +111,7 @@ BIN_SCRIPTS = {
     'sensors-temp': '(sensors)direct',
     'set-title': 'direct',
     'setup-dumpcap': 'never',
+    'shred-dir': 'never',
     'smtp-send': 'help',
     'suid-list': 'args[-p]',
     'syscall': '(/usr/include/asm|/usr/include/linux|/usr/src/linux)args[-l]',
