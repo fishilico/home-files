@@ -108,6 +108,7 @@ BIN_SCRIPTS = {
     'rm-temp': 'never',
     'ruby-gem-home': '(ruby)args[ruby --version]',
     'scan-ip4priv': 'never',
+    'selinux-audit-log': '(python3)help',
     'sensors-temp': '(sensors)direct',
     'set-title': 'direct',
     'setup-dumpcap': 'never',

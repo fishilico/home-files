@@ -1,0 +1,953 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2019-2020 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Parse SELinux audit log and print events"""
+import argparse
+import binascii
+import collections
+from contextlib import suppress
+import datetime
+import logging
+import os
+import re
+import shlex
+import subprocess
+import sys
+
+
+# Use local timezone, if possible
+try:
+    from dateutil.tz import tzlocal
+except ImportError:
+    def tzlocal():
+        """Simulate an empty timezone"""
+        return None
+
+
+logger = logging.getLogger(__name__)
+
+
+DEFAULT_AUDIT_LOG_PATH = '/var/log/audit/audit.log'
+
+COLOR_BOLDRED = '\033[31;1m'
+COLOR_YELLOW = '\033[33m'
+COLOR_NORM = '\033[m'
+
+
+# Enum from /usr/include/linux/audit.h
+# (https://github.com/torvalds/linux/blob/master/include/uapi/linux/audit.h)
+# and from /usr/include/libaudit.h
+# (https://github.com/linux-audit/audit-userspace/blob/v2.8.5/lib/libaudit.h)
+AUDIT_TYPES = {
+    # 1100 - 1199 user space trusted application messages
+    1100: 'USER_AUTH',
+    1101: 'USER_ACCT',
+    1102: 'USER_MGMT',
+    1103: 'CRED_ACQ',
+    1104: 'CRED_DISP',
+    1105: 'USER_START',
+    1106: 'USER_END',
+    1107: 'USER_AVC',
+    1108: 'USER_CHAUTHTOK',
+    1109: 'USER_ERR',
+    1110: 'CRED_REFR',
+    1111: 'USYS_CONFIG',
+    1112: 'USER_LOGIN',
+    1113: 'USER_LOGOUT',
+    1114: 'ADD_USER',
+    1115: 'DEL_USER',
+    1116: 'ADD_GROUP',
+    1117: 'DEL_GROUP',
+    1118: 'DAC_CHECK',
+    1119: 'CHGRP_ID',
+    1120: 'TEST',
+    1121: 'TRUSTED_APP',
+    1122: 'USER_SELINUX_ERR',
+    1123: 'USER_CMD',
+    1124: 'USER_TTY',
+    1125: 'CHUSER_ID',
+    1126: 'GRP_AUTH',
+    1127: 'SYSTEM_BOOT',
+    1128: 'SYSTEM_SHUTDOWN',
+    1129: 'SYSTEM_RUNLEVEL',
+    1130: 'SERVICE_START',
+    1131: 'SERVICE_STOP',
+    1132: 'GRP_MGMT',
+    1133: 'GRP_CHAUTHTOK',
+    1134: 'MAC_CHECK',
+    1135: 'ACCT_LOCK',
+    1136: 'ACCT_UNLOCK',
+    1137: 'USER_DEVICE',
+    1138: 'SOFTWARE_UPDATE',
+
+    # 1200 - 1299 messages internal to the audit daemon
+    1200: 'DAEMON_START',
+    1201: 'DAEMON_END',
+    1202: 'DAEMON_ABORT',
+    1203: 'DAEMON_CONFIG',
+    1204: 'DAEMON_RECONFIG',
+    1205: 'DAEMON_ROTATE',
+    1206: 'DAEMON_RESUME',
+    1207: 'DAEMON_ACCEPT',
+    1208: 'DAEMON_CLOSE',
+    1209: 'DAEMON_ERR',
+
+    # 1300 - 1399 audit event messages
+    1300: 'SYSCALL',
+    1301: 'FS_WATCH',
+    1302: 'PATH',
+    1303: 'IPC',
+    1304: 'SOCKETCALL',
+    1305: 'CONFIG_CHANGE',
+    1306: 'SOCKADDR',
+    1307: 'CWD',
+    1309: 'EXECVE',
+    1311: 'IPC_SET_PERM',
+    1312: 'MQ_OPEN',
+    1313: 'MQ_SENDRECV',
+    1314: 'MQ_NOTIFY',
+    1315: 'MQ_GETSETATTR',
+    1316: 'KERNEL_OTHER',
+    1317: 'FD_PAIR',
+    1318: 'OBJ_PID',
+    1319: 'TTY',
+    1320: 'EOE',
+    1321: 'BPRM_FCAPS',
+    1322: 'CAPSET',
+    1323: 'MMAP',
+    1324: 'NETFILTER_PKT',
+    1325: 'NETFILTER_CFG',
+    1326: 'SECCOMP',
+    1327: 'PROCTITLE',
+    1328: 'FEATURE_CHANGE',
+    1329: 'REPLACE',
+    1330: 'KERN_MODULE',
+    1331: 'FANOTIFY',
+    1332: 'TIME_INJOFFSET',
+    1333: 'TIME_ADJNTPVAL',
+
+    # 1400 - 1499 SELinux use
+    1400: 'AVC',
+    1401: 'SELINUX_ERR',
+    1402: 'AVC_PATH',
+    1403: 'MAC_POLICY_LOAD',
+    1404: 'MAC_STATUS',
+    1405: 'MAC_CONFIG_CHANGE',
+    1406: 'MAC_UNLBL_ALLOW',
+    1407: 'MAC_CIPSOV4_ADD',
+    1408: 'MAC_CIPSOV4_DEL',
+    1409: 'MAC_MAP_ADD',
+    1410: 'MAC_MAP_DEL',
+    1411: 'MAC_IPSEC_ADDSA',
+    1412: 'MAC_IPSEC_DELSA',
+    1413: 'MAC_IPSEC_ADDSPD',
+    1414: 'MAC_IPSEC_DELSPD',
+    1415: 'MAC_IPSEC_EVENT',
+    1416: 'MAC_UNLBL_STCADD',
+    1417: 'MAC_UNLBL_STCDEL',
+    1418: 'MAC_CALIPSO_ADD',
+    1419: 'MAC_CALIPSO_DEL',
+
+    # 1500 - 1599 kernel LSPP events
+    1500: 'AA',
+    1501: 'APPARMOR_AUDIT',
+    1502: 'APPARMOR_ALLOWED',
+    1503: 'APPARMOR_DENIED',
+    1504: 'APPARMOR_HINT',
+    1505: 'APPARMOR_STATUS',
+    1506: 'APPARMOR_ERROR',
+
+    # 1700 - 1799 kernel anomaly records
+    1700: 'ANOM_PROMISCUOUS',
+    1701: 'ANOM_ABEND',
+    1702: 'ANOM_LINK',
+    1703: 'ANOM_CREAT',
+
+    # 1800 - 1899 kernel integrity events
+    1800: 'INTEGRITY_DATA',
+    1801: 'INTEGRITY_METADATA',
+    1802: 'INTEGRITY_STATUS',
+    1803: 'INTEGRITY_HASH',
+    1804: 'INTEGRITY_PCR',
+    1805: 'INTEGRITY_RULE',
+    1806: 'INTEGRITY_EVM_XATTR',
+    1807: 'INTEGRITY_POLICY_RULE',
+
+    # 2100 - 2199 user space anomaly records
+    2100: 'ANOM_LOGIN_FAILURES',
+    2101: 'ANOM_LOGIN_TIME',
+    2102: 'ANOM_LOGIN_SESSIONS',
+    2103: 'ANOM_LOGIN_ACCT',
+    2104: 'ANOM_LOGIN_LOCATION',
+    2105: 'ANOM_MAX_DAC',
+    2106: 'ANOM_MAX_MAC',
+    2107: 'ANOM_AMTU_FAIL',
+    2108: 'ANOM_RBAC_FAIL',
+    2109: 'ANOM_RBAC_INTEGRITY_FAIL',
+    2110: 'ANOM_CRYPTO_FAIL',
+    2111: 'ANOM_ACCESS_FS',
+    2112: 'ANOM_EXEC',
+    2113: 'ANOM_MK_EXEC',
+    2114: 'ANOM_ADD_ACCT',
+    2115: 'ANOM_DEL_ACCT',
+    2116: 'ANOM_MOD_ACCT',
+    2117: 'ANOM_ROOT_TRANS',
+    2118: 'ANOM_LOGIN_SERVICE',
+
+    # 2200 - 2299 user space actions taken in response to anomalies
+    2200: 'RESP_ANOMALY',
+    2201: 'RESP_ALERT',
+    2202: 'RESP_KILL_PROC',
+    2203: 'RESP_TERM_ACCESS',
+    2204: 'RESP_ACCT_REMOTE',
+    2205: 'RESP_ACCT_LOCK_TIMED',
+    2206: 'RESP_ACCT_UNLOCK_TIMED',
+    2207: 'RESP_ACCT_LOCK',
+    2208: 'RESP_TERM_LOCK',
+    2209: 'RESP_SEBOOL',
+    2210: 'RESP_EXEC',
+    2211: 'RESP_SINGLE',
+    2212: 'RESP_HALT',
+    2213: 'RESP_ORIGIN_BLOCK',
+    2214: 'RESP_ORIGIN_BLOCK_TIMED',
+
+    # 2300 - 2399 user space generated LSPP events
+    2300: 'USER_ROLE_CHANGE',
+    2301: 'ROLE_ASSIGN',
+    2302: 'ROLE_REMOVE',
+    2303: 'LABEL_OVERRIDE',
+    2304: 'LABEL_LEVEL_CHANGE',
+    2305: 'USER_LABELED_EXPORT',
+    2306: 'USER_UNLABELED_EXPORT',
+    2307: 'DEV_ALLOC',
+    2308: 'DEV_DEALLOC',
+    2309: 'FS_RELABEL',
+    2310: 'USER_MAC_POLICY_LOAD',
+    2311: 'ROLE_MODIFY',
+    2312: 'USER_MAC_CONFIG_CHANGE',
+
+    # 2400 - 2499 user space crypto events
+    2400: 'CRYPTO_TEST_USER',
+    2401: 'CRYPTO_PARAM_CHANGE_USER',
+    2402: 'CRYPTO_LOGIN',
+    2403: 'CRYPTO_LOGOUT',
+    2404: 'CRYPTO_KEY_USER',
+    2405: 'CRYPTO_FAILURE_USER',
+    2406: 'CRYPTO_REPLAY_USER',
+    2407: 'CRYPTO_SESSION',
+    2408: 'CRYPTO_IKE_SA',
+    2409: 'CRYPTO_IPSEC_SA',
+
+    2500: 'VIRT_CONTROL',
+    2501: 'VIRT_RESOURCE',
+    2502: 'VIRT_MACHINE_ID',
+    2503: 'VIRT_INTEGRITY_CHECK',
+    2504: 'VIRT_CREATE',
+    2505: 'VIRT_DESTROY',
+    2506: 'VIRT_MIGRATE_IN',
+    2507: 'VIRT_MIGRATE_OUT',
+}
+AUDIT_TYPES_FOR_SELINUX = frozenset((
+    'AVC',
+    'SELINUX_ERR',
+    'USER_AVC',
+))
+
+
+# IOCTL commands
+IOCTL_NAMES = {
+    0x1272: 'BLKGETSIZE64',
+    0x2285: 'SG_IO',
+    0x4520: 'EVIOCGBIT(0)',
+    0x4521: 'EVIOCGBIT(1)',
+    0x5331: 'CDROM_GET_CAPABILITY|SNDRV_SEQ_IOCTL_UNSUBSCRIBE_PORT',
+    0x5401: 'TCGETS|SNDCTL_TMR_TIMEBASE|SNDRV_TIMER_IOCTL_NEXT_DEVICE',
+    0x5405: 'TCGETA|SNDCTL_TMR_TEMPO|SNDRV_TIMER_IOCTL_GSTATUS',
+    0x540f: 'TIOCGPGRP',
+    0x541b: 'FIONREAD',
+    0x5421: 'FIONBIO',
+    0x5452: 'FIOASYNC',
+    0x54ca: 'TUNSETIFF',
+    0x54cf: 'TUNGETFEATURES',
+    0x54d0: 'TUNSETOFFLOAD',
+    0x5501: 'UI_DEV_CREATE|SNDRV_CTL_IOCTL_CARD_INFO',
+    0xae01: 'KVM_CREATE_VM',
+    0xae03: 'KVM_CHECK_EXTENSION',
+    0xaf21: 'VHOST_SET_VRING_CALL',
+    0xaf30: 'VHOST_NET_SET_BACKEND',
+    0xfd00: 'DM_VERSION',
+}
+
+
+def escape_cmdline(command_line):
+    """Escape a command line from a list of arguments to a string"""
+    return ' '.join(shlex.quote(arg) for arg in command_line)
+
+
+def split_audit_fields(type_name, line, prefix=''):
+    """Split fields from a line in the audit logs"""
+    result = collections.OrderedDict()
+    remaining = line.strip()
+
+    # Fields may be separated with GS=\x1d (group separator) too
+    for remaining in remaining.split('\x1d'):
+        # Parse 'avc:  denied  { map } for  pid=5183 comm="id" path="/usr/bin/id" ...'
+        if remaining.startswith('avc: '):
+            if remaining.startswith('avc:  received policyload notice'):
+                matches = re.match(r'avc:  received policyload notice \(seqno=([0-9]+)\)(.*)$', remaining)
+                if not matches:
+                    raise ValueError(f"Unable to parse AVC policyload notice line: {repr(line)}")
+                seqno_str, remaining = matches.groups()
+                result[prefix + 'avc/notice'] = 'policyload'
+                result[prefix + 'avc/policyload/seqno'] = int(seqno_str)
+            elif remaining.startswith('avc:  received setenforce notice'):
+                matches = re.match(r'avc:  received setenforce notice \(enforcing=([01]+)\)(.*)$', remaining)
+                if not matches:
+                    raise ValueError(f"Unable to parse AVC setenforce notice line: {repr(line)}")
+                enforcing_str, remaining = matches.groups()
+                result[prefix + 'avc/notice'] = 'setenforce'
+                result[prefix + 'avc/setenforce/enforcing'] = enforcing_str != '0'
+            else:
+                matches = re.match(r'avc:  (denied|granted)  \{([a-z_ ]+)\} for +(.*)$', remaining)
+                if not matches:
+                    raise ValueError(f"Unable to parse AVC line: {repr(line)}")
+                result[prefix + 'avc/result'], avc_perms_str, remaining = matches.groups()
+                result[prefix + 'avc/perms'] = avc_perms_str.split()
+            result.update(split_audit_fields(type_name, remaining, prefix=prefix + 'avc/for/'))
+            continue
+
+        if remaining.startswith('pam: '):
+            result.update(split_audit_fields(type_name, remaining[5:], prefix=prefix + 'pam/'))
+            continue
+
+        while remaining:
+            if remaining.startswith('op=mass relabel '):
+                # 'op=mass relabel' is not quoted :(
+                result[prefix + 'op'] = 'mass relabel'
+                remaining = remaining[len('op=mass relabel '):]
+                continue
+
+            matches = re.match(r'^ *([0-9A-Za-z_-]+)=([^ ]*)(.*)$', remaining)
+            if not matches:
+                raise ValueError(f"Unable to split audit fields: {repr(remaining)} in {repr(line)}")
+            key, value, remaining = matches.groups()
+
+            # Parse the value according to the key
+
+            # Open a sub-section: 'SADDR={ fam=local path=/run/systemd/notify }
+            if key == 'SADDR' and value == '{':
+                parts = remaining.split('}', 1)
+                if len(parts) != 2:
+                    raise ValueError(
+                        f"Unable to parse braced {key} in audit fields: {repr(remaining)} in {repr(line)}")
+                result.update(split_audit_fields(type_name, parts[0], prefix=prefix + 'SADDR/'))
+                remaining = parts[1]
+                continue
+
+            # Unescaped message in USER_AVC: 'msg=\'avc:  denied ...''
+            if key == 'msg' and value.startswith('\''):
+                if len(value) >= 2 and value.endswith('\''):
+                    value = value[1:-1]
+                else:
+                    # Find the ending quote in the remaining
+                    parts = remaining.split('\' ', 1)
+                    if len(parts) == 2:
+                        value = value[1:] + parts[0]
+                        remaining = parts[1]
+                    elif remaining.endswith('\''):
+                        value = value[1:] + remaining[:-1]
+                        remaining = ''
+                    else:
+                        # It happens that the message is truncated in several lines,
+                        # when processing from systemd's journal. Too bad.
+                        # Analyze the truncated line and ignore the next one.
+                        value = value[1:] + remaining
+                        remaining = ''
+                result.update(split_audit_fields(type_name, value, prefix=prefix + 'msg/'))
+                continue
+
+            # Unescaped command-line in USER_AVC: 'cmdline="/usr/bin/dbus-broker-launch --scope system --audit"'
+            if key == 'cmdline' and value.startswith('"'):
+                if len(value) >= 2 and value.endswith('"'):
+                    result[prefix + key] = value[1:-1]
+                else:
+                    # Find the ending quote in the remaining
+                    parts = remaining.split('" ', 1)
+                    if len(parts) == 2:
+                        result[prefix + key] = value[1:] + parts[0]
+                        remaining = parts[1]
+                    elif remaining.endswith('"'):
+                        result[prefix + key] = value[1:] + remaining[:-1]
+                        remaining = ''
+                    else:
+                        raise ValueError(
+                            f"Unable to parse quoted {key} in audit fields: {repr(remaining)} in {repr(line)}")
+                continue
+
+            if key in ('a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'arch') and re.match(r'^[0-9a-f]+$', value):
+                # Syscall arguments are hexadecimal integers
+                result[prefix + key] = int(value, 16)
+                continue
+
+            if key == 'ioctlcmd' and re.match(r'^0x[0-9a-f]+$', value):
+                # ioctl command is written with 0x prefix
+                ioctl_cmd = int(value[2:], 16)
+                ioctl_name = IOCTL_NAMES.get(ioctl_cmd)
+                if ioctl_name:
+                    result[prefix + key] = f"{ioctl_cmd:#x}({ioctl_name})"
+                else:
+                    result[prefix + key] = f"{ioctl_cmd:#x}"
+                continue
+
+            if key == 'mode' and re.match(r'^0[0-7]+$', value):
+                # mode is octal
+                result[prefix + key] = int(value, 8)
+                continue
+
+            if key == 'saddr' and re.match(r'^([0-9A-F][0-9A-F])+$', value):
+                # Decode in bytes SOCKADDR's 'saddr=01002F72756E2F73797374656D642F6E6F7469667900'
+                result[prefix + key] = binascii.unhexlify(value)
+                continue
+
+            if key in (
+                    'audit_enabled',
+                    'audit_pid',
+                    'auid',
+                    'cap_fe',
+                    'cap_fi',
+                    'cap_fp',
+                    'cap_fver',
+                    'capability',
+                    'egid',
+                    'enabled',
+                    'enforcing',
+                    'euid',
+                    'exit',
+                    'fsgid',
+                    'fsuid',
+                    'gid',
+                    'id',
+                    'ino',
+                    'inode',
+                    'item',
+                    'items',
+                    'ksize',
+                    'list',
+                    'lport',
+                    'new',
+                    'new-level',
+                    'nsec',
+                    'ogid',
+                    'old',
+                    'old-auid',
+                    'old-enabled',
+                    'old-level',
+                    'old-ses',
+                    'old_enforcing',
+                    'old_val',
+                    'ouid',
+                    'permissive',
+                    'pid',
+                    'ppid',
+                    'res',
+                    'rport',
+                    'sauid',
+                    'sec',
+                    'ses',
+                    'sgid',
+                    'spid',
+                    'src',
+                    'suid',
+                    'syscall',
+                    'tpid',
+                    'uid',
+                    'val',
+                    ):
+                if re.match(r'^(-?)[0-9]+$', value):
+                    # Decimal integers
+                    result[prefix + key] = int(value)
+                    continue
+                elif value == 'n/a':
+                    # auid can be "n/a"
+                    result[prefix + key] = None
+                    continue
+
+            if key in (
+                    'AUID',
+                    'EGID',
+                    'EUID',
+                    'FSGID',
+                    'FSUID',
+                    'GID',
+                    'ID',
+                    'OGID',
+                    'OLD-AUID',
+                    'OUID',
+                    'SAUID',
+                    'SGID',
+                    'SUID',
+                    'UID',
+                    'acct',
+                    'cmd',
+                    'comm',
+                    'cwd',
+                    'dev',
+                    'exe',
+                    'invalid_context',
+                    'kmod',
+                    'name',
+                    'old-level',
+                    'path',
+                    'proctitle',
+                    'tglob',
+                    ):
+                # Quoted or hex-escaped strings
+                if len(value) >= 2 and value[0] == '"' == value[-1]:
+                    result[prefix + key] = value[1:-1]
+                elif re.match(r'^([0-9A-F][0-9A-F])+$', value):
+                    result[prefix + key] = binascii.unhexlify(value).decode('utf-8', 'replace')
+                elif key == 'path':
+                    # The value may be directly written too!
+                    result[prefix + key] = value
+                continue
+
+            if key in (
+                    'ARCH',
+                    'SYSCALL',
+                    'addr',
+                    'bool',
+                    'cipher',
+                    'default-context',
+                    'dest',
+                    'direction',
+                    'error_name',
+                    'fam',
+                    'format',
+                    'fp',
+                    'ftype',
+                    'grantors',
+                    'hostname',
+                    'interface',
+                    'kernel',
+                    'key',
+                    'kind',
+                    'laddr',
+                    'lsm',
+                    'mac',
+                    'member',
+                    'msgtype',
+                    'nametype',
+                    'new-range',
+                    'new-role',
+                    'new-seuser',
+                    'obj',
+                    'old-range',
+                    'old-role',
+                    'old-seuser',
+                    'op',
+                    'pfs',
+                    'rdev',
+                    'res',
+                    'resrc',
+                    'scontext',
+                    'selected-context',
+                    'service',
+                    'subj',
+                    'success',
+                    'tclass',
+                    'tcontext',
+                    'terminal',
+                    'tty',
+                    'unit',
+                    'ver',
+                    ):
+                # Unquoted identifiers
+                if len(value) >= 2 and value[0] == '"' == value[-1]:
+                    # Warn that an unquoted identifier has been seen quoted
+                    logger.warning("Unquoted %s%s was quoted in audit fields: %r in %s, %r",
+                                   prefix, key, value, type_name, line)
+                result[prefix + key] = value
+                continue
+
+            # Warn about unknown fields and add them
+            logger.warning("Found unknown key in %s: %s%s = %r", type_name, prefix, key, value)
+            result[prefix + key] = value
+    return result
+
+
+class SELinuxAuditLogAnalyzer:
+    """Analyze SELinux audit logs"""
+    def __init__(self, argv=None):
+        parser = argparse.ArgumentParser(description="Parse SELinux audit log")
+        parser.add_argument('logfiles', metavar='LOGFILES', nargs='*', type=str,
+                            help=f"path to audit.log (default: {DEFAULT_AUDIT_LOG_PATH})")
+        group = parser.add_mutually_exclusive_group(required=False)
+        group.add_argument('--audit', action='store_true',
+                           help="reads {DEFAULT_AUDIT_LOG_PATH} (default is stdin is a TTY)")
+        group.add_argument('-d', '--dmesg', action='store_true',
+                           help="use dmesg to get the audit logs")
+        group.add_argument('--dmesg-busybox', action='store_true',
+                           help="use busybox dmesg to get the audit logs (implies --dmesg)")
+        group.add_argument('-j', '--journal', action='store_true',
+                           help="use systemd's journal to get the audit logs")
+        group.add_argument('--stdin', action='store_true',
+                           help="show audit logs from the standard input (default is it is a TTY)")
+        group.add_argument('-t', '--today', action='store_true',
+                           help="show audit logs of today (using ausearch --start today)")
+
+        parser.add_argument('-C', '--no-color', action='store_true',
+                            help="do not color the output")
+        parser.add_argument('-n', '--num', type=int,
+                            help="cut the log to this number of lines")
+        parser.add_argument('-f', '--follow', action='store_true',
+                            help="follow the log (tail -F)")
+        parser.add_argument('-s', '--sudo', action='store_true',
+                            help="use sudo to become root")
+        parser.add_argument('-S', '--show-other', action='store_true',
+                            help="show audit logs from other types that SELinux-focused ones")
+        parser.add_argument('-V', '--vagrant', action='store_true',
+                            help="ssh into a vagrant virtual machine here to grab its audit log")
+        parser.add_argument('-M', '--machine', type=str,
+                            help="ssh into a machine to grab its audit log (-VM for Vagrant VM)")
+        args = parser.parse_args(argv)
+
+        # Use \r\n as line terminator in order to work around SSH setting the terminal as raw
+        logging.basicConfig(
+            format='[%(levelname)s] %(message)s\r',
+            level=logging.DEBUG)
+
+        self.from_dmesg = args.dmesg or args.dmesg_busybox
+        self.show_other = args.show_other
+        self.last_show_evt_idx = None
+
+        if args.no_color:
+            self.color_boldred = ''
+            self.color_yellow = ''
+            self.color_norm = ''
+        else:
+            self.color_boldred = COLOR_BOLDRED
+            self.color_yellow = COLOR_YELLOW
+            self.color_norm = COLOR_NORM
+
+        # Build a command line for the application to launch
+        if self.from_dmesg:
+            # Use kernel logs (dmesg)
+            if args.logfiles:
+                parser.error("Option --dmesg is mutually exclusive with log files")
+            if args.num is not None:
+                parser.error("Option -n is not supported with dmesg source")
+            if args.dmesg_busybox:
+                command_line = ['busybox', 'dmesg']
+            else:
+                command_line = ['dmesg', '--color=never']
+            if args.follow:
+                command_line.append('-w')
+        elif args.journal:
+            # Use systemd's journal
+            if args.logfiles:
+                parser.error("Option --journal is mutually exclusive with log files")
+            command_line = ['journalctl', '-b', '--identifier=audit', '--no-pager', '--output=short-iso']
+            if args.num is not None:
+                command_line.append(f'--lines={args.num}')
+            if args.follow:
+                command_line.append('--follow')
+        elif args.today:
+            # Use ausearch --start today
+            if args.logfiles:
+                parser.error("Option --today is mutually exclusive with log files")
+            if args.num is not None:
+                parser.error("Option -n is not supported with ausearch source")
+            if args.follow:
+                parser.error("Option -f is not supported with ausearch source")
+            command_line = ['ausearch', '--start', 'today']
+        else:
+            # Use audit's log files or the standard input
+            if args.audit:
+                if args.logfiles:
+                    parser.error("Option --audit is mutually exclusive with log files")
+                logfiles = [DEFAULT_AUDIT_LOG_PATH]
+            elif args.stdin:
+                if args.logfiles:
+                    parser.error("Option --stdin is mutually exclusive with log files")
+                logfiles = ['/dev/stdin']
+            elif args.logfiles:
+                logfiles = args.logfiles
+            elif os.isatty(sys.stdin.fileno()):
+                # Use audit.log by default if the standard input is a TTY
+                logfiles = [DEFAULT_AUDIT_LOG_PATH]
+            else:
+                # Use stdin input
+                logfiles = ['/dev/stdin']
+
+            if args.follow:
+                # Use "+0" to start at the beginning, if --num has not been used
+                command_line = ['tail', '-F', '-n', '+0' if args.num is None else str(args.num)]
+            elif args.num is not None:
+                command_line = ['tail', '-n', str(args.num)]
+            else:
+                command_line = ['cat']
+
+            command_line += logfiles
+
+        if args.sudo or args.vagrant:  # Vagrant also needs sudo
+            command_line = ['sudo', '-s'] + command_line
+
+        if args.vagrant:
+            # Use Vagrant to run a command
+            if args.machine:
+                command_line = ['vagrant', 'ssh', args.machine, '-c', escape_cmdline(command_line)]
+            else:
+                command_line = ['vagrant', 'ssh', '-c', escape_cmdline(command_line)]
+        elif args.machine:
+            command_line = ['ssh', args.machine, escape_cmdline(command_line)]
+
+        self.command_line = command_line
+
+    def spawn_command_for_audit_log(self):
+        """Spawn a process from a command to read the audit log"""
+        logger.debug("Running %r", escape_cmdline(self.command_line))
+        proc = subprocess.Popen(
+            self.command_line,
+            stdin=None,  # Forward input to the child process
+            stdout=subprocess.PIPE,  # Grab the output
+            stderr=None,  # Show errors to the console directly
+        )
+        for raw_line in proc.stdout:
+            # Remove coloring escape sequences (from journalctl)
+            raw_line = raw_line.replace(b'\x1b[0;34m', b'').replace(b'\x1b[0m', b'')
+            try:
+                # Audit logs are always ASCII
+                line = raw_line.decode('ascii').strip()
+            except UnicodeDecodeError:
+                continue
+
+            if not line:
+                continue
+
+            if self.from_dmesg:
+                # Strip the prefix after the timestamp
+                matches = re.match(r'^\[[0-9.]+\] audit: (.*)$', line)
+                if matches:
+                    self.analyze_audit_line(matches.group(1))
+                # When using dmesg, ignore all lines that do not match
+                continue
+
+            # Match audit.log entries
+            if re.match(r'^type=([A-Z_]+|UNKNOWN\[[0-9]+\]) msg=audit', line):
+                self.analyze_audit_line(line)
+                continue
+
+            # Try to match systemd's journal entries using ISO timestamps
+            first_parts = line.split(' ', 3)
+            if re.match(r'^[0-9]+-[0-9]+-[0-9]+T[0-9][0-9]:[0-9][0-9]:[0-9][0-9][0-9+-]*$', first_parts[0]):
+                if len(first_parts) != 4 or not first_parts[2].startswith('audit'):
+                    logger.warning("Unexpected line prefix for journal: %r", first_parts[:3])
+                    continue
+
+                self.analyze_audit_line(
+                    first_parts[3],
+                    entry_time=datetime.datetime.strptime(first_parts[0], '%Y-%m-%dT%H:%M:%S%z'),
+                )
+                continue
+
+            # Skip the journald prolog line
+            if line.startswith('-- Logs begin at '):
+                continue
+
+            # Skip lines from ausearch like "time->Thu  1 Jan 00:00:00 UTC 1970"
+            if line == '----' or re.match(r'time->\S+ \S+ [0-9]+ [0-9:]+ [0-9]{4}$', line):
+                continue
+
+            logger.warning("Skipping unknown line %r", line)
+
+        exit_code = proc.wait()
+        if exit_code:
+            logger.warning("Command %r exited with code %d", self.command_line, exit_code)
+        return exit_code
+
+    def analyze_audit_line(self, line, entry_time=None):
+        """Analyze a line from Linux audit log"""
+        # The first field is the type, either numerical or textual:
+        # - audit.log uses "type=AVC msg=audit(...:...): pid=..."
+        # - audit.log may use "type=UNKNOWN[1332]" for messages that are not yet known to auditd
+        # - dmesg uses "type=1400 audit(...:...): pid=..."
+        # - systemd's journal uses "AVC pid=..."
+        matches = re.match(r'^(?:type=)?(?:([0-9]+)|([A-Z_]+)|(?:UNKNOWN\[([0-9]+)\])) (.*)$', line)
+        if not matches:
+            logger.error("Invalid audit line: %r", line)
+            return
+        type_intstr, type_name, type_unk, remaining = matches.groups()
+        if type_unk:
+            assert not type_name
+            assert not type_intstr
+            type_intstr = type_unk  # Process the audit type integer
+        if type_intstr:
+            assert not type_name
+            try:
+                type_name = AUDIT_TYPES[int(type_intstr)]
+            except KeyError:
+                logger.error("Unknown audit type %r in %r", type_intstr, line)
+                raise NotImplementedError(f"Audit type {repr(type_intstr)} not yet known")
+
+        assert type_name
+
+        # Parse the time and event index, if any
+        evt_idx = None
+        matches = re.match(r'^(?:msg=)?audit\(([0-9]+)\.([0-9]+):([0-9]+)\): (.*)$', remaining)
+        if matches:
+            seconds, millis, evt_idx_str, remaining = matches.groups()
+            if len(millis) != 3:
+                logger.error("Invalid audit timestamp (ms) %r in %r", millis, line)
+                raise ValueError(f"Invalid audit timestamp ({millis} ms)")
+            entry_time = datetime.datetime.fromtimestamp(int(seconds), tz=tzlocal())
+            entry_time += datetime.timedelta(milliseconds=int(millis))
+            evt_idx = int(evt_idx_str)
+
+        # Keep the event if its index matches the previous one
+        related_to_previous = evt_idx is not None and evt_idx == self.last_show_evt_idx
+        if not related_to_previous and not self.show_other and type_name not in AUDIT_TYPES_FOR_SELINUX:
+            # logger.debug("Skipping audit %r from %s: %r", type_name, entry_time, remaining)
+            self.last_show_evt_idx = None
+            return
+
+        parsed_record = split_audit_fields(type_name, remaining)
+
+        # Ignore notices for policyload and setenforce
+        if parsed_record.get('msg/avc/notice') in ('policyload', 'setenforce'):
+            return
+
+        self.last_show_evt_idx = evt_idx
+
+        date_now = datetime.datetime.now(tz=tzlocal()).strftime('%Y-%m-%d')
+        entry_date = entry_time.strftime('%Y-%m-%d')
+        if entry_date == date_now:
+            entry_formated_time = entry_time.strftime('%H:%M:%S')
+        else:
+            entry_formated_time = '{} {}'.format(entry_date, entry_time.strftime('%H:%M:%S'))
+        if related_to_previous and type_name != 'AVC':
+            # Indent fields, for new events related to the previous line
+            print(f"    + {type_name}:", end='\r\n')
+            for key, value in parsed_record.items():
+                print(f"        - {key} = {repr(value)}", end='\r\n')
+        elif type_name == 'AVC':
+            avc_result = parsed_record['avc/result']
+            avc_perms = ' '.join(parsed_record['avc/perms'])
+            source_type = parsed_record['avc/for/scontext'].split(':')[2]
+            target_type = parsed_record['avc/for/tcontext'].split(':')[2]
+            if target_type == source_type:
+                target_type = 'self'
+            tclass = parsed_record['avc/for/tclass']
+            avc_desc = f"{avc_result} {self.color_boldred}{source_type} {target_type}:{tclass} {{ {avc_perms} }}{self.color_norm}"  # noqa
+            with suppress(KeyError):
+                avc_desc += " ioctl={}".format(parsed_record['avc/for/ioctlcmd'])
+            with suppress(KeyError):
+                avc_desc += " path={}".format(repr(parsed_record['avc/for/path']))
+            with suppress(KeyError):
+                avc_desc += " name={}".format(repr(parsed_record['avc/for/name']))
+            with suppress(KeyError):
+                avc_desc += " (ino {}:{})".format(parsed_record['avc/for/dev'], parsed_record['avc/for/ino'])
+            with suppress(KeyError):
+                avc_desc += " comm={}".format(repr(parsed_record['avc/for/comm']))
+            with suppress(KeyError):
+                avc_desc += " pid={}".format(repr(parsed_record['avc/for/pid']))
+            print(f"[{entry_formated_time}] {type_name} {avc_desc}", end='\r\n')
+            for key, value in parsed_record.items():
+                if key in (
+                        'avc/for/capability',
+                        'avc/for/comm',
+                        'avc/for/dev',
+                        'avc/for/ino',
+                        'avc/for/ioctlcmd',
+                        'avc/for/name',
+                        'avc/for/path',
+                        'avc/for/permissive',
+                        'avc/for/pid',
+                        'avc/for/scontext',
+                        'avc/for/tclass',
+                        'avc/for/tcontext',
+                        'avc/perms',
+                        'avc/result',
+                        ):
+                    continue
+                if value in ('?', '', None):
+                    continue
+                print(f"    - {key} = {repr(value)}", end='\r\n')
+        elif type_name == 'USER_AVC':
+            avc_result = parsed_record['msg/avc/result']
+            avc_perms = ' '.join(parsed_record['msg/avc/perms'])
+            source_type = parsed_record['msg/avc/for/scontext'].split(':')[2]
+            target_type = parsed_record['msg/avc/for/tcontext'].split(':')[2]
+            if target_type == source_type:
+                target_type = 'self'
+            tclass = parsed_record['msg/avc/for/tclass']
+            avc_desc = f"{avc_result} {self.color_boldred}{source_type} {target_type}:{tclass} {{ {avc_perms} }}{self.color_norm}"  # noqa
+            with suppress(KeyError):
+                avc_desc += " path={}".format(repr(parsed_record['msg/avc/for/path']))
+            with suppress(KeyError):
+                avc_desc += " spid={}".format(repr(parsed_record['msg/avc/for/spid']))
+            with suppress(KeyError):
+                avc_desc += " tpid={}".format(repr(parsed_record['msg/avc/for/tpid']))
+
+            avc_desc += " (from"
+            with suppress(KeyError):
+                if parsed_record['subj'].startswith('system_u:system_r:system_dbusd_t'):
+                    avc_desc += " subj=DBUS"
+                else:
+                    avc_desc += " subj={}".format(parsed_record['subj'])
+            with suppress(KeyError):
+                avc_desc += " uid={}".format(parsed_record['uid'])
+            with suppress(KeyError):
+                avc_desc += " pid={}".format(parsed_record['pid'])
+            avc_desc += ")"
+            print(f"[{entry_formated_time}] {type_name} {avc_desc}", end='\r\n')
+            for key, value in parsed_record.items():
+                if key in (
+                        'auid',
+                        'msg/avc/for/path',
+                        'msg/avc/for/permissive',
+                        'msg/avc/for/sauid',
+                        'msg/avc/for/scontext',
+                        'msg/avc/for/spid',
+                        'msg/avc/for/tpid',
+                        'msg/avc/for/tclass',
+                        'msg/avc/for/tcontext',
+                        'msg/avc/perms',
+                        'msg/avc/result',
+                        'ses',
+                        'subj',
+                        'pid',
+                        'uid',
+                        ):
+                    continue
+                if value in ('?', '', None):
+                    continue
+                print(f"    - {key} = {repr(value)}", end='\r\n')
+        else:
+            print(f"{self.color_yellow}[{entry_formated_time}] {type_name}:{self.color_norm}", end='\r\n')
+            for key, value in parsed_record.items():
+                if value in ('?', '', None):
+                    continue
+                print(f"{self.color_yellow}    - {key} = {repr(value)}{self.color_norm}", end='\r\n')
+
+
+if __name__ == '__main__':
+    sys.exit(SELinuxAuditLogAnalyzer().spawn_command_for_audit_log())
