@@ -133,4 +133,4 @@ do
     esac
 done
 
-echo "$CMD"
+printf %s\\n "$CMD"

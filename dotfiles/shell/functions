@@ -166,17 +166,17 @@ get_https_cert() {
 get_https_cert_proxy() {
     local S_CLIENT_PROXY
     S_CLIENT_PROXY="$(
-        (
-            echo "${https_proxy-}" ;
-            echo "${HTTPS_PROXY-}" ;
-            echo "${all_proxy-}" ;
-            echo "${ALL_PROXY-}"
-        ) | \
+        printf %s\\n%s\\n%s\\n%s\\n \
+            "${https_proxy-}" \
+            "${HTTPS_PROXY-}" \
+            "${all_proxy-}" \
+            "${ALL_PROXY-}" \
+            | \
         sed -n 's,^\(http://\)\?\([0-9a-zA-Z._-]\+:[0-9]\+\)\(/\)\?$,\2,p' | \
         sed -n 1p)"
     if [ -z "$S_CLIENT_PROXY" ] ; then
-        echo >&2 "Unable to find the proxy settings"
-        exit 1
+        echo >&2 "Unable to parse HTTPS proxy settings"
+        return 1
     fi
     openssl s_client -servername "$1" -connect "$1:443" < /dev/null \
          -proxy "$S_CLIENT_PROXY" \
@@ -209,9 +209,9 @@ postless() {
     STATUS=$?
     # Use less only if postcat succeeded
     if [ "$STATUS" -eq 0 ] ; then
-        echo "$OUTPUT" |less
+        printf %s\\n "$OUTPUT" |less
     else
-        echo "$OUTPUT"
+        printf %s\\n "$OUTPUT"
         return $STATUS
     fi
 }
@@ -230,13 +230,13 @@ case $(grep --help 2> /dev/null) in
                 local FILE
                 FILE="$(mktemp)"
                 # shellcheck disable=SC2064
-                trap "/bin/rm -f \"$FILE\"" EXIT HUP INT QUIT TERM
+                trap "/bin/rm -f -- \"$FILE\"" EXIT HUP INT QUIT TERM
                 while [ $# -ge 1 ] ; do
-                    echo "$1" >> "$FILE"
+                    printf %s\\n "$1" >> "$FILE"
                     shift
                 done
                 \grep -E --color=always -e '' -f "$FILE"
-                /bin/rm "$FILE"
+                /bin/rm -- "$FILE"
             }
         fi
         ;;
@@ -299,7 +299,7 @@ print_args_or_stdin() {
         cat
     else
         while [ $# -ge 1 ] ; do
-            echo "$1"
+            printf %s\\n "$1"
             shift
         done
     fi

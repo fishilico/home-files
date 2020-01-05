@@ -169,7 +169,7 @@ if [ -d /proc/sys/net ] ; then
         /proc/sys/net/ipv6/conf/*/use_tempaddr
     do
         if [ -r "$SYSCTLFILE" ] ; then
-            echo "$(echo "${SYSCTLFILE#/proc/sys/}" | tr / .) = $(cat "$SYSCTLFILE")"
+            printf %s\\n "$(printf %s "${SYSCTLFILE#/proc/sys/}" | tr / .) = $(cat "$SYSCTLFILE")"
         fi
     done | sort | indent_out
 else
@@ -285,7 +285,7 @@ if [ -d /proc/sys/kernel ] ; then
         /proc/sys/vm/swappiness
     do
         if [ -r "$SYSCTLFILE" ] ; then
-            echo "$(echo "${SYSCTLFILE#/proc/sys/}" | tr / .) = $(cat "$SYSCTLFILE")"
+            printf %s\\n "$(printf %s "${SYSCTLFILE#/proc/sys/}" | tr / .) = $(cat "$SYSCTLFILE")"
         fi
     done | indent_out
 else

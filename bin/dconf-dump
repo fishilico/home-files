@@ -32,18 +32,18 @@ dump_dconf_dir() {
     ENTRIES="$(dconf list "$1")"
 
     # Read all keys, if any
-    if echo "$ENTRIES" | grep -q '[^/]$'
+    if printf %s "$ENTRIES" | grep -q '[^/]$'
     then
         echo ""
-        echo "$1" | sed 's,/\(.*\)/,[\1],'
-        echo "$ENTRIES" | grep '[^/]$' | sort | while IFS= read -r ITEM
+        printf %s\\n "$1" | sed 's,/\(.*\)/,[\1],'
+        printf %s\\n "$ENTRIES" | grep '[^/]$' | sort | while IFS= read -r ITEM
         do
             printf '%s=%s\n' "$ITEM" "$(dconf read "$1$ITEM")"
         done
     fi
 
     # Recurse over subdirectories
-    echo "$ENTRIES" | grep '/$' | sort | while IFS= read -r ITEM
+    printf %s\\n "$ENTRIES" | grep '/$' | sort | while IFS= read -r ITEM
     do
         dump_dconf_dir "$1$ITEM"
     done

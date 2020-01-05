@@ -31,7 +31,7 @@ detect_os() {
         OS_ID=$(sed -n 's/^ID=\(.*\)$/\1/p' < /etc/os-release)
         case "$OS_ID" in
             arch|debian|gentoo|ubuntu)
-                echo "$OS_ID"
+                printf %s\\n "$OS_ID"
                 return
                 ;;
             "")

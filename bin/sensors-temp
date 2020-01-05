@@ -39,6 +39,5 @@ do
     TITLES="$TITLES $TITLE"
     TEMPS="$TEMPS $TEMP"
 done
-echo "$TEMPS"
-echo "$TITLES"
+printf %s\\n%s\\n "$TEMPS" "$TITLES"
 ) 2>&1 | sed 's/^ \+//'

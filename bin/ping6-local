@@ -41,29 +41,29 @@ param_to_ip6ll() {
     IP6LL_PATTERN='^fe80::[0-9a-fA-F:]{7,19}%\S+$'
     MAC_PATTERN='^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$'
 
-    if echo "$1" | grep -qE "$IP4_PATTERN"
+    if printf %s "$1" | grep -qE "$IP4_PATTERN"
     then
         ip4_to_ip6ll "$1"
-    elif echo "$1" | grep -qE "$MAC_PATTERN"
+    elif printf %s "$1" | grep -qE "$MAC_PATTERN"
     then
         mac_to_ip6ll "$1"
-    elif echo "$1" | grep -qE "$IP6_PATTERN"
+    elif printf %s "$1" | grep -qE "$IP6_PATTERN"
     then
         ip6glob_to_ip6ll "$1"
-    elif echo "$1" | grep -qE "$IP6LL_PATTERN"
+    elif printf %s "$1" | grep -qE "$IP6LL_PATTERN"
     then
-        echo "$1"
+        printf %s\\n "$1"
     else
         # Maybe a domain name? Use nsswitch!
         OUT=$(getent hosts "$1" | sed -n '1s/^\s*\(\S\+\)\s.*/\1/p')
         if [ -z "$OUT" ]
         then
             return 1
-        elif echo "$OUT" | grep -qE "$IP4_PATTERN"
+        elif printf %s "$OUT" | grep -qE "$IP4_PATTERN"
         then
             echo >&2 "IPv4 $OUT"
             ip4_to_ip6ll "$OUT"
-        elif echo "$OUT" | grep -qE "$IP6_PATTERN"
+        elif printf %s "$OUT" | grep -qE "$IP6_PATTERN"
         then
             echo >&2 "IPv6 $OUT"
             ip6glob_to_ip6ll "$OUT"
@@ -82,14 +82,14 @@ ip4_to_ip6ll() {
     then
         # Use ip command
         OUT=$(ip neigh show "$1")
-        MAC=$(echo "$OUT" | sed -n 's/.*lladdr \([0-9a-fA-F:]\{17\}\).*/\1/p')
-        IFACE=$(echo "$OUT" | sed -n 's/.*dev \([^ ]\+\).*/\1/p')
+        MAC=$(printf %s "$OUT" | sed -n 's/.*lladdr \([0-9a-fA-F:]\{17\}\).*/\1/p')
+        IFACE=$(printf %s "$OUT" | sed -n 's/.*dev \([^ ]\+\).*/\1/p')
     elif command -v arp > /dev/null 2>&1
     then
         # Use arp command
         OUT=$(arp -n "$1" | sed '1d')
-        MAC=$(echo "$OUT" | sed -n 's/.*ether \+\([0-9a-fA-F:]\{17\}\).*/\1/p')
-        IFACE=$(echo "$OUT" | sed -n 's/.* \([^ ]\+\)\s*$/\1/p')
+        MAC=$(printf %s "$OUT" | sed -n 's/.*ether \+\([0-9a-fA-F:]\{17\}\).*/\1/p')
+        IFACE=$(printf %s "$OUT" | sed -n 's/.* \([^ ]\+\)\s*$/\1/p')
     else
         echo >&2 "No ip nor arp command found"
         return 1
@@ -116,8 +116,8 @@ ip4_to_ip6ll() {
 ip6glob_to_ip6ll() {
     local IFACE MAC OUT
     OUT=$(ip -6 neigh show "$1")
-    MAC=$(echo "$OUT" | sed -n 's/.*lladdr \([0-9a-fA-F:]\{17\}\).*/\1/p')
-    IFACE=$(echo "$OUT" | sed -n 's/.*dev \([^ ]\+\).*/\1/p')
+    MAC=$(printf %s "$OUT" | sed -n 's/.*lladdr \([0-9a-fA-F:]\{17\}\).*/\1/p')
+    IFACE=$(printf %s "$OUT" | sed -n 's/.*dev \([^ ]\+\).*/\1/p')
     if [ -z "$MAC" ]
     then
         echo >&2 "No MAC address found for $1"
@@ -130,10 +130,10 @@ ip6glob_to_ip6ll() {
 # Convert a MAC address to an IPv6 link-local address
 mac_to_ip6ll() {
     local FIRST H2 SECOND TAIL IP6
-    FIRST=$(echo "$1" | sed -n 's/^\([0-9a-fA-F]\).:.*/\1/p')
-    SECOND=$(echo "$1" | sed -n 's/^.\([0-9a-fA-F]\):.*/\1/p')
+    FIRST=$(printf %s "$1" | sed -n 's/^\([0-9a-fA-F]\).:.*/\1/p')
+    SECOND=$(printf %s "$1" | sed -n 's/^.\([0-9a-fA-F]\):.*/\1/p')
     H2='\([0-9a-fA-F]\{2\}\)'
-    TAIL=$(echo "$1" | sed -n "s/^..:$H2:$H2:$H2:$H2:$H2\$/"'\1:\2ff:fe\3:\4\5/p')
+    TAIL=$(printf %s "$1" | sed -n "s/^..:$H2:$H2:$H2:$H2:$H2\$/"'\1:\2ff:fe\3:\4\5/p')
 
     if [ -z "$FIRST" ] || [ -z "$SECOND" ] || [ -z "$TAIL" ]
     then
@@ -142,7 +142,7 @@ mac_to_ip6ll() {
     fi
 
     # Invert the universal bit in the second hexdigit
-    SECOND=$(echo "$SECOND" | \
+    SECOND=$(printf %s "$SECOND" | \
         tr '0123456789abABcdCDefEF' '23016745ab8989efEFcdCD')
     IP6=$(echo "fe80::$FIRST$SECOND$TAIL" | tr '[:upper:]' '[:lower:]')
     if [ $# -ge 2 ]
@@ -159,7 +159,7 @@ ip6_to_ip6ll() {
     if [ $# -ge 2 ] && [ -n "$2" ]
     then
         # Use $2 as interface
-        echo "$1%$2"
+        printf %s\\n "$1%$2"
         return
     fi
 
@@ -167,10 +167,10 @@ ip6_to_ip6ll() {
     IFACE=$(ip neigh show "$1" | sed -n 's/.*dev \([^ ]\+\).*/\1/p')
     if [ -n "$IFACE" ]
     then
-        echo "$1%$IFACE"
+        printf %s\\n "$1%$IFACE"
         return
     fi
-    echo "$1"
+    printf %s\\n "$1"
 }
 
 # Extract options as $OPTIONS $TARGET "$@"

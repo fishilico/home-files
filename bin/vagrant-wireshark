@@ -53,7 +53,7 @@ do
             MACHINE="$OPTARG"
             ;;
         \?)
-            echo >&2 "$0: invalid option '$OPTARG'"
+            printf >&2 "%s: invalid option '%s'"\\n "$0" "$OPTARG"
             echo >&2 "Try '$0 -h' for more information."
             exit 1
             ;;

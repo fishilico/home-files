@@ -29,7 +29,7 @@
 # "run_gdb_gcore $PROCNAME $PID" is like "gcore -o $PROCNAME $PID", without
 # relying on gcore file from being provided.
 run_gdb_gcore() {
-    FILENAME="$(echo "$1.$2" | tr ' ()' '___')"
+    FILENAME="$(printf %s\\n "$1.$2" | tr ' ()' '___')"
     TARGET_PID="$2"
     # Do not execute commands from .gdbinit, run in batch mode
     gdb </dev/null -nx -batch \

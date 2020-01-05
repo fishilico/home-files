@@ -49,15 +49,15 @@ ipt_stats() {
     # Get active chains, which contains at least one active rule
     for LINE in $(run_ipt_nomatch "$IPT --numeric" | tr ' ' '_')
     do
-        if echo "$LINE" | grep -qE '^Chain_'
+        if printf %s\\n "$LINE" | grep -qE '^Chain_'
         then
-            CURRENT_CHAIN=$(echo "$LINE" | sed -n 's/^Chain_\(.*\)_(.*/\1/p')
+            CURRENT_CHAIN=$(printf %s\\n "$LINE" | sed -n 's/^Chain_\(.*\)_(.*/\1/p')
             if [ -z "$CURRENT_CHAIN" ]
             then
                 echo >&2 "Unable to parse chain header line: $LINE"
                 return 1
             fi
-        elif [ -n "$CURRENT_CHAIN" ] && echo "$LINE" | grep -qE '^_*[0-9]'
+        elif [ -n "$CURRENT_CHAIN" ] && printf %s\\n "$LINE" | grep -qE '^_*[0-9]'
         then
             # We have a line which is not empty, show current chain
             # Replace "Chain ..." header line with "IPv4/6 Chain"
@@ -108,7 +108,7 @@ do
             RUN_IP4='false'
             ;;
         \?)
-            echo >&2 "$0: invalid option -- '$OPTARG'"
+            printf >&2 "%s: invalid option '%s'"\\n "$0" "$OPTARG"
             echo >&2 "Try '$0 -h' for more information."
             exit 1
             ;;

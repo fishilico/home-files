@@ -58,13 +58,13 @@ fi
 # Check that the first argument is "run", to assert the recursion
 if [ $# -ne 2 ] || [ "$1" != "run" ]
 then
-    echo >&2 "$0: invalid parameters, expected 'run' followed by the chosen shell"
+    printf %s\\n >&2 "$0: invalid parameters, expected 'run' followed by the chosen shell"
     exit 1
 fi
 
 # Print a message and exit with an error status
 die() {
-    echo >&2 "$0: $*"
+    printf %s\\n >&2 "$0: $*"
     exit 1
 }
 
@@ -80,7 +80,7 @@ if ! (
     find bin -type f -exec ln -s "$(pwd)/{}" "$TMPHOME/{}" ';'
 )
 then
-    echo >&2 "$0: Unable to create a temporary HOME"
+    printf %s\\n >&2 "$0: Unable to create a temporary HOME"
     exit 1
 fi
 export HOME="$TMPHOME"

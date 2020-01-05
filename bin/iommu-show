@@ -200,7 +200,7 @@ do
             SHOW_DEVICES=true
             ;;
         \?)
-            echo >&2 "$0: invalid option '$OPTARG'"
+            printf >&2 "%s: invalid option '%s'"\\n "$0" "$OPTARG"
             echo >&2 "Try '$0 -h' for more information."
             exit 1
             ;;
@@ -224,7 +224,7 @@ then
     do
         if ! [ -e "$IOMMUDIR" ]
         then
-            echo >&2 "$IOMMUDIR does not exist"
+            printf %s\\n >&2 "$IOMMUDIR does not exist"
             continue
         fi
         IOMMUDEVNAME="${IOMMUDIR##*/}"
@@ -235,7 +235,7 @@ then
             DOMSUPP="$(cat "$IOMMUDIR/intel-iommu/domains_supported")"
             DESC="$DESC: Intel IOMMU, domains $DOMUSED/$DOMSUPP"
         fi
-        echo "$DESC"
+        printf %s\\n "$DESC"
         IS_FIRST_LINE=false
     done
 fi
@@ -244,7 +244,7 @@ for GROUPDIR in /sys/kernel/iommu_groups/*
 do
     if ! [ -e "$GROUPDIR" ]
     then
-        echo >&2 "$GROUPDIR does not exist"
+        printf %s\\n >&2 "$GROUPDIR does not exist"
         continue
     fi
     # Put a blank like between groups

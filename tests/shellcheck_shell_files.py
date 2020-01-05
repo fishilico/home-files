@@ -71,6 +71,23 @@ def get_excluded_warnings(filepath):
     return sorted(joined_exclwarns.split(','))
 
 
+def custom_lint_rules(filepath):
+    """Implement some custom rules as linting shell script"""
+    result = True
+    with open(filepath, 'r') as stream:
+        for lineno, line in enumerate(stream, start=1):
+            if re.search(r'echo\s+([0-9]*>\S+\s+)*"\$', line):
+                # http://www.etalabs.net/sh_tricks.html
+                # NEVER use echo like this. According to POSIX, echo has
+                # unspecified behavior if any of its arguments contain "\" or
+                # if its first argument is "-n"
+                print("Error: using echo \"$var\" is dangerous. Use printf %s\\\\n \"$var\" instead")
+                print("  in %s:%d: %r" % (filepath, lineno, line))
+                result = False
+
+    return result
+
+
 def test():
     """Run shellcheck on all shell files
 
@@ -129,6 +146,9 @@ def test():
             exitcode = subprocess.call(
                 ['shellcheck', '-e', ','.join(exclwarns), filepath])
             if exitcode != 0:
+                retval = 1
+
+            if not custom_lint_rules(filepath):
                 retval = 1
     return retval
 

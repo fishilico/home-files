@@ -68,7 +68,7 @@ do
             SSH_PORT="$OPTARG"
             ;;
         \?)
-            echo >&2 "$0: invalid option '$OPTARG'"
+            printf >&2 "%s: invalid option '%s'"\\n "$0" "$OPTARG"
             echo >&2 "Try '$0 -h' for more information."
             exit 1
             ;;
@@ -91,16 +91,16 @@ SSH_HOST="$1"
 OUTPUT="$(LANG=C ssh -p "$SSH_PORT" "$SSH_HOST" exit < /dev/null 2>&1)"
 SSH_EXITCODE=$?
 
-if echo "$OUTPUT" | grep -q 'IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!'
+if printf %s\\n "$OUTPUT" | grep -q 'IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!'
 then
     # Retrieve the information which is needed to denastify the host
-    KNOWN_HOST_INFO="$(echo "$OUTPUT" | sed -n 's/^Offending .* key in //p')"
+    KNOWN_HOST_INFO="$(printf %s\\n "$OUTPUT" | sed -n 's/^Offending .* key in //p')"
     KH_PATH="${KNOWN_HOST_INFO%:*}"
-    KH_LINE="$(echo "${KNOWN_HOST_INFO##*:}" | tr -c -d 0-9)"
+    KH_LINE="$(printf %s\\n "${KNOWN_HOST_INFO##*:}" | tr -c -d 0-9)"
     if [ -z "$KH_PATH" ] || [ -z "$KH_LINE" ] || ! [ "$KH_LINE" -ge 0 ]
     then
         echo >&2 "Error: unable to retrieve known_hosts information from message:"
-        echo >&2 "$OUTPUT"
+        printf %s\\n >&2 "$OUTPUT"
         exit 1
     elif [ "$KH_PATH" != "$HOME/.ssh/known_hosts" ]
     then

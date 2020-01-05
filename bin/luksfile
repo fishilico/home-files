@@ -70,7 +70,7 @@ do
             DO_XDGOPEN=false
             ;;
         \?)
-            echo >&2 "$0: invalid option '$OPTARG'"
+            printf >&2 "%s: invalid option '%s'"\\n "$0" "$OPTARG"
             echo >&2 "Try '$0 -h' for more information."
             exit 1
             ;;
@@ -79,12 +79,12 @@ done
 shift $((OPTIND-1))
 if "$DO_MOUNT" && "$DO_UMOUNT"
 then
-    echo >&2 "$0: conflicting options -m and -u"
+    printf %s\\n >&2 "$0: conflicting options -m and -u"
     exit 1
 fi
 if "$DO_KEEPASS" && "$DO_UMOUNT"
 then
-    echo >&2 "$0: conflicting options -k and -u"
+    printf %s\\n >&2 "$0: conflicting options -k and -u"
     exit 1
 fi
 
@@ -144,7 +144,7 @@ luksfile_file() {
         # The file was already mounted, ask to umount it
         if "$DO_MOUNT"
         then
-            echo "$LUKS_FILE is already decrypted."
+            printf %s\\n "$LUKS_FILE is already decrypted."
         elif "$DO_UMOUNT" || ask_umount "$LUKS_FILE"
         then
             if grep -q "$DEVMAP_PATH" /proc/self/mountinfo
@@ -169,7 +169,7 @@ luksfile_file() {
     elif "$DO_UMOUNT"
     then
         # The device mapper does not exist, nothing to do.
-        echo "$LUKS_FILE is not mounted, doing nothing."
+        printf %s\\n "$LUKS_FILE is not mounted, doing nothing."
         return
     else
         # Mount the encrypted file, via a loop device
@@ -203,7 +203,7 @@ luksfile_file() {
             echo "You may now mount the volume with:"
             echo "sudo mount '$DEVMAP_PATH' '$MOUNTPOINT' -o nodev,noexec,nosuid"
             echo "or add such a line to your /etc/fstab:"
-            echo "$DEVMAP_PATH $MOUNTPOINT auto defaults,user,nodev,noexec,nosuid,noauto 0 0"
+            echo " $DEVMAP_PATH $MOUNTPOINT auto defaults,user,nodev,noexec,nosuid,noauto 0 0"
             return
         fi
     fi

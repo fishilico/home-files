@@ -45,7 +45,7 @@ COLOR_GRAY="$(tput setaf 8)"
 COLOR_BOLDRED="$COLOR_RED$(tput bold)"
 
 # Uptime, with years in bold red, with short output if the command supports it
-echo "$COLOR_BLUE$( \
+printf %s\\n "$COLOR_BLUE$( \
     (uptime --pretty 2> /dev/null || uptime) | \
     sed "s/\\(up .* years\\?\\|up [0-9][0-9][0-9][0-9]\\+ days\\|up [2-9][0-9][0-9]\\+ days\\)/$COLOR_BOLDRED\\1$COLOR_NORM$COLOR_BLUE/" \
     ) (now $(date))$COLOR_NORM"
@@ -64,7 +64,7 @@ w | sed '1{/ up /d}' | while IFS= read -r LINE ; do
         HEADER_LINE="$LINE"
         while [ -n "$HEADER_LINE" ] ; do
             COLUMN="${HEADER_LINE%% *}"
-            HEADER_LINE="$(echo "$HEADER_LINE" | sed 's/^\S\+\s*//')"
+            HEADER_LINE="$(printf %s\\n "$HEADER_LINE" | sed 's/^\S\+\s*//')"
             case "$COLUMN" in
                 USER)
                     LINE_SEDCMD="$LINE_SEDCMD\\(\\S\\+\\s*\\)"
@@ -103,11 +103,11 @@ w | sed '1{/ up /d}' | while IFS= read -r LINE ; do
         # Highlight root too
         LINE_SEDCMD="$LINE_SEDCMD.*/$LINE_SEDCMD_REPL/;s/\\(root\\)/$COLOR_BOLDRED\\1$COLOR_BOLD/g"
     fi
-    echo "$LINE$COLOR_NORM" | sed "$LINE_SEDCMD"
+    printf %s\\n "$LINE$COLOR_NORM" | sed "$LINE_SEDCMD"
 done
 printf '%s' "$COLOR_NORM"
 
 # Show last in gray and without the last line "wtmp begins ..."
-echo "$COLOR_GRAY -- last --"
+printf %s\\n "$COLOR_GRAY -- last --"
 last -n 5 | sed '/^$/d;${/^wtmp begins/d}'
 printf '%s' "$COLOR_NORM"

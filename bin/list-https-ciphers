@@ -32,7 +32,7 @@ fi
 DOMAIN="$1"
 PORT=443
 
-if echo "$DOMAIN" | grep -q ':'
+if printf %s "$DOMAIN" | grep -q ':'
 then
     PORT="${DOMAIN##*:}"
     DOMAIN="${DOMAIN%:*}"
@@ -48,9 +48,9 @@ do
     if [ $? -eq 0 ]
     then
         echo "[+] $CIPHER OK"
-    elif echo "$OUTPUT" | grep -q ':error:'
+    elif printf %s "$OUTPUT" | grep -q ':error:'
     then
-        echo "[-] $CIPHER NO ($(echo "$OUTPUT" | head -n1 | cut -d':' -f6))"
+        echo "[-] $CIPHER NO ($(printf %s "$OUTPUT" | head -n1 | cut -d':' -f6))"
     else
         # Unknown state
         echo "[!] $CIPHER UNK ($OUTPUT)"
