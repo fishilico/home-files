@@ -600,6 +600,8 @@ KNOWN_SUID_FILES = [
     # cifs-utils, https://wiki.samba.org/index.php/LinuxCIFS_utils
     # https://git.samba.org/?p=cifs-utils.git;a=tree
     SuidFile('/s?bin/mount.cifs', owners=('root', ), groups=('root', )),
+    LinkToSuidFile('/s?bin/mount.smb3', '/s?bin/mount.cifs',
+                   owners=('root', ), groups=('root', )),
 
     # eject, http://www.pobox.com/~tranter/eject.html
     SuidFile('/lib/eject/dmcrypt-get-device'),
