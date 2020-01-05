@@ -85,6 +85,31 @@ def custom_lint_rules(filepath):
                 print("  in %s:%d: %r" % (filepath, lineno, line))
                 result = False
 
+            # Match "read" without -r, and not "dconf read"
+            if re.match(r'^([^#]*\s)?read\s+(?!-r)', line.replace('dconf read', 'dconf_read')):
+                print("Error: using read without -r is dangerous. Use read -r instead")
+                print("  in %s:%d: %r" % (filepath, lineno, line))
+                result = False
+
+            # Match "witch" but not "/usr/bin/which" if the line starts with it
+            # And filter-out special lines which are okay
+            if (
+                    not line.lstrip().startswith('/usr/bin/which ')
+                    and line.strip() not in (
+                        '[ -n "$DUMPCAP" ] || DUMPCAP="$(which dumpcap)"',
+                        'if [ -x /usr/bin/which ] ; then',
+                    )
+                    and re.match(r'^[^#]*which\s+', line)):
+                print("Error: using which is not portable. Use command -v instead")
+                print("  in %s:%d: %r" % (filepath, lineno, line))
+                result = False
+
+            # Match "command" without a comment nor an echo nor a zstyle beforehand
+            if re.match(r'^\s*((?!echo|zstyle)[^ #][^#]*\s)?command\s+(?!-v)', line):
+                print("Error: using command without -v is unknown. Use command -v instead")
+                print("  in %s:%d: %r" % (filepath, lineno, line))
+                result = False
+
     return result
 
 
