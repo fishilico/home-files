@@ -1011,9 +1011,17 @@ class SELinuxAuditLogAnalyzer:
             entry_formated_time = '{} {}'.format(entry_date, entry_time.strftime('%H:%M:%S'))
         if related_to_previous and type_name != 'AVC':
             # Indent fields, for new events related to the previous line
-            print(f"    + {type_name}:", end='\r\n')
-            for key, value in parsed_record.items():
-                print(f"        - {key} = {repr(value)}", end='\r\n')
+            if type_name == 'CWD' and list(parsed_record.keys()) == ['cwd']:
+                cwd = parsed_record['cwd']
+                print(f"    + {type_name}: {repr(cwd)}", end='\r\n')
+            elif type_name == 'PROCTITLE' and list(parsed_record.keys()) == ['proctitle']:
+                # Process title has a single entry
+                proc_title = parsed_record['proctitle'].replace('\0', ' ')
+                print(f"    + {type_name}: {repr(proc_title)}", end='\r\n')
+            else:
+                print(f"    + {type_name}:", end='\r\n')
+                for key, value in parsed_record.items():
+                    print(f"        - {key} = {repr(value)}", end='\r\n')
         elif type_name == 'AVC':
             avc_result = parsed_record['avc/result']
             avc_perms = ' '.join(parsed_record['avc/perms'])
