@@ -856,6 +856,9 @@ class SELinuxAuditLogAnalyzer:
             self.color_yellow = COLOR_YELLOW
             self.color_norm = COLOR_NORM
 
+        # Record the day the program started, so that the date is displayed if th programs run for several days
+        self.prog_start_date = datetime.datetime.now(tz=tzlocal()).strftime('%Y-%m-%d')
+
         # Build a command line for the application to launch
         if self.from_dmesg:
             # Use kernel logs (dmesg)
@@ -1045,9 +1048,9 @@ class SELinuxAuditLogAnalyzer:
 
         self.last_show_evt_idx = evt_idx
 
-        date_now = datetime.datetime.now(tz=tzlocal()).strftime('%Y-%m-%d')
         entry_date = entry_time.strftime('%Y-%m-%d')
-        if entry_date == date_now:
+        if entry_date == self.prog_start_date:
+            # Do not write the date if it is "today", but write it if the program ran several days.
             entry_formated_time = entry_time.strftime('%H:%M:%S')
         else:
             entry_formated_time = '{} {}'.format(entry_date, entry_time.strftime('%H:%M:%S'))
