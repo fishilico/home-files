@@ -689,7 +689,7 @@ def split_audit_fields(type_name, line, prefix=''):
                     'tpid',
                     'uid',
                     'val',
-                ):
+                    ):
                 if re.match(r'^(-?)[0-9]+$', value):
                     # Decimal integers
                     result[prefix + key] = int(value)
@@ -727,7 +727,7 @@ def split_audit_fields(type_name, line, prefix=''):
                     'path',
                     'proctitle',
                     'tglob',
-                ):
+                    ):
                 # Quoted or hex-escaped strings
                 if len(value) >= 2 and value[0] == '"' == value[-1]:
                     result[prefix + key] = value[1:-1]
@@ -787,7 +787,7 @@ def split_audit_fields(type_name, line, prefix=''):
                     'tty',
                     'unit',
                     'ver',
-                ):
+                    ):
                 # Unquoted identifiers
                 if len(value) >= 2 and value[0] == '"' == value[-1]:
                     # Warn that an unquoted identifier has been seen quoted
@@ -1105,7 +1105,7 @@ class SELinuxAuditLogAnalyzer:
                         'avc/for/tcontext',
                         'avc/perms',
                         'avc/result',
-                    ):
+                        ):
                     continue
                 if value in ('?', '', None):
                     continue
@@ -1155,7 +1155,7 @@ class SELinuxAuditLogAnalyzer:
                         'subj',
                         'pid',
                         'uid',
-                    ):
+                        ):
                     continue
                 if value in ('?', '', None):
                     continue
