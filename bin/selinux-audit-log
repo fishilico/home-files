@@ -273,6 +273,113 @@ AUDIT_TYPES_FOR_SELINUX = frozenset((
 ))
 
 
+# Architectures from linux/audit.h:
+# https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/audit.h
+AUDIT_ARCHES = {
+    0xc00000b7: 'AUDIT_ARCH_AARCH64',
+    0xc0009026: 'AUDIT_ARCH_ALPHA',
+    0x4000005d: 'AUDIT_ARCH_ARCOMPACT',
+    0x0000005d: 'AUDIT_ARCH_ARCOMPACTBE',
+    0x400000c3: 'AUDIT_ARCH_ARCV2',
+    0x000000c3: 'AUDIT_ARCH_ARCV2BE',
+    0x40000028: 'AUDIT_ARCH_ARM',
+    0x00000028: 'AUDIT_ARCH_ARMEB',
+    0x4000008c: 'AUDIT_ARCH_C6X',
+    0x0000008c: 'AUDIT_ARCH_C6XBE',
+    0x4000004c: 'AUDIT_ARCH_CRIS',
+    0x400000fc: 'AUDIT_ARCH_CSKY',
+    0x00005441: 'AUDIT_ARCH_FRV',
+    0x0000002e: 'AUDIT_ARCH_H8300',
+    0x000000a4: 'AUDIT_ARCH_HEXAGON',
+    0x40000003: 'AUDIT_ARCH_I386',
+    0xc0000032: 'AUDIT_ARCH_IA64',
+    0x00000058: 'AUDIT_ARCH_M32R',
+    0x00000004: 'AUDIT_ARCH_M68K',
+    0x000000bd: 'AUDIT_ARCH_MICROBLAZE',
+    0x00000008: 'AUDIT_ARCH_MIPS',
+    0x80000008: 'AUDIT_ARCH_MIPS64',
+    0xa0000008: 'AUDIT_ARCH_MIPS64N32',
+    0x40000008: 'AUDIT_ARCH_MIPSEL',
+    0xc0000008: 'AUDIT_ARCH_MIPSEL64',
+    0xe0000008: 'AUDIT_ARCH_MIPSEL64N32',
+    0x400000a7: 'AUDIT_ARCH_NDS32',
+    0x000000a7: 'AUDIT_ARCH_NDS32BE',
+    0x40000071: 'AUDIT_ARCH_NIOS2',
+    0x0000005c: 'AUDIT_ARCH_OPENRISC',
+    0x0000000f: 'AUDIT_ARCH_PARISC',
+    0x8000000f: 'AUDIT_ARCH_PARISC64',
+    0x00000014: 'AUDIT_ARCH_PPC',
+    0x80000015: 'AUDIT_ARCH_PPC64',
+    0xc0000015: 'AUDIT_ARCH_PPC64LE',
+    0x400000f3: 'AUDIT_ARCH_RISCV32',
+    0xc00000f3: 'AUDIT_ARCH_RISCV64',
+    0x00000016: 'AUDIT_ARCH_S390',
+    0x80000016: 'AUDIT_ARCH_S390X',
+    0x0000002a: 'AUDIT_ARCH_SH',
+    0x8000002a: 'AUDIT_ARCH_SH64',
+    0x4000002a: 'AUDIT_ARCH_SHEL',
+    0xc000002a: 'AUDIT_ARCH_SHEL64',
+    0x00000002: 'AUDIT_ARCH_SPARC',
+    0x8000002b: 'AUDIT_ARCH_SPARC64',
+    0xc00000bf: 'AUDIT_ARCH_TILEGX',
+    0x400000bf: 'AUDIT_ARCH_TILEGX32',
+    0x400000bc: 'AUDIT_ARCH_TILEPRO',
+    0x4000006e: 'AUDIT_ARCH_UNICORE',
+    0xc000003e: 'AUDIT_ARCH_X86_64',
+    0x0000005e: 'AUDIT_ARCH_XTENSA',
+}
+
+# Decode syscalls for some architectures
+SYSCALLS = {
+    'AUDIT_ARCH_X86_64': {
+        0: 'read',
+        1: 'write',
+        2: 'open',
+        4: 'stat',
+        5: 'fstat',
+        6: 'lstat',
+        9: 'mmap',
+        16: 'ioctl',
+        21: 'access',
+        41: 'socket',
+        42: 'connect',
+        44: 'sendto',
+        46: 'sendmsg',
+        47: 'recvmsg',
+        49: 'bind',
+        54: 'setsockopt',
+        59: 'execve',
+        62: 'kill',
+        72: 'fcntl',
+        73: 'flock',
+        77: 'ftruncate',
+        80: 'chdir',
+        81: 'fchdir',
+        82: 'rename',
+        83: 'mkdir',
+        84: 'rmdir',
+        87: 'unlink',
+        89: 'readlink',
+        91: 'fchmod',
+        92: 'chown',
+        94: 'lchown',
+        109: 'setpgid',
+        121: 'getpgid',
+        141: 'setpriority',
+        143: 'sched_getparam',
+        189: 'lsetxattr',
+        190: 'fsetxattr',
+        191: 'getxattr',
+        192: 'lgetxattr',
+        254: 'inotify_add_watch',
+        257: 'openat',
+        267: 'readlinkat',
+        269: 'faccessat',
+        280: 'utimensat',
+    },
+}
+
+
 # IOCTL commands
 IOCTL_NAMES = {
     0x1272: 'BLKGETSIZE64',
@@ -298,6 +405,23 @@ IOCTL_NAMES = {
 }
 
 
+# Personality bits from linux/personality.h:
+# https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/personality.h
+PERSONALITY_BITS = (
+    (0x0020000, 'UNAME26'),
+    (0x0040000, 'ADDR_NO_RANDOMIZE'),
+    (0x0080000, 'FDPIC_FUNCPTRS'),
+    (0x0100000, 'MMAP_PAGE_ZERO'),
+    (0x0200000, 'ADDR_COMPAT_LAYOUT'),
+    (0x0400000, 'READ_IMPLIES_EXEC'),
+    (0x0800000, 'ADDR_LIMIT_32BIT'),
+    (0x1000000, 'SHORT_INODE'),
+    (0x2000000, 'WHOLE_SECONDS'),
+    (0x4000000, 'STICKY_TIMEOUTS'),
+    (0x8000000, 'ADDR_LIMIT_3GB'),
+)
+
+
 def escape_cmdline(command_line):
     """Escape a command line from a list of arguments to a string"""
     return ' '.join(shlex.quote(arg) for arg in command_line)
@@ -307,6 +431,7 @@ def split_audit_fields(type_name, line, prefix=''):
     """Split fields from a line in the audit logs"""
     result = collections.OrderedDict()
     remaining = line.strip()
+    arch_syscalls = None
 
     # Fields may be separated with GS=\x1d (group separator) too
     for remaining in remaining.split('\x1d'):
@@ -403,9 +528,51 @@ def split_audit_fields(type_name, line, prefix=''):
                             f"Unable to parse quoted {key} in audit fields: {repr(remaining)} in {repr(line)}")
                 continue
 
-            if key in ('a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'arch') and re.match(r'^[0-9a-f]+$', value):
+            if key in ('a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6') and re.match(r'^[0-9a-f]+$', value):
                 # Syscall arguments are hexadecimal integers
-                result[prefix + key] = int(value, 16)
+                sc_arg = int(value, 16)
+                result[prefix + key] = hex(sc_arg) if sc_arg > 100 else sc_arg
+                continue
+
+            if key == 'arch' and re.match(r'^[0-9a-f]+$', value):
+                # Event SYSCALL with architecture
+                arch = int(value, 16)
+                arch_name = AUDIT_ARCHES.get(arch)
+                if arch_name:
+                    result[prefix + key] = arch_name
+                    arch_syscalls = SYSCALLS.get(arch_name)
+                else:
+                    result[prefix + key] = f"{arch:#x}"
+                    arch_syscalls = None
+                continue
+
+            if key == 'syscall' and re.match(r'^[0-9]+$', value):
+                # Syscall number, which can be decoded with "arch"
+                syscall = int(value)
+                if arch_syscalls:
+                    syscall_name = arch_syscalls.get(syscall)
+                    if syscall_name:
+                        result[prefix + key] = f"{syscall} ({syscall_name})"
+                        continue
+                result[prefix + key] = syscall
+                continue
+
+            if key == 'per' and re.match(r'^[0-9a-f]+$', value):
+                # Event SYSCALL with personality
+                personality = int(value, 16)
+                if personality == 0:
+                    result[prefix + key] = 0
+                    continue
+                remaining = personality
+                bit_names = []
+                for bit, name in PERSONALITY_BITS:
+                    if personality & bit:
+                        bit_names.append(name)
+                        remaining &= ~bit
+                if remaining:
+                    bit_names.append(hex(remaining))
+                joined_names = '|'.join(bit_names)
+                result[prefix + key] = f"{personality:#x} ({joined_names})"
                 continue
 
             if key == 'ioctlcmd' and re.match(r'^0x[0-9a-f]+$', value):
@@ -477,16 +644,15 @@ def split_audit_fields(type_name, line, prefix=''):
                     'spid',
                     'src',
                     'suid',
-                    'syscall',
                     'tpid',
                     'uid',
                     'val',
-                    ):
+                ):
                 if re.match(r'^(-?)[0-9]+$', value):
                     # Decimal integers
                     result[prefix + key] = int(value)
                     continue
-                elif value == 'n/a':
+                if value == 'n/a':
                     # auid can be "n/a"
                     result[prefix + key] = None
                     continue
@@ -519,7 +685,7 @@ def split_audit_fields(type_name, line, prefix=''):
                     'path',
                     'proctitle',
                     'tglob',
-                    ):
+                ):
                 # Quoted or hex-escaped strings
                 if len(value) >= 2 and value[0] == '"' == value[-1]:
                     result[prefix + key] = value[1:-1]
@@ -579,7 +745,7 @@ def split_audit_fields(type_name, line, prefix=''):
                     'tty',
                     'unit',
                     'ver',
-                    ):
+                ):
                 # Unquoted identifiers
                 if len(value) >= 2 and value[0] == '"' == value[-1]:
                     # Warn that an unquoted identifier has been seen quoted
@@ -886,7 +1052,7 @@ class SELinuxAuditLogAnalyzer:
                         'avc/for/tcontext',
                         'avc/perms',
                         'avc/result',
-                        ):
+                    ):
                     continue
                 if value in ('?', '', None):
                     continue
@@ -936,7 +1102,7 @@ class SELinuxAuditLogAnalyzer:
                         'subj',
                         'pid',
                         'uid',
-                        ):
+                    ):
                     continue
                 if value in ('?', '', None):
                     continue
