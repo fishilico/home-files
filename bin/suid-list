@@ -759,6 +759,7 @@ TRUSTED_CAPS_FILES = [
     CapsFile('/bin/kismet_cap_kismetdb', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/kismet_cap_linux_bluetooth', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/kismet_cap_linux_wifi', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_nrf_51822', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/kismet_cap_nrf_mousejack', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/kismet_cap_pcapfile', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/kismet_cap_sdr_rtl433', '= cap_net_admin,cap_net_raw+eip'),
@@ -767,6 +768,7 @@ TRUSTED_CAPS_FILES = [
     CapsFile('/bin/kismet_cap_sdr_rtladsb_mqtt', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/kismet_cap_sdr_rtlamr', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/kismet_cap_sdr_rtlamr_mqtt', '= cap_net_admin,cap_net_raw+eip'),
+    CapsFile('/bin/kismet_cap_ti_cc_2540', '= cap_net_admin,cap_net_raw+eip'),
 
     # monitoring-plugins, https://www.monitoring-plugins.org/
     # https://github.com/monitoring-plugins/monitoring-plugins
