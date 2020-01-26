@@ -29,7 +29,9 @@ import logging
 import optparse
 import os
 import os.path
+import re
 import subprocess
+import sys
 
 
 logger = logging.getLogger(__name__)
@@ -108,7 +110,7 @@ BIN_SCRIPTS = {
     'rm-temp': 'never',
     'ruby-gem-home': '(ruby)args[ruby --version]',
     'scan-ip4priv': 'never',
-    'selinux-audit-log': '(python3)help',
+    'selinux-audit-log': '(python>=3.6)help',
     'sensors-temp': '(sensors)direct',
     'set-title': 'direct',
     'setup-dumpcap': 'never',
@@ -143,6 +145,12 @@ def is_installed(program):
 
     If program is an absolute PATH, check that is path exists
     """
+    # If there is a dependency on Python, compare the version with the current
+    matches = re.match(r'^python>=([23])\.([0-9]+)$', program)
+    if matches:
+        matching_version = (int(matches.group(1)), int(matches.group(2)))
+        return sys.version_info >= matching_version
+
     if program.startswith('/'):
         return os.path.exists(program)
     for pathdir in os.environ.get('PATH', '').split(os.pathsep):
@@ -165,16 +173,16 @@ def build_cmdline_from_spec(prog, spec):
             if not all(is_installed(dep) for dep in choices):
                 logger.debug("skip %s because %s is missing", prog,
                              " or ".join(choices))
-                return
+                return None
         spec = spec[closing_paren + 1:]
 
     if spec == 'never':
-        return
+        return None
     if spec == 'direct':
         return [prog]
-    elif spec == 'help':
+    if spec == 'help':
         return [prog, '--help']
-    elif spec.startswith('args[') and spec.endswith(']'):
+    if spec.startswith('args[') and spec.endswith(']'):
         return [prog] + spec[5:-1].split(' ')
     raise CheckError("unknown specification %r" % spec)
 
@@ -252,5 +260,4 @@ def test(argv=None):
 
 
 if __name__ == '__main__':
-    import sys
     sys.exit(0 if test() else 1)
