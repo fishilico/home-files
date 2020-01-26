@@ -96,6 +96,12 @@ def test():
                 # Skip Python3-only files when running Python2
                 if 'python3' in firstline and sys.version_info < (3, ):
                     continue
+                # If there are incompatibilities, list them here
+                if filename == 'selinux-audit-log' and dirpath.endswith('bin'):
+                    # selinux-audit-log uses f-strings, which were introduced
+                    # in Python 3.6
+                    if sys.version_info < (3, 6):
+                        continue
             elif not filename.lower().endswith('.py'):
                 continue
 
