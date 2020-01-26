@@ -48,8 +48,11 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_AUDIT_LOG_PATH = '/var/log/audit/audit.log'
 
+COLOR_RED = '\033[31m'
 COLOR_BOLDRED = '\033[31;1m'
 COLOR_YELLOW = '\033[33m'
+COLOR_PURPLE = '\033[35m'
+COLOR_CYAN = '\033[36m'
 COLOR_NORM = '\033[m'
 
 
@@ -848,12 +851,18 @@ class SELinuxAuditLogAnalyzer:
         self.last_show_evt_idx = None
 
         if args.no_color:
+            self.color_red = ''
             self.color_boldred = ''
             self.color_yellow = ''
+            self.color_purple = ''
+            self.color_cyan = ''
             self.color_norm = ''
         else:
+            self.color_red = COLOR_RED
             self.color_boldred = COLOR_BOLDRED
             self.color_yellow = COLOR_YELLOW
+            self.color_purple = COLOR_PURPLE
+            self.color_cyan = COLOR_CYAN
             self.color_norm = COLOR_NORM
 
         # Record the day the program started, so that the date is displayed if th programs run for several days
@@ -1075,7 +1084,16 @@ class SELinuxAuditLogAnalyzer:
             if target_type == source_type:
                 target_type = 'self'
             tclass = parsed_record['avc/for/tclass']
-            avc_desc = f"{avc_result} {self.color_boldred}{source_type} {target_type}:{tclass} {{ {avc_perms} }}{self.color_norm}"  # noqa
+
+            if avc_result == 'denied':
+                # Colorize AVC denials in red
+                avc_desc = f"{self.color_red}{avc_result}{self.color_norm}"
+            else:
+                avc_desc = avc_result
+            avc_desc += f" {self.color_purple}{source_type}{self.color_norm}"
+            avc_desc += f" {self.color_yellow}{target_type}{self.color_norm}"
+            avc_desc += f":{self.color_cyan}{tclass}{self.color_norm}"
+            avc_desc += f" {self.color_boldred}{{ {avc_perms} }}{self.color_norm}"
             with suppress(KeyError):
                 avc_desc += " ioctl={}".format(parsed_record['avc/for/ioctlcmd'])
             with suppress(KeyError):
@@ -1118,7 +1136,16 @@ class SELinuxAuditLogAnalyzer:
             if target_type == source_type:
                 target_type = 'self'
             tclass = parsed_record['msg/avc/for/tclass']
-            avc_desc = f"{avc_result} {self.color_boldred}{source_type} {target_type}:{tclass} {{ {avc_perms} }}{self.color_norm}"  # noqa
+
+            if avc_result == 'denied':
+                # Colorize AVC denials in red
+                avc_desc = f"{self.color_red}{avc_result}{self.color_norm}"
+            else:
+                avc_desc = avc_result
+            avc_desc += f" {self.color_purple}{source_type}{self.color_norm}"
+            avc_desc += f" {self.color_yellow}{target_type}{self.color_norm}"
+            avc_desc += f":{self.color_cyan}{tclass}{self.color_norm}"
+            avc_desc += f" {self.color_boldred}{{ {avc_perms} }}{self.color_norm}"
             with suppress(KeyError):
                 avc_desc += " path={}".format(repr(parsed_record['msg/avc/for/path']))
             with suppress(KeyError):
