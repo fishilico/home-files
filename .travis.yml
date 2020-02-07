@@ -7,6 +7,10 @@ matrix:
     # Ubuntu 18.04 LTS (Bionic Beaver)
     - os: linux
       dist: bionic
+      python: "3.8"
+      env: BUILDENV=ubuntu1804-bionic-python3.8
+    - os: linux
+      dist: bionic
       python: "3.7"
       env: BUILDENV=ubuntu1804-bionic-python3.7
     - os: linux
@@ -19,6 +23,10 @@ matrix:
       env: BUILDENV=ubuntu1804-bionic-python2.7
 
     # Ubuntu 16.04 LTS (Xenial Xerus)
+    - os: linux
+      dist: xenial
+      python: "3.8"
+      env: BUILDENV=ubuntu1604-xenial-python3.8
     - os: linux
       dist: xenial
       python: "3.7"
