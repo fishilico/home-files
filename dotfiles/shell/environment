@@ -89,8 +89,10 @@ if [ -z "$COLORFGBG" ] ; then
     export COLORFGBG='default;0'
 fi
 
-# Use Vim
-if [ -x /usr/bin/vim ] || command -v vim > /dev/null 2>&1 ; then
+# Use neovim or Vim
+if [ -x /usr/bin/nvim ] || command -v nvim > /dev/null 2>&1 ; then
+    export EDITOR=nvim
+elif [ -x /usr/bin/vim ] || command -v vim > /dev/null 2>&1 ; then
     export EDITOR=vim
 fi
 

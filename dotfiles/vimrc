@@ -207,7 +207,9 @@ let &term=substitute(&term, "^screen\.", "", "")
 if &term ==? "xterm"
   set t_Sb=^[4%dm
   set t_Sf=^[3%dm
-  set ttymouse=xterm2
+  if !has('nvim')
+    set ttymouse=xterm2
+  endif
 endif
 
 if &term ==? "gnome" && has("eval")

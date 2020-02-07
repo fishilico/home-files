@@ -288,6 +288,11 @@ if type alias > /dev/null 2>&1 ; then
             -c 'map b <C-U>' \
             -\\\"\""
 
+    # Use neovim if is it installed
+    if command -v nvim > /dev/null 2>&1 ; then
+        alias vim=nvim
+    fi
+
     # Colored dmesg
     # "sdmesg" (= sudo dmesg) is needed with /proc/sys/kernel/dmesg_restrict
     case $(dmesg --help 2> /dev/null) in

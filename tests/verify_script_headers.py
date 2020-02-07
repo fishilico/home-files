@@ -45,6 +45,7 @@ TEXT_EXT = (
     'rst',
     'theme',
     'txt',
+    'vim',
     'xml',
     'yml',
 )
