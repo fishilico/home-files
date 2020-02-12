@@ -32,7 +32,7 @@ then
     exit
 fi
 
-cd -- "$TARGET"
+cd -- "$1"
 echo "Are you sure you want to remove every files in $(pwd)?"
 echo "Enter 'YES' to confirm"
 read -r ANSWER
