@@ -429,6 +429,7 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib/virtualbox/VBoxNetNAT'),
     SuidFile('/lib/virtualbox/VBoxSDL'),
     SuidFile('/lib/virtualbox/VirtualBox'),
+    SuidFile('/lib/virtualbox/VirtualBoxVM'),
 
     # weston, http://wayland.freedesktop.org
     # http://cgit.freedesktop.org/wayland/weston/tree/
@@ -631,6 +632,10 @@ KNOWN_SUID_FILES = [
     # landscape-client, http://www.ubuntu.com/management
     # http://bazaar.launchpad.net/~landscape/landscape-client/trunk/files
     SuidFile('/lib/landscape/apt-update'),
+
+    # mariadb, https://mariadb.com/kb/en/authentication-plugin-pam/
+    # https://github.com/MariaDB/server
+    SuidFile('/lib/mysql/plugin/auth_pam_tool_dir/auth_pam_tool'),
 
     # ntfs-3g, http://www.tuxera.com/community/open-source-ntfs-3g/
     # https://sourceforge.net/p/ntfs-3g/ntfs-3g/ci/edge/tree/
