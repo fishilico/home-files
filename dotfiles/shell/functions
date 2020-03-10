@@ -242,6 +242,14 @@ case $(grep --help 2> /dev/null) in
         ;;
 esac
 
+# Find a literal string in UTF-16 file (for example from Windows)
+utf16grep() {
+    local PATTERN
+    PATTERN="$(printf '%s' "$1" | iconv -f utf-8 -t utf-16le | hexdump -e '/1 "x%02x"' | sed 's/x/\\x/g')"
+    shift
+    grep -a -P "$PATTERN" "$@"
+}
+
 # Escape control characters when cat'ing binary streams to a TTY
 # Automatically add -v (for --show-nonprinting) to cat parameters.
 # This is known to be incompatible with busybox cat, which is detected by
