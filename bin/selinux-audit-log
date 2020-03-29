@@ -729,7 +729,9 @@ def split_audit_fields(type_name, line, prefix=''):
                     'old-level',
                     'path',
                     'proctitle',
+                    'srawcon',
                     'tglob',
+                    'trawcon',
                     ):
                 # Quoted or hex-escaped strings
                 if len(value) >= 2 and value[0] == '"' == value[-1]:
