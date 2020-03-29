@@ -52,10 +52,15 @@ URxvt.iconFile: /usr/share/icons/gnome/32x32/apps/utilities-terminal.png
 
 ! Font preference
 ! Default mono font can be found with "fc-match mono"
-!URxvt.font: xft:Bitstream Vera Sans Mono:pixelsize=13:antialias=false
+! Use a custom family alias that is defined in ~/.config/fontconfig/fonts.conf
+URxvt.font: xft:rxvtUserFont:pixelsize=16
+! Alternative fonts:
+!URxvt.font: xft:Cascadia Code:size=12
+!URxvt.font: xft:Fantasque Sans Mono:pixelsize=18
+!URxvt.font: xft:Source Code Pro:size=12
 !URxvt.font: xft:Droid Sans Mono:style=Book:pixelsize=15
-! Font from https://github.com/belluzj/fantasque-sans
-URxvt.font: xft:Fantasque Sans Mono:pixelsize=18
+!URxvt.font: xft:Bitstream Vera Sans Mono:pixelsize=13:antialias=false
+
 xterm*faceName: Liberation Mono:size=12:antialias=true
 
 ! Fade text n% upon unfocus
