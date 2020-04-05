@@ -168,6 +168,9 @@ if type alias > /dev/null 2>&1 ; then
     alias scls='screen -ls'
 
     # Clear screen with ESC + c. Ctrl+L may also work.
+    # "ESC c" is documented as RIS (Reset to Initial State) in ECMA-48.
+    # According to "man 4 console_codes", there can be a terminfo entry rs1=\Ec
+    # than can be used with command "tput reset".
     alias cls='printf "\033c"'
 
     # Grep history without writing "h ..." lines into it
