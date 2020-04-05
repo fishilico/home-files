@@ -1,0 +1,6 @@
+{
+    "editor.mouseWheelZoom": true,
+    "editor.wordWrap": "on",
+    "telemetry.enableCrashReporter": false,
+    "telemetry.enableTelemetry": false
+}
