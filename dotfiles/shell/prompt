@@ -27,13 +27,21 @@
 # Arch default: '[\u@\h \W]\$ '
 # Busybox sh: $
 
+# Initialize prompt variables
+BASH_PROMPT=""
+ZSH_PROMPT=""
+
+# Network namespace identification
+CURRENT_NETNS_PROMPT="$(ip netns identify $$ 2> /dev/null)"
+if [ -n "$CURRENT_NETNS_PROMPT" ] ; then
+    BASH_PROMPT='\[\e[1;34m\]['"$CURRENT_NETNS_PROMPT"']\[\e[m\]'"$BASH_PROMPT"
+    ZSH_PROMPT='%B%F{blue}['"$CURRENT_NETNS_PROMPT"']%f%b'"$ZSH_PROMPT"
+fi
+
 # Virtual environments (Python virtualenv, pew...)
 if [ -n "$VIRTUAL_ENV" ] ; then
-    BASH_PROMPT='\[\e[1;34m\]('"${VIRTUAL_ENV##*/}"')\[\e[m\]'
-    ZSH_PROMPT='%B%F{blue}('"${VIRTUAL_ENV##*/}"')%f%b'
-else
-    BASH_PROMPT=""
-    ZSH_PROMPT=""
+    BASH_PROMPT='\[\e[1;34m\]('"${VIRTUAL_ENV##*/}"')\[\e[m\]'"$BASH_PROMPT"
+    ZSH_PROMPT='%B%F{blue}('"${VIRTUAL_ENV##*/}"')%f%b'"$ZSH_PROMPT"
 fi
 
 # Color rules:
