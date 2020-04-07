@@ -56,6 +56,7 @@ KERNEL_INIT_INODES = {
     0xeffffffd: 'user',  # PROC_USER_INIT_INO
     0xeffffffc: 'pid',  # PROC_PID_INIT_INO
     0xeffffffb: 'cgroup',  # PROC_CGROUP_INIT_INO
+    0xeffffffa: 'time',  # PROC_TIME_INIT_INO
     0xf0000000: 'mnt',  # PROC_DYNAMIC_FIRST
 }
 
@@ -64,6 +65,8 @@ def get_ns_type_from_name(nsname):
     """Get the type of namespace from its name in /proc/PID/ns/"""
     if nsname == 'pid_for_children':
         return 'pid'
+    if nsname == 'time_for_children':
+        return 'time'
     return nsname
 
 
@@ -81,6 +84,8 @@ def gather_namespaces():
             + 'net': network namespace
             + 'pid': process namespace
             + 'pid_for_children': process namespace
+            + 'time': time namespace
+            + 'time_for_children': time namespace
             + 'user': user namespace
             + 'uts': UTS namespace (hostname)
     """
@@ -133,7 +138,7 @@ def gather_namespaces():
                         continue
                     raise
                 nstype = get_ns_type_from_name(namespace)
-                match = re.match(r'([a-z]+):\[([0-9]+)\]$', link)
+                match = re.match(r'([a-z]+)(?:_for_children)?:\[([0-9]+)\]$', link)
                 if match is None or match.group(1) != nstype:
                     sys.stderr.write("Invalid namespace link: {0} -> {1}\n"
                                      .format(nspath, link))
