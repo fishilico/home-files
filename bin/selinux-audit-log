@@ -147,6 +147,7 @@ AUDIT_TYPES = {
     1331: 'FANOTIFY',
     1332: 'TIME_INJOFFSET',
     1333: 'TIME_ADJNTPVAL',
+    1334: 'BPF',
 
     # 1400 - 1499 SELinux use
     1400: 'AVC',
