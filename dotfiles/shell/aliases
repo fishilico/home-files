@@ -281,6 +281,8 @@ if type alias > /dev/null 2>&1 ; then
 
     # Check for common misspellings using codespell in a git project
     alias codespell-git='git ls-files | xargs codespell'
+    # Ignore the recommandation about "mut"
+    alias codespell-git-rust='git ls-files | xargs codespell --ignore-words-list=mut'
 
     # vman = use vim as a pager
     alias vman="man -P \"/bin/sh -c \\\"col -b -p -x | \
@@ -308,7 +310,7 @@ if type alias > /dev/null 2>&1 ; then
             ;;
     esac
 
-    # Continued dmesg, if "dmesg -w" is not avalaible
+    # Continued dmesg, if "dmesg -w" is not available
     alias dmesg-w='watch -n 1 dmesg \| tail -n \$\(\(\$\(tput lines\)-2\)\)'
 
     # Read AVC entries in systemd journal.
