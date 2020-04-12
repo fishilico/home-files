@@ -90,6 +90,13 @@ import sys
 from typing import BinaryIO, Generator, List, Mapping, Optional, Sequence, Set, Tuple, TYPE_CHECKING, Union
 
 
+# Use cached_property if it is available
+if sys.version_info >= (3, 8):
+    cached_property = functools.cached_property
+else:
+    cached_property = property
+
+
 def hexdump(data: bytes, indent: str = ''):
     """Show an hexdecimal dump of binary data"""
     for iline in range(0, len(data), 16):
@@ -1608,7 +1615,7 @@ class TpmDevice:
             return response
         raise RuntimeError(f"Unexpected response tag {tpm20_tag!r} from request {tag!r}")
 
-    @functools.cached_property
+    @cached_property
     def is_tpm12(self) -> bool:
         """Is the device a TPM 1.2?"""
         # Try reading PCR 0
@@ -1618,7 +1625,7 @@ class TpmDevice:
             return False
         return True
 
-    @functools.cached_property
+    @cached_property
     def is_tpm20(self) -> bool:
         """Is the device a TPM 2.0?"""
         # Try reading PCR 0
