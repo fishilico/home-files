@@ -1,0 +1,2838 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2020 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+"""Get various information from a TPM (Trusted Platform Module)
+
+This is like tools such as "tpm2_getcap properties-fixed", but in one command.
+
+A TPM can be accessed using two devices on Linux:
+* /dev/tpm0
+* /dev/tpmrm0 (for "Trusted Platform Module Resource Manager")
+
+The second device has been introduce in Linux 4.12 with commit fdc915f7f719
+("tpm: expose spaces via a device link /dev/tpmrm<n>")
+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=fdc915f7f71939ad5a3dda3389b8d2d7a7c5ee66 :
+
+    Currently the tpm spaces are not exposed to userspace.  Make this
+    exposure via a separate device, which can now be opened multiple times
+    because each read/write transaction goes separately via the space.
+
+    Concurrency is protected by the chip->tpm_mutex for each read/write
+    transaction separately.  The TPM is cleared of all transient objects
+    by the time the mutex is dropped, so there should be no interference
+    between the kernel and userspace.
+
+So use this device by default and fall back to /dev/tpm0 if it does not exist.
+
+Both devices use an API specified in "TCG TSS 2.0 TPM Command Transmission
+Interface (TCTI) API Specification".
+
+------------------------------- IMPORTANT NOTICE -------------------------------
+This script is a Proof of Concept that should not be ever used in production.
+Use it at your own risks!
+If you want to query a TPM, please use supported software such as
+https://tpm2-software.github.io/ that provides a library with Python bindings
+that implements the needed abstractions layers to handle sensitive data
+(such as passwords when importing data into a TPM) in a secure way.
+--------------------------------------------------------------------------------
+
+References and documentation:
+
+* https://tpm2-software.github.io/
+  tpm2-software community page, with diagram of the stack
+  (https://tpm2-software.github.io/tpm2_stack.svg)
+
+* https://trustedcomputinggroup.org/resource/tpm-library-specification/
+  TPM 2.0 Library Specification
+* https://trustedcomputinggroup.org/resource/tss-tcti-specification/
+  TCG TSS 2.0 TPM Command Transmission Interface (TCTI) API Specification
+* https://trustedcomputinggroup.org/resource/tcg-tpm-v2-0-provisioning-guidance/
+  https://trustedcomputinggroup.org/wp-content/uploads/TCG-TPM-v2.0-Provisioning-Guidance-Published-v1r1.pdf
+  TCG TPM v2.0 Provisioning Guidance Version 1.0 Revision 1.0
+
+* https://github.com/tianocore/edk2/blob/edk2-stable202002/MdePkg/Include/IndustryStandard/Tpm12.h
+  TPM Specification data structures (TCG TPM Specification Version 1.2 Revision 103)
+* https://github.com/tianocore/edk2/blob/edk2-stable202002/MdePkg/Include/IndustryStandard/Tpm20.h
+  TPM 2.0 Specification data structures
+  (Trusted Platform Module Library Specification, Family "2.0", Level 00, Revision 00.96)
+"""
+import argparse
+import binascii
+from contextlib import contextmanager
+import enum
+import functools
+import hashlib
+import hmac
+import itertools
+from pathlib import Path
+import secrets
+import struct
+import sys
+from typing import BinaryIO, Generator, List, Mapping, Optional, Sequence, Set, Tuple, TYPE_CHECKING, Union
+
+
+def hexdump(data: bytes, indent: str = ''):
+    """Show an hexdecimal dump of binary data"""
+    for iline in range(0, len(data), 16):
+        hexline = ''
+        ascline = ''
+        for i in range(16):
+            if iline + i >= len(data):
+                hexline += '  '
+            else:
+                # pylint: disable=invalid-name
+                cur_byte = data[iline + i]
+                hexline += f'{cur_byte:02x}'
+                ascline += chr(cur_byte) if 32 <= cur_byte < 127 else '.'
+            if i % 2:
+                hexline += ' '
+        print("{}{:06x}:  {} {}".format(indent, iline, hexline, ascline))
+
+
+@enum.unique
+class Tpm12Tag(enum.IntEnum):
+    """TPM_STRUCTURE_TAG: tags in structures and in command/response header in TPM 1.2"""
+    TPM_TAG_CONTEXTBLOB = 0x0001
+    TPM_TAG_CONTEXT_SENSITIVE = 0x0002
+    TPM_TAG_CONTEXTPOINTER = 0x0003
+    TPM_TAG_CONTEXTLIST = 0x0004
+    TPM_TAG_SIGNINFO = 0x0005
+    TPM_TAG_PCR_INFO_LONG = 0x0006
+    TPM_TAG_PERSISTENT_FLAGS = 0x0007
+    TPM_TAG_VOLATILE_FLAGS = 0x0008
+    TPM_TAG_PERSISTENT_DATA = 0x0009
+    TPM_TAG_VOLATILE_DATA = 0x000a
+    TPM_TAG_SV_DATA = 0x000b
+    TPM_TAG_EK_BLOB = 0x000c
+    TPM_TAG_EK_BLOB_AUTH = 0x000d
+    TPM_TAG_COUNTER_VALUE = 0x000e
+    TPM_TAG_TRANSPORT_INTERNAL = 0x000f
+    TPM_TAG_TRANSPORT_LOG_IN = 0x0010
+    TPM_TAG_TRANSPORT_LOG_OUT = 0x0011
+    TPM_TAG_AUDIT_EVENT_IN = 0x0012
+    TPM_TAG_AUDIT_EVENT_OUT = 0x0013
+    TPM_TAG_CURRENT_TICKS = 0x0014
+    TPM_TAG_KEY = 0x0015
+    TPM_TAG_STORED_DATA12 = 0x0016
+    TPM_TAG_NV_ATTRIBUTES = 0x0017
+    TPM_TAG_NV_DATA_PUBLIC = 0x0018
+    TPM_TAG_NV_DATA_SENSITIVE = 0x0019
+    TPM_TAG_DELEGATIONS = 0x001a
+    TPM_TAG_DELEGATE_PUBLIC = 0x001b
+    TPM_TAG_DELEGATE_TABLE_ROW = 0x001c
+    TPM_TAG_TRANSPORT_AUTH = 0x001d
+    TPM_TAG_TRANSPORT_PUBLIC = 0x001e
+    TPM_TAG_PERMANENT_FLAGS = 0x001f
+    TPM_TAG_STCLEAR_FLAGS = 0x0020
+    TPM_TAG_STANY_FLAGS = 0x0021
+    TPM_TAG_PERMANENT_DATA = 0x0022
+    TPM_TAG_STCLEAR_DATA = 0x0023
+    TPM_TAG_STANY_DATA = 0x0024
+    TPM_TAG_FAMILY_TABLE_ENTRY = 0x0025
+    TPM_TAG_DELEGATE_SENSITIVE = 0x0026
+    TPM_TAG_DELG_KEY_BLOB = 0x0027
+    TPM_TAG_KEY12 = 0x0028
+    TPM_TAG_CERTIFY_INFO2 = 0x0029
+    TPM_TAG_DELEGATE_OWNER_BLOB = 0x002a
+    TPM_TAG_EK_BLOB_ACTIVATE = 0x002b
+    TPM_TAG_DAA_BLOB = 0x002c
+    TPM_TAG_DAA_CONTEXT = 0x002d
+    TPM_TAG_DAA_ENFORCE = 0x002e
+    TPM_TAG_DAA_ISSUER = 0x002f
+    TPM_TAG_CAP_VERSION_INFO = 0x0030
+    TPM_TAG_DAA_SENSITIVE = 0x0031
+    TPM_TAG_DAA_TPM = 0x0032
+    TPM_TAG_CMK_MIGAUTH = 0x0033
+    TPM_TAG_CMK_SIGTICKET = 0x0034
+    TPM_TAG_CMK_MA_APPROVAL = 0x0035
+    TPM_TAG_QUOTE_INFO2 = 0x0036
+    TPM_TAG_DA_INFO = 0x0037
+    TPM_TAG_DA_LIMITED = 0x0038
+    TPM_TAG_DA_ACTION_TYPE = 0x0039
+    TPM_TAG_RQU_COMMAND = 0x00c1
+    TPM_TAG_RQU_AUTH1_COMMAND = 0x00c2
+    TPM_TAG_RQU_AUTH2_COMMAND = 0x00c3
+    TPM_TAG_RSP_COMMAND = 0x00c4
+    TPM_TAG_RSP_AUTH1_COMMAND = 0x00c5
+    TPM_TAG_RSP_AUTH2_COMMAND = 0x00c6
+
+
+@enum.unique
+class Tpm12CommandCode(enum.IntEnum):
+    """TPM_COMMAND_CODE: command codes in TPM 1.2"""
+    TPM_ORD_ActivateIdentity = 0x0000007a
+    TPM_ORD_AuthorizeMigrationKey = 0x0000002b
+    TPM_ORD_CertifyKey = 0x00000032
+    TPM_ORD_CertifyKey2 = 0x00000033
+    TPM_ORD_CertifySelfTest = 0x00000052
+    TPM_ORD_ChangeAuth = 0x0000000c
+    TPM_ORD_ChangeAuthAsymFinish = 0x0000000f
+    TPM_ORD_ChangeAuthAsymStart = 0x0000000e
+    TPM_ORD_ChangeAuthOwner = 0x00000010
+    TPM_ORD_CMK_ApproveMA = 0x0000001d
+    TPM_ORD_CMK_ConvertMigration = 0x00000024
+    TPM_ORD_CMK_CreateBlob = 0x0000001b
+    TPM_ORD_CMK_CreateKey = 0x00000013
+    TPM_ORD_CMK_CreateTicket = 0x00000012
+    TPM_ORD_CMK_SetRestrictions = 0x0000001c
+    TPM_ORD_ContinueSelfTest = 0x00000053
+    TPM_ORD_ConvertMigrationBlob = 0x0000002a
+    TPM_ORD_CreateCounter = 0x000000dc
+    TPM_ORD_CreateEndorsementKeyPair = 0x00000078
+    TPM_ORD_CreateMaintenanceArchive = 0x0000002c
+    TPM_ORD_CreateMigrationBlob = 0x00000028
+    TPM_ORD_CreateRevocableEK = 0x0000007f
+    TPM_ORD_CreateWrapKey = 0x0000001f
+    TPM_ORD_DAA_JOIN = 0x00000029
+    TPM_ORD_DAA_SIGN = 0x00000031
+    TPM_ORD_Delegate_CreateKeyDelegation = 0x000000d4
+    TPM_ORD_Delegate_CreateOwnerDelegation = 0x000000d5
+    TPM_ORD_Delegate_LoadOwnerDelegation = 0x000000d8
+    TPM_ORD_Delegate_Manage = 0x000000d2
+    TPM_ORD_Delegate_ReadTable = 0x000000db
+    TPM_ORD_Delegate_UpdateVerification = 0x000000d1
+    TPM_ORD_Delegate_VerifyDelegation = 0x000000d6
+    TPM_ORD_DirRead = 0x0000001a
+    TPM_ORD_DirWriteAuth = 0x00000019
+    TPM_ORD_DisableForceClear = 0x0000005e
+    TPM_ORD_DisableOwnerClear = 0x0000005c
+    TPM_ORD_DisablePubekRead = 0x0000007e
+    TPM_ORD_DSAP = 0x00000011
+    TPM_ORD_EstablishTransport = 0x000000e6
+    TPM_ORD_EvictKey = 0x00000022
+    TPM_ORD_ExecuteTransport = 0x000000e7
+    TPM_ORD_Extend = 0x00000014
+    TPM_ORD_FieldUpgrade = 0x000000aa
+    TPM_ORD_FlushSpecific = 0x000000ba
+    TPM_ORD_ForceClear = 0x0000005d
+    TPM_ORD_GetAuditDigest = 0x00000085
+    TPM_ORD_GetAuditDigestSigned = 0x00000086
+    TPM_ORD_GetAuditEvent = 0x00000082
+    TPM_ORD_GetAuditEventSigned = 0x00000083
+    TPM_ORD_GetCapability = 0x00000065
+    TPM_ORD_GetCapabilityOwner = 0x00000066
+    TPM_ORD_GetCapabilitySigned = 0x00000064
+    TPM_ORD_GetOrdinalAuditStatus = 0x0000008c
+    TPM_ORD_GetPubKey = 0x00000021
+    TPM_ORD_GetRandom = 0x00000046
+    TPM_ORD_GetTestResult = 0x00000054
+    TPM_ORD_GetTicks = 0x000000f1
+    TPM_ORD_IncrementCounter = 0x000000dd
+    TPM_ORD_Init = 0x00000097
+    TPM_ORD_KeyControlOwner = 0x00000023
+    TPM_ORD_KillMaintenanceFeature = 0x0000002e
+    TPM_ORD_LoadAuthContext = 0x000000b7
+    TPM_ORD_LoadContext = 0x000000b9
+    TPM_ORD_LoadKey = 0x00000020
+    TPM_ORD_LoadKey2 = 0x00000041
+    TPM_ORD_LoadKeyContext = 0x000000b5
+    TPM_ORD_LoadMaintenanceArchive = 0x0000002d
+    TPM_ORD_LoadManuMaintPub = 0x0000002f
+    TPM_ORD_MakeIdentity = 0x00000079
+    TPM_ORD_MigrateKey = 0x00000025
+    TPM_ORD_NV_DefineSpace = 0x000000cc
+    TPM_ORD_NV_ReadValue = 0x000000cf
+    TPM_ORD_NV_ReadValueAuth = 0x000000d0
+    TPM_ORD_NV_WriteValue = 0x000000cd
+    TPM_ORD_NV_WriteValueAuth = 0x000000ce
+    TPM_ORD_OIAP = 0x0000000a
+    TPM_ORD_OSAP = 0x0000000b
+    TPM_ORD_OwnerClear = 0x0000005b
+    TPM_ORD_OwnerReadInternalPub = 0x00000081
+    TPM_ORD_OwnerReadPubek = 0x0000007d
+    TPM_ORD_OwnerSetDisable = 0x0000006e
+    TPM_ORD_PCR_Reset = 0x000000c8
+    TPM_ORD_PcrRead = 0x00000015
+    TPM_ORD_PhysicalDisable = 0x00000070
+    TPM_ORD_PhysicalEnable = 0x0000006f
+    TPM_ORD_PhysicalSetDeactivated = 0x00000072
+    TPM_ORD_Quote = 0x00000016
+    TPM_ORD_Quote2 = 0x0000003e
+    TPM_ORD_ReadCounter = 0x000000de
+    TPM_ORD_ReadManuMaintPub = 0x00000030
+    TPM_ORD_ReadPubek = 0x0000007c
+    TPM_ORD_ReleaseCounter = 0x000000df
+    TPM_ORD_ReleaseCounterOwner = 0x000000e0
+    TPM_ORD_ReleaseTransportSigned = 0x000000e8
+    TPM_ORD_Reset = 0x0000005a
+    TPM_ORD_ResetLockValue = 0x00000040
+    TPM_ORD_RevokeTrust = 0x00000080
+    TPM_ORD_SaveAuthContext = 0x000000b6
+    TPM_ORD_SaveContext = 0x000000b8
+    TPM_ORD_SaveKeyContext = 0x000000b4
+    TPM_ORD_SaveState = 0x00000098
+    TPM_ORD_Seal = 0x00000017
+    TPM_ORD_Sealx = 0x0000003d
+    TPM_ORD_SelfTestFull = 0x00000050
+    TPM_ORD_SetCapability = 0x0000003f
+    TPM_ORD_SetOperatorAuth = 0x00000074
+    TPM_ORD_SetOrdinalAuditStatus = 0x0000008d
+    TPM_ORD_SetOwnerInstall = 0x00000071
+    TPM_ORD_SetOwnerPointer = 0x00000075
+    TPM_ORD_SetRedirection = 0x0000009a
+    TPM_ORD_SetTempDeactivated = 0x00000073
+    TPM_ORD_SHA1Complete = 0x000000a2
+    TPM_ORD_SHA1CompleteExtend = 0x000000a3
+    TPM_ORD_SHA1Start = 0x000000a0
+    TPM_ORD_SHA1Update = 0x000000a1
+    TPM_ORD_Sign = 0x0000003c
+    TPM_ORD_Startup = 0x00000099
+    TPM_ORD_StirRandom = 0x00000047
+    TPM_ORD_TakeOwnership = 0x0000000d
+    TPM_ORD_Terminate_Handle = 0x00000096
+    TPM_ORD_TickStampBlob = 0x000000f2
+    TPM_ORD_UnBind = 0x0000001e
+    TPM_ORD_Unseal = 0x00000018
+    # TPM_CONNECTION_COMMAND = 0x40000000
+    TSC_ORD_PhysicalPresence = 0x4000000a
+    TSC_ORD_ResetEstablishmentBit = 0x4000000b
+
+
+@enum.unique
+class Tpm12ResponseCode(enum.IntEnum):
+    """TPM_RESULT: command response codes in TPM 1.2"""
+    TPM_SUCCESS = 0
+    TPM_AUTHFAIL = 1
+    TPM_BADINDEX = 2
+    TPM_BAD_PARAMETER = 3
+    TPM_AUDITFAILURE = 4
+    TPM_CLEAR_DISABLED = 5
+    TPM_DEACTIVATED = 6
+    TPM_DISABLED = 7
+    TPM_DISABLED_CMD = 8
+    TPM_FAIL = 9
+    TPM_BAD_ORDINAL = 10
+    TPM_INSTALL_DISABLED = 11
+    TPM_INVALID_KEYHANDLE = 12
+    TPM_KEYNOTFOUND = 13
+    TPM_INAPPROPRIATE_ENC = 14
+    TPM_MIGRATEFAIL = 15
+    TPM_INVALID_PCR_INFO = 16
+    TPM_NOSPACE = 17
+    TPM_NOSRK = 18
+    TPM_NOTSEALED_BLOB = 19
+    TPM_OWNER_SET = 20
+    TPM_RESOURCES = 21
+    TPM_SHORTRANDOM = 22
+    TPM_SIZE = 23
+    TPM_WRONGPCRVAL = 24
+    TPM_BAD_PARAM_SIZE = 25
+    TPM_SHA_THREAD = 26
+    TPM_SHA_ERROR = 27
+    TPM_FAILEDSELFTEST = 28
+    TPM_AUTH2FAIL = 29
+    TPM_BADTAG = 30
+    TPM_IOERROR = 31
+    TPM_ENCRYPT_ERROR = 32
+    TPM_DECRYPT_ERROR = 33
+    TPM_INVALID_AUTHHANDLE = 34
+    TPM_NO_ENDORSEMENT = 35
+    TPM_INVALID_KEYUSAGE = 36
+    TPM_WRONG_ENTITYTYPE = 37
+    TPM_INVALID_POSTINIT = 38
+    TPM_INAPPROPRIATE_SIG = 39
+    TPM_BAD_KEY_PROPERTY = 40
+    TPM_BAD_MIGRATION = 41
+    TPM_BAD_SCHEME = 42
+    TPM_BAD_DATASIZE = 43
+    TPM_BAD_MODE = 44
+    TPM_BAD_PRESENCE = 45
+    TPM_BAD_VERSION = 46
+    TPM_NO_WRAP_TRANSPORT = 47
+    TPM_AUDITFAIL_UNSUCCESSFUL = 48
+    TPM_AUDITFAIL_SUCCESSFUL = 49
+    TPM_NOTRESETABLE = 50
+    TPM_NOTLOCAL = 51
+    TPM_BAD_TYPE = 52
+    TPM_INVALID_RESOURCE = 53
+    TPM_NOTFIPS = 54
+    TPM_INVALID_FAMILY = 55
+    TPM_NO_NV_PERMISSION = 56
+    TPM_REQUIRES_SIGN = 57
+    TPM_KEY_NOTSUPPORTED = 58
+    TPM_AUTH_CONFLICT = 59
+    TPM_AREA_LOCKED = 60
+    TPM_BAD_LOCALITY = 61
+    TPM_READ_ONLY = 62
+    TPM_PER_NOWRITE = 63
+    TPM_FAMILYCOUNT = 64
+    TPM_WRITE_LOCKED = 65
+    TPM_BAD_ATTRIBUTES = 66
+    TPM_INVALID_STRUCTURE = 67
+    TPM_KEY_OWNER_CONTROL = 68
+    TPM_BAD_COUNTER = 69
+    TPM_NOT_FULLWRITE = 70
+    TPM_CONTEXT_GAP = 71
+    TPM_MAXNVWRITES = 72
+    TPM_NOOPERATOR = 73
+    TPM_RESOURCEMISSING = 74
+    TPM_DELEGATE_LOCK = 75
+    TPM_DELEGATE_FAMILY = 76
+    TPM_DELEGATE_ADMIN = 77
+    TPM_TRANSPORT_NOTEXCLUSIVE = 78
+    TPM_OWNER_CONTROL = 79
+    TPM_DAA_RESOURCES = 80
+    TPM_DAA_INPUT_DATA0 = 81
+    TPM_DAA_INPUT_DATA1 = 82
+    TPM_DAA_ISSUER_SETTINGS = 83
+    TPM_DAA_TPM_SETTINGS = 84
+    TPM_DAA_STAGE = 85
+    TPM_DAA_ISSUER_VALIDITY = 86
+    TPM_DAA_WRONG_W = 87
+    TPM_BAD_HANDLE = 88
+    TPM_BAD_DELEGATE = 89
+    TPM_BADCONTEXT = 90
+    TPM_TOOMANYCONTEXTS = 91
+    TPM_MA_TICKET_SIGNATURE = 92
+    TPM_MA_DESTINATION = 93
+    TPM_MA_SOURCE = 94
+    TPM_MA_AUTHORITY = 95
+    TPM_PERMANENTEK = 97
+    TPM_BAD_SIGNATURE = 98
+    TPM_NOCONTEXTSPACE = 99
+    TPM_RETRY = 0x00000800  # TPM_NON_FATAL
+    TPM_NEEDS_SELFTEST = 0x00000801
+    TPM_DOING_SELFTEST = 0x00000802
+    TPM_DEFEND_LOCK_RUNNING = 0x00000803
+
+
+class Tpm12Failure(Exception):
+    """Failure while executing a TPM 1.2 command"""
+    def __init__(self, code: int):
+        super(Tpm12Failure, self).__init__()
+        self.code = code
+        try:
+            self.code_desc: Optional[Tpm12ResponseCode] = Tpm12ResponseCode(code)
+        except ValueError:
+            print(f"Warning: unknown TPM 1.2 response code {self.code:#x}", file=sys.stderr)
+            self.code_desc = None
+
+    def __str__(self):
+        if self.code_desc:
+            return repr(self.code_desc)
+        return str(self.code)
+
+
+@enum.unique
+class Tpm12AlgId(enum.IntEnum):
+    """TPM_ALGORITHM_ID: algorithm ID in TPM 1.2"""
+    TPM_ALG_RSA = 0x00000001
+    TPM_ALG_DES = 0x00000002
+    TPM_ALG_3DES = 0x00000003  # 3DES in EDE mode
+    TPM_ALG_SHA = 0x00000004  # SHA1
+    TPM_ALG_HMAC = 0x00000005  # RFC 2104 HMAC
+    TPM_ALG_AES128 = 0x00000006  # AES, key size 128
+    TPM_ALG_MGF1 = 0x00000007  # XOR algorithm using MGF1 to create a string the size of the encrypted block
+    TPM_ALG_AES192 = 0x00000008  # AES, key size 192
+    TPM_ALG_AES256 = 0x00000009  # AES, key size 256
+    TPM_ALG_XOR = 0x0000000a  # XOR using the rolling nonces
+
+
+@enum.unique
+class Tpm12SymMode(enum.IntEnum):
+    """TPM_SYM_MODE: mode of a symmetric encryption in TPM 1.2"""
+    TPM_SYM_MODE_ECB = 0x00000001
+    TPM_SYM_MODE_CBC = 0x00000002
+    TPM_SYM_MODE_CFB = 0x00000003
+
+
+@enum.unique
+class Tpm12ProtocolId(enum.IntEnum):
+    """TPM_PROTOCOL_ID: protocol ID in TPM 1.2"""
+    TPM_PID_OIAP = 0x0001  # Object-Independent Authorization Protocol
+    TPM_PID_OSAP = 0x0002  # Object-Specific Authorization Protocol
+    TPM_PID_ADIP = 0x0003  # AuthData Insertion Protocol
+    TPM_PID_ADCP = 0x0004  # AuthData Change Protocol
+    TPM_PID_OWNER = 0x0005
+    TPM_PID_DSAP = 0x0006  # Delegate-Specific Authorization Protocol
+    TPM_PID_TRANSPORT = 0x0007
+
+
+@enum.unique
+class Tpm12CapabilityArea(enum.IntEnum):
+    """TPM_CAPABILITY_AREA: capability areas in TPM 1.2"""
+    TPM_CAP_ORD = 0x00000001
+    TPM_CAP_ALG = 0x00000002
+    TPM_CAP_PID = 0x00000003
+    TPM_CAP_FLAG = 0x00000004
+    TPM_CAP_PROPERTY = 0x00000005
+    TPM_CAP_VERSION = 0x00000006
+    TPM_CAP_KEY_HANDLE = 0x00000007
+    TPM_CAP_CHECK_LOADED = 0x00000008
+    TPM_CAP_SYM_MODE = 0x00000009
+    TPM_CAP_KEY_STATUS = 0x0000000C
+    TPM_CAP_NV_LIST = 0x0000000D
+    TPM_CAP_MFR = 0x00000010
+    TPM_CAP_NV_INDEX = 0x00000011
+    TPM_CAP_TRANS_ALG = 0x00000012
+    TPM_CAP_HANDLE = 0x00000014
+    TPM_CAP_TRANS_ES = 0x00000015
+    TPM_CAP_AUTH_ENCRYPT = 0x00000017
+    TPM_CAP_SELECT_SIZE = 0x00000018
+    TPM_CAP_VERSION_VAL = 0x0000001A
+    # Flags
+    TPM_CAP_FLAG_PERMANENT = 0x00000108
+    TPM_CAP_FLAG_VOLATILE = 0x00000109
+    # CAP_PROPERTY Subcap values for GetCapability
+    TPM_CAP_PROP_PCR = 0x00000101
+    TPM_CAP_PROP_DIR = 0x00000102
+    TPM_CAP_PROP_MANUFACTURER = 0x00000103
+    TPM_CAP_PROP_KEYS = 0x00000104
+    TPM_CAP_PROP_MIN_COUNTER = 0x00000107
+    TPM_CAP_PROP_AUTHSESS = 0x0000010a
+    TPM_CAP_PROP_TRANSESS = 0x0000010b
+    TPM_CAP_PROP_COUNTERS = 0x0000010c
+    TPM_CAP_PROP_MAX_AUTHSESS = 0x0000010d
+    TPM_CAP_PROP_MAX_TRANSESS = 0x0000010e
+    TPM_CAP_PROP_MAX_COUNTERS = 0x0000010f
+    TPM_CAP_PROP_MAX_KEYS = 0x00000110
+    TPM_CAP_PROP_OWNER = 0x00000111
+    TPM_CAP_PROP_CONTEXT = 0x00000112
+    TPM_CAP_PROP_MAX_CONTEXT = 0x00000113
+    TPM_CAP_PROP_FAMILYROWS = 0x00000114
+    TPM_CAP_PROP_TIS_TIMEOUT = 0x00000115
+    TPM_CAP_PROP_STARTUP_EFFECT = 0x00000116
+    TPM_CAP_PROP_DELEGATE_ROW = 0x00000117
+    TPM_CAP_PROP_DAA_MAX = 0x00000119
+    TPM_CAP_PROP_DAASESS = 0x0000011a
+    TPM_CAP_PROP_CONTEXT_DIST = 0x0000011b
+    TPM_CAP_PROP_DAA_INTERRUPT = 0x0000011c
+    TPM_CAP_PROP_SESSIONS = 0x0000011d
+    TPM_CAP_PROP_MAX_SESSIONS = 0x0000011e
+    TPM_CAP_PROP_CMK_RESTRICTION = 0x0000011f
+    TPM_CAP_PROP_DURATION = 0x00000120
+    TPM_CAP_PROP_ACTIVE_COUNTER = 0x00000122
+    TPM_CAP_PROP_MAX_NV_AVAILABLE = 0x00000123
+    TPM_CAP_PROP_INPUT_BUFFER = 0x00000124
+
+
+# Description of fields of structure TPM_PERMANENT_FLAGS
+TPM12_PERMANENT_FLAGS_DESC: Tuple[str, ...] = (
+    'disable',
+    'ownership',
+    'deactivated',
+    'readPubek',
+    'disableOwnerClear',
+    'allowMaintenance',
+    'physicalPresenceLifetimeLock',
+    'physicalPresenceHWEnable',
+    'physicalPresenceCMDEnable',
+    'CEKPUsed',
+    'TPMpost',
+    'TPMpostLock',
+    'FIPS',
+    'operator',
+    'enableRevokeEK',
+    'nvLocked',
+    'readSRKPub',
+    'tpmEstablished',
+    'maintenanceDone',
+    'disableFullDALogicInfo',
+)
+
+
+# Description of fields of structure TPM_STCLEAR_FLAGS
+TPM12_STCLEAR_FLAGS_DESC: Tuple[str, ...] = (
+    'deactivated',
+    'disableForceClear',
+    'physicalPresence',
+    'physicalPresenceLock',
+    'bGlobalLock',
+)
+
+
+# Description of the TPM_NV_ATTRIBUTES bits
+TPM12_NV_ATTRIBUTES_DESC: Tuple[Tuple[int, str], ...] = (
+    (0x80000000, 'readStClear'),
+    (0x00040000, 'authRead'),
+    (0x00020000, 'ownerRead'),
+    (0x00010000, 'ppRead'),
+    (0x00008000, 'GlobalLock'),
+    (0x00004000, 'writeStClear'),
+    (0x00002000, 'writeDefine'),
+    (0x00001000, 'writeAll'),
+    (0x00000004, 'authWrite'),
+    (0x00000002, 'ownerWrite'),
+    (0x00000001, 'ppWrite'),
+)
+
+
+# Reserved NV indexes in TPM 1.2
+TPM12_RESERVED_NV_INDEXES_DESC: Mapping[int, str] = {
+    0x0000f000: 'EK Certificate',
+    0x0000f001: 'TPM CC',
+    0x0000f002: 'Platform Certificate',
+    0x0000f003: 'Platform CC',
+    0x00010000: 'Group Resv Base',
+    0x00011100: 'TSS Base',
+    0x00011200: 'PC Base',
+    0x00011300: 'Server Base',
+    0x00011400: 'Mobile Base',
+    0x00011500: 'Peripheral Base',
+    0x10000001: 'DIR[0]',  # Compatibility with older TPM versions
+    0xffffffff: 'Lock',
+}
+
+
+@enum.unique
+class Tpm20Tag(enum.IntEnum):
+    """TPM_ST: tags in command/response header in TPM 2.0"""
+    TPM2_ST_RSP_COMMAND = 0x00c4
+    TPM2_ST_NULL = 0x8000
+    TPM2_ST_NO_SESSIONS = 0x8001
+    TPM2_ST_SESSIONS = 0x8002
+    TPM2_ST_ATTEST_NV = 0x8014
+    TPM2_ST_ATTEST_COMMAND_AUDIT = 0x8015
+    TPM2_ST_ATTEST_SESSION_AUDIT = 0x8016
+    TPM2_ST_ATTEST_CERTIFY = 0x8017
+    TPM2_ST_ATTEST_QUOTE = 0x8018
+    TPM2_ST_ATTEST_TIME = 0x8019
+    TPM2_ST_ATTEST_CREATION = 0x801a
+    TPM2_ST_CREATION = 0x8021
+    TPM2_ST_VERIFIED = 0x8022
+    TPM2_ST_AUTH_SECRET = 0x8023
+    TPM2_ST_HASHCHECK = 0x8024
+    TPM2_ST_AUTH_SIGNED = 0x8025
+    TPM2_ST_FU_MANIFEST = 0x8029
+
+
+@enum.unique
+class Tpm20CommandCode(enum.IntEnum):
+    """TPM_CC: command codes in TPM 2.0"""
+    TPM2_CC_ActivateCredential = 0x00000147
+    TPM2_CC_Certify = 0x00000148
+    TPM2_CC_CertifyCreation = 0x0000014a
+    TPM2_CC_ChangeEPS = 0x00000124
+    TPM2_CC_ChangePPS = 0x00000125
+    TPM2_CC_Clear = 0x00000126
+    TPM2_CC_ClearControl = 0x00000127
+    TPM2_CC_ClockRateAdjust = 0x00000130
+    TPM2_CC_ClockSet = 0x00000128
+    TPM2_CC_Commit = 0x0000018b
+    TPM2_CC_ContextLoad = 0x00000161
+    TPM2_CC_ContextSave = 0x00000162
+    TPM2_CC_Create = 0x00000153
+    TPM2_CC_CreateLoaded = 0x00000191
+    TPM2_CC_CreatePrimary = 0x00000131
+    TPM2_CC_DictionaryAttackLockReset = 0x00000139
+    TPM2_CC_DictionaryAttackParameters = 0x0000013a
+    TPM2_CC_Duplicate = 0x0000014b
+    TPM2_CC_ECC_Parameters = 0x00000178
+    TPM2_CC_ECDH_KeyGen = 0x00000163
+    TPM2_CC_ECDH_ZGen = 0x00000154
+    TPM2_CC_EC_Ephemeral = 0x0000018e
+    TPM2_CC_EncryptDecrypt = 0x00000164
+    TPM2_CC_EncryptDecrypt2 = 0x00000193
+    TPM2_CC_EventSequenceComplete = 0x00000185
+    TPM2_CC_EvictControl = 0x00000120
+    TPM2_CC_FieldUpgradeData = 0x00000141
+    TPM2_CC_FieldUpgradeStart = 0x0000012f
+    TPM2_CC_FirmwareRead = 0x00000179
+    TPM2_CC_FlushContext = 0x00000165
+    TPM2_CC_GetCapability = 0x0000017a
+    TPM2_CC_GetCommandAuditDigest = 0x00000133
+    TPM2_CC_GetRandom = 0x0000017b
+    TPM2_CC_GetSessionAuditDigest = 0x0000014d
+    TPM2_CC_GetTestResult = 0x0000017c
+    TPM2_CC_GetTime = 0x0000014c
+    TPM2_CC_HMAC = 0x00000155
+    TPM2_CC_HMAC_Start = 0x0000015b
+    TPM2_CC_Hash = 0x0000017d
+    TPM2_CC_HashSequenceStart = 0x00000186
+    TPM2_CC_HierarchyChangeAuth = 0x00000129
+    TPM2_CC_HierarchyControl = 0x00000121
+    TPM2_CC_Import = 0x00000156
+    TPM2_CC_IncrementalSelfTest = 0x00000142
+    TPM2_CC_Load = 0x00000157
+    TPM2_CC_LoadExternal = 0x00000167
+    TPM2_CC_MakeCredential = 0x00000168
+    TPM2_CC_NV_Certify = 0x00000184
+    TPM2_CC_NV_ChangeAuth = 0x0000013b
+    TPM2_CC_NV_DefineSpace = 0x0000012a
+    TPM2_CC_NV_Extend = 0x00000136
+    TPM2_CC_NV_GlobalWriteLock = 0x00000132
+    TPM2_CC_NV_Increment = 0x00000134
+    TPM2_CC_NV_Read = 0x0000014e
+    TPM2_CC_NV_ReadLock = 0x0000014f
+    TPM2_CC_NV_ReadPublic = 0x00000169
+    TPM2_CC_NV_SetBits = 0x00000135
+    TPM2_CC_NV_UndefineSpace = 0x00000122
+    TPM2_CC_NV_UndefineSpaceSpecial = 0x0000011f
+    TPM2_CC_NV_Write = 0x00000137
+    TPM2_CC_NV_WriteLock = 0x00000138
+    TPM2_CC_ObjectChangeAuth = 0x00000150
+    TPM2_CC_PCR_Allocate = 0x0000012b
+    TPM2_CC_PCR_Event = 0x0000013c
+    TPM2_CC_PCR_Extend = 0x00000182
+    TPM2_CC_PCR_Read = 0x0000017e
+    TPM2_CC_PCR_Reset = 0x0000013d
+    TPM2_CC_PCR_SetAuthPolicy = 0x0000012c
+    TPM2_CC_PCR_SetAuthValue = 0x00000183
+    TPM2_CC_PP_Commands = 0x0000012d
+    TPM2_CC_PolicyAuthValue = 0x0000016b
+    TPM2_CC_PolicyAuthorize = 0x0000016a
+    TPM2_CC_PolicyAuthorizeNV = 0x00000192
+    TPM2_CC_PolicyCommandCode = 0x0000016c
+    TPM2_CC_PolicyCounterTimer = 0x0000016d
+    TPM2_CC_PolicyCpHash = 0x0000016e
+    TPM2_CC_PolicyDuplicationSelect = 0x00000188
+    TPM2_CC_PolicyGetDigest = 0x00000189
+    TPM2_CC_PolicyLocality = 0x0000016f
+    TPM2_CC_PolicyNV = 0x00000149
+    TPM2_CC_PolicyNameHash = 0x00000170
+    TPM2_CC_PolicyNvWritten = 0x0000018f
+    TPM2_CC_PolicyOR = 0x00000171
+    TPM2_CC_PolicyPCR = 0x0000017f
+    TPM2_CC_PolicyPassword = 0x0000018c
+    TPM2_CC_PolicyPhysicalPresence = 0x00000187
+    TPM2_CC_PolicyRestart = 0x00000180
+    TPM2_CC_PolicySecret = 0x00000151
+    TPM2_CC_PolicySigned = 0x00000160
+    TPM2_CC_PolicyTemplate = 0x00000190
+    TPM2_CC_PolicyTicket = 0x00000172
+    TPM2_CC_Quote = 0x00000158
+    TPM2_CC_RSA_Decrypt = 0x00000159
+    TPM2_CC_RSA_Encrypt = 0x00000174
+    TPM2_CC_ReadClock = 0x00000181
+    TPM2_CC_ReadPublic = 0x00000173
+    TPM2_CC_Rewrap = 0x00000152
+    TPM2_CC_SelfTest = 0x00000143
+    TPM2_CC_SequenceComplete = 0x0000013e
+    TPM2_CC_SequenceUpdate = 0x0000015c
+    TPM2_CC_SetAlgorithmSet = 0x0000013f
+    TPM2_CC_SetCommandCodeAuditStatus = 0x00000140
+    TPM2_CC_SetPrimaryPolicy = 0x0000012e
+    TPM2_CC_Shutdown = 0x00000145
+    TPM2_CC_Sign = 0x0000015d
+    TPM2_CC_StartAuthSession = 0x00000176
+    TPM2_CC_Startup = 0x00000144
+    TPM2_CC_StirRandom = 0x00000146
+    TPM2_CC_TestParms = 0x0000018a
+    TPM2_CC_Unseal = 0x0000015e
+    TPM2_CC_VEND = 0x20000000
+    TPM2_CC_VerifySignature = 0x00000177
+    TPM2_CC_ZGen_2Phase = 0x0000018d
+
+
+@enum.unique
+class Tpm20ResponseCode(enum.IntEnum):
+    """TPM_RC: command response codes in TPM 2.0"""
+    TPM2_RC_SUCCESS = 0x000
+    TPM2_RC_BAD_TAG = 0x030
+    RC_FMT1 = 0x080
+    TPM2_RC_ASYMMETRIC = 0x081
+    TPM2_RC_ATTRIBUTES = 0x082
+    TPM2_RC_HASH = 0x083
+    TPM2_RC_VALUE = 0x084
+    TPM2_RC_HIERARCHY = 0x085
+    TPM2_RC_KEY_SIZE = 0x087
+    TPM2_RC_MGF = 0x088
+    TPM2_RC_MODE = 0x089
+    TPM2_RC_TYPE = 0x08a
+    TPM2_RC_HANDLE = 0x08b
+    TPM2_RC_KDF = 0x08c
+    TPM2_RC_RANGE = 0x08d
+    TPM2_RC_AUTH_FAIL = 0x08e
+    TPM2_RC_NONCE = 0x08f
+    TPM2_RC_PP = 0x090
+    TPM2_RC_SCHEME = 0x092
+    TPM2_RC_SIZE = 0x095
+    TPM2_RC_SYMMETRIC = 0x096
+    TPM2_RC_TAG = 0x097
+    TPM2_RC_SELECTOR = 0x098
+    TPM2_RC_INSUFFICIENT = 0x09a
+    TPM2_RC_SIGNATURE = 0x09b
+    TPM2_RC_KEY = 0x09c
+    TPM2_RC_POLICY_FAIL = 0x09d
+    TPM2_RC_INTEGRITY = 0x09f
+    TPM2_RC_TICKET = 0x0a0
+    TPM2_RC_RESERVED_BITS = 0x0a1
+    TPM2_RC_BAD_AUTH = 0x0a2
+    TPM2_RC_EXPIRED = 0x0a3
+    TPM2_RC_POLICY_CC = 0x0a4
+    TPM2_RC_BINDING = 0x0a5
+    TPM2_RC_CURVE = 0x0a6
+    TPM2_RC_ECC_POINT = 0x0a7
+    # RC_VER1 = 0x100
+    TPM2_RC_INITIALIZE = 0x100
+    TPM2_RC_FAILURE = 0x101
+    TPM2_RC_SEQUENCE = 0x103
+    TPM2_RC_PRIVATE = 0x10b
+    TPM2_RC_HMAC = 0x119
+    TPM2_RC_DISABLED = 0x120
+    TPM2_RC_EXCLUSIVE = 0x121
+    TPM2_RC_AUTH_TYPE = 0x124
+    TPM2_RC_AUTH_MISSING = 0x125
+    TPM2_RC_POLICY = 0x126
+    TPM2_RC_PCR = 0x127
+    TPM2_RC_PCR_CHANGED = 0x128
+    TPM2_RC_UPGRADE = 0x12d
+    TPM2_RC_TOO_MANY_CONTEXTS = 0x12e
+    TPM2_RC_AUTH_UNAVAILABLE = 0x12f
+    TPM2_RC_REBOOT = 0x130
+    TPM2_RC_UNBALANCED = 0x131
+    TPM2_RC_COMMAND_SIZE = 0x142
+    TPM2_RC_COMMAND_CODE = 0x143
+    TPM2_RC_AUTHSIZE = 0x144
+    TPM2_RC_AUTH_CONTEXT = 0x145
+    TPM2_RC_NV_RANGE = 0x146
+    TPM2_RC_NV_SIZE = 0x147
+    TPM2_RC_NV_LOCKED = 0x148
+    TPM2_RC_NV_AUTHORIZATION = 0x149
+    TPM2_RC_NV_UNINITIALIZED = 0x14a
+    TPM2_RC_NV_SPACE = 0x14b
+    TPM2_RC_NV_DEFINED = 0x14c
+    TPM2_RC_BAD_CONTEXT = 0x150
+    TPM2_RC_CPHASH = 0x151
+    TPM2_RC_PARENT = 0x152
+    TPM2_RC_NEEDS_TEST = 0x153
+    TPM2_RC_NO_RESULT = 0x154
+    TPM2_RC_SENSITIVE = 0x155
+    RC_MAX_FM0 = 0x17f
+    RC_WARN = 0x900
+    TPM2_RC_CONTEXT_GAP = 0x901
+    TPM2_RC_OBJECT_MEMORY = 0x902
+    TPM2_RC_SESSION_MEMORY = 0x903
+    TPM2_RC_MEMORY = 0x904
+    TPM2_RC_SESSION_HANDLES = 0x905
+    TPM2_RC_OBJECT_HANDLES = 0x906
+    TPM2_RC_LOCALITY = 0x907
+    TPM2_RC_YIELDED = 0x908
+    TPM2_RC_CANCELED = 0x909
+    TPM2_RC_TESTING = 0x90a
+    TPM2_RC_REFERENCE_H0 = 0x910
+    TPM2_RC_REFERENCE_H1 = 0x911
+    TPM2_RC_REFERENCE_H2 = 0x912
+    TPM2_RC_REFERENCE_H3 = 0x913
+    TPM2_RC_REFERENCE_H4 = 0x914
+    TPM2_RC_REFERENCE_H5 = 0x915
+    TPM2_RC_REFERENCE_H6 = 0x916
+    TPM2_RC_REFERENCE_S0 = 0x918
+    TPM2_RC_REFERENCE_S1 = 0x919
+    TPM2_RC_REFERENCE_S2 = 0x91a
+    TPM2_RC_REFERENCE_S3 = 0x91b
+    TPM2_RC_REFERENCE_S4 = 0x91c
+    TPM2_RC_REFERENCE_S5 = 0x91d
+    TPM2_RC_REFERENCE_S6 = 0x91e
+    TPM2_RC_NV_RATE = 0x920
+    TPM2_RC_LOCKOUT = 0x921
+    TPM2_RC_RETRY = 0x922
+    TPM2_RC_NV_UNAVAILABLE = 0x923
+    TPM2_RC_NOT_USED = 0x97f
+
+    # TPM_RC_H = 0x000  # add to a handle-related error
+    TPM_RC_P = 0x040  # add to a parameter-related error
+    TPM_RC_S = 0x800  # add to a session-related error
+    # TPM_RC_1 = 0x100  # add to a parameter-, handle-, or session-related error
+    TPM_RC_2 = 0x200
+    TPM_RC_3 = 0x300
+    TPM2_RC_HANDLE_GetCapability_capability = 0x1cb  # TPM_RC_1 + TPM_RC_P + TPM2_RC_HANDLE
+    TPM2_RC_HANDLE_GetCapability_property = 0x2cb  # TPM_RC_2 + TPM_RC_P + TPM2_RC_HANDLE
+    TPM2_RC_HANDLE_GetCapability_propertyCount = 0x3cb  # TPM_RC_3 + TPM_RC_P + TPM2_RC_HANDLE
+
+    # Encountered error codes
+    TPM2_Unknown_RC_from_Public_Read_0x184 = 0x184  # ???
+    TPM2_Unknown_RC_from_NV_Read_0x9a2 = 0x9a2  # ???
+
+
+class Tpm20Failure(Exception):
+    """Failure while executing a TPM 2.0 command"""
+    def __init__(self, code: int):
+        super(Tpm20Failure, self).__init__()
+        self.code = code
+        try:
+            self.code_desc: Optional[Tpm20ResponseCode] = Tpm20ResponseCode(code)
+        except ValueError:
+            print(f"Warning: unknown TPM 2.0 response code {self.code:#x}", file=sys.stderr)
+            self.code_desc = None
+
+    def __str__(self):
+        if self.code_desc:
+            return repr(self.code_desc)
+        return str(self.code)
+
+
+@enum.unique
+class TpmAlgId(enum.IntEnum):
+    """TPM_ALG_ID constants for TPM 2.0"""
+    TPM_ALG_ERROR = 0x0000
+    TPM_ALG_RSA = 0x0001
+    TPM_ALG_SHA1 = 0x0004
+    TPM_ALG_HMAC = 0x0005
+    TPM_ALG_AES = 0x0006
+    TPM_ALG_MGF1 = 0x0007
+    TPM_ALG_KEYEDHASH = 0x0008
+    TPM_ALG_XOR = 0x000a
+    TPM_ALG_SHA256 = 0x000b
+    TPM_ALG_SHA384 = 0x000c
+    TPM_ALG_SHA512 = 0x000d
+    TPM_ALG_NULL = 0x0010
+    TPM_ALG_SM3_256 = 0x0012
+    TPM_ALG_SM4 = 0x0013
+    TPM_ALG_RSASSA = 0x0014
+    TPM_ALG_RSAES = 0x0015
+    TPM_ALG_RSAPSS = 0x0016
+    TPM_ALG_OAEP = 0x0017
+    TPM_ALG_ECDSA = 0x0018
+    TPM_ALG_ECDH = 0x0019
+    TPM_ALG_ECDAA = 0x001a
+    TPM_ALG_SM2 = 0x001b
+    TPM_ALG_ECSCHNORR = 0x001c
+    TPM_ALG_ECMQV = 0x001d
+    TPM_ALG_KDF1_SP800_56a = 0x0020
+    TPM_ALG_KDF2 = 0x0021
+    TPM_ALG_KDF1_SP800_108 = 0x0022
+    TPM_ALG_ECC = 0x0023
+    TPM_ALG_SYMCIPHER = 0x0025
+    TPM_ALG_CTR = 0x0040
+    TPM_ALG_OFB = 0x0041
+    TPM_ALG_CBC = 0x0042
+    TPM_ALG_CFB = 0x0043
+    TPM_ALG_ECB = 0x0044
+
+    def compute_hash(self, data: bytes) -> bytes:
+        """Compute the hash digest according to the algorithm"""
+        if self == TpmAlgId.TPM_ALG_SHA256:
+            return hashlib.sha256(data).digest()
+        raise NotImplementedError(f"Unimplemented hash {self.name}")
+
+    def compute_hmac(self, key: bytes, data: bytes) -> bytes:
+        if self == TpmAlgId.TPM_ALG_SHA256:
+            return hmac.digest(key, data, 'sha256')
+        raise NotImplementedError(f"Unimplemented hash {self.name}")
+
+
+@enum.unique
+class Tpm20EccCurve(enum.IntEnum):
+    """TPM_ECC_CURVE: Elliptic-Curve Cryptography curves in TPM 2.0"""
+    TPM_ECC_NONE = 0x0000
+    TPM_ECC_NIST_P192 = 0x0001
+    TPM_ECC_NIST_P224 = 0x0002
+    TPM_ECC_NIST_P256 = 0x0003
+    TPM_ECC_NIST_P384 = 0x0004
+    TPM_ECC_NIST_P521 = 0x0005
+    TPM_ECC_BN_P256 = 0x0010
+    TPM_ECC_BN_P638 = 0x0011
+    TPM_ECC_SM2_P256 = 0x0020
+
+
+@enum.unique
+class Tpm20Capability(enum.IntEnum):
+    """TPM_CAP: capabilities in TPM 2.0"""
+    TPM_CAP_ALGS = 0x00000000
+    TPM_CAP_HANDLES = 0x00000001
+    TPM_CAP_COMMANDS = 0x00000002
+    TPM_CAP_PP_COMMANDS = 0x00000003
+    TPM_CAP_AUDIT_COMMANDS = 0x00000004
+    TPM_CAP_PCRS = 0x00000005
+    TPM_CAP_TPM_PROPERTIES = 0x00000006
+    TPM_CAP_PCR_PROPERTIES = 0x00000007
+    TPM_CAP_ECC_CURVES = 0x00000008
+
+
+@enum.unique
+class Tpm20Property(enum.IntEnum):
+    """TPM2_PT: TPM properties in TPM 2.0"""
+    TPM2_PT_NONE = 0x00000000
+    # TPM2_PT_FIXED = 0x00000100
+    TPM2_PT_FAMILY_INDICATOR = 0x00000100
+    TPM2_PT_LEVEL = 0x00000101
+    TPM2_PT_REVISION = 0x00000102
+    TPM2_PT_DAY_OF_YEAR = 0x00000103
+    TPM2_PT_YEAR = 0x00000104
+    TPM2_PT_MANUFACTURER = 0x00000105
+    TPM2_PT_VENDOR_STRING_1 = 0x00000106
+    TPM2_PT_VENDOR_STRING_2 = 0x00000107
+    TPM2_PT_VENDOR_STRING_3 = 0x00000108
+    TPM2_PT_VENDOR_STRING_4 = 0x00000109
+    TPM2_PT_VENDOR_TPM_TYPE = 0x0000010a
+    TPM2_PT_FIRMWARE_VERSION_1 = 0x0000010b
+    TPM2_PT_FIRMWARE_VERSION_2 = 0x0000010c
+    TPM2_PT_INPUT_BUFFER = 0x0000010d
+    TPM2_PT_HR_TRANSIENT_MIN = 0x0000010e
+    TPM2_PT_HR_PERSISTENT_MIN = 0x0000010f
+    TPM2_PT_HR_LOADED_MIN = 0x00000110
+    TPM2_PT_ACTIVE_SESSIONS_MAX = 0x00000111
+    TPM2_PT_PCR_COUNT = 0x00000112
+    TPM2_PT_PCR_SELECT_MIN = 0x00000113
+    TPM2_PT_CONTEXT_GAP_MAX = 0x00000114
+    TPM2_PT_NV_COUNTERS_MAX = 0x00000116
+    TPM2_PT_NV_INDEX_MAX = 0x00000117
+    TPM2_PT_MEMORY = 0x00000118
+    TPM2_PT_CLOCK_UPDATE = 0x00000119
+    TPM2_PT_CONTEXT_HASH = 0x0000011a
+    TPM2_PT_CONTEXT_SYM = 0x0000011b
+    TPM2_PT_CONTEXT_SYM_SIZE = 0x0000011c
+    TPM2_PT_ORDERLY_COUNT = 0x0000011d
+    TPM2_PT_MAX_COMMAND_SIZE = 0x0000011e
+    TPM2_PT_MAX_RESPONSE_SIZE = 0x0000011f
+    TPM2_PT_MAX_DIGEST = 0x00000120
+    TPM2_PT_MAX_OBJECT_CONTEXT = 0x00000121
+    TPM2_PT_MAX_SESSION_CONTEXT = 0x00000122
+    TPM2_PT_PS_FAMILY_INDICATOR = 0x00000123
+    TPM2_PT_PS_LEVEL = 0x00000124
+    TPM2_PT_PS_REVISION = 0x00000125
+    TPM2_PT_PS_DAY_OF_YEAR = 0x00000126
+    TPM2_PT_PS_YEAR = 0x00000127
+    TPM2_PT_SPLIT_MAX = 0x00000128
+    TPM2_PT_TOTAL_COMMANDS = 0x00000129
+    TPM2_PT_LIBRARY_COMMANDS = 0x0000012a
+    TPM2_PT_VENDOR_COMMANDS = 0x0000012b
+    TPM2_PT_NV_BUFFER_MAX = 0x0000012c
+    TPM2_PT_MODES = 0x0000012d
+    TPM2_PT_MAX_CAP_BUFFER = 0x0000012e
+    # TPM2_PT_VAR = 0x00000200
+    TPM2_PT_PERMANENT = 0x00000200
+    TPM2_PT_STARTUP_CLEAR = 0x00000201
+    TPM2_PT_HR_NV_INDEX = 0x00000202
+    TPM2_PT_HR_LOADED = 0x00000203
+    TPM2_PT_HR_LOADED_AVAIL = 0x00000204
+    TPM2_PT_HR_ACTIVE = 0x00000205
+    TPM2_PT_HR_ACTIVE_AVAIL = 0x00000206
+    TPM2_PT_HR_TRANSIENT_AVAIL = 0x00000207
+    TPM2_PT_HR_PERSISTENT = 0x00000208
+    TPM2_PT_HR_PERSISTENT_AVAIL = 0x00000209
+    TPM2_PT_NV_COUNTERS = 0x0000020a
+    TPM2_PT_NV_COUNTERS_AVAIL = 0x0000020b
+    TPM2_PT_ALGORITHM_SET = 0x0000020c
+    TPM2_PT_LOADED_CURVES = 0x0000020d
+    TPM2_PT_LOCKOUT_COUNTER = 0x0000020e
+    TPM2_PT_MAX_AUTH_FAIL = 0x0000020f
+    TPM2_PT_LOCKOUT_INTERVAL = 0x00000210
+    TPM2_PT_LOCKOUT_RECOVERY = 0x00000211
+    TPM2_PT_NV_WRITE_RECOVERY = 0x00000212
+    TPM2_PT_AUDIT_COUNTER_0 = 0x00000213
+    TPM2_PT_AUDIT_COUNTER_1 = 0x00000214
+
+
+@enum.unique
+class Tpm20PcrProperty(enum.IntEnum):
+    """TPM2_PT_PCR: PCR properties in TPM 2.0"""
+    TPM_PT_PCR_SAVE = 0x00000000
+    TPM_PT_PCR_EXTEND_L0 = 0x00000001
+    TPM_PT_PCR_RESET_L0 = 0x00000002
+    TPM_PT_PCR_EXTEND_L1 = 0x00000003
+    TPM_PT_PCR_RESET_L1 = 0x00000004
+    TPM_PT_PCR_EXTEND_L2 = 0x00000005
+    TPM_PT_PCR_RESET_L2 = 0x00000006
+    TPM_PT_PCR_EXTEND_L3 = 0x00000007
+    TPM_PT_PCR_RESET_L3 = 0x00000008
+    TPM_PT_PCR_EXTEND_L4 = 0x00000009
+    TPM_PT_PCR_RESET_L4 = 0x0000000a
+    TPM_PT_PCR_NO_INCREMENT = 0x00000011
+    TPM_PT_PCR_DRTM_RESET = 0x00000012
+    TPM_PT_PCR_POLICY = 0x00000013
+    TPM_PT_PCR_AUTH = 0x00000014
+
+
+@enum.unique
+class Tpm20HandleType(enum.IntEnum):
+    """TPM_HT: Handle Types in TPM 2.0 (high byte of handles)"""
+    TPM_HT_PCR = 0x00
+    TPM_HT_NV_INDEX = 0x01
+    TPM_HT_HMAC_SESSION = 0x02
+    # TPM_HT_LOADED_SESSION = 0x02  # Only in TPM2_GetCapability
+    TPM_HT_POLICY_SESSION = 0x03
+    # TPM_HT_SAVED_SESSION = 0x03  # Only in TPM2_GetCapability
+    TPM_HT_PERMANENT = 0x40
+    TPM_HT_TRANSIENT = 0x80
+    TPM_HT_PERSISTENT = 0x81
+    TPM_HT_AC = 0x90  # Attached Component
+
+
+@enum.unique
+class Tpm20Handle(enum.IntEnum):
+    """TPM_HANDLE / TPM_HC: Handles Values Constants in TPM 2.0"""
+    # PCR_FIRST = 0
+    TPM_HC_PCR0 = 0x00000000
+    TPM_HC_PCR1 = 0x00000001
+    TPM_HC_PCR2 = 0x00000002
+    TPM_HC_PCR3 = 0x00000003
+    TPM_HC_PCR4 = 0x00000004
+    TPM_HC_PCR5 = 0x00000005
+    TPM_HC_PCR6 = 0x00000006
+    TPM_HC_PCR7 = 0x00000007
+    TPM_HC_PCR8 = 0x00000008
+    TPM_HC_PCR9 = 0x00000009
+    TPM_HC_PCR10 = 0x0000000a
+    TPM_HC_PCR11 = 0x0000000b
+    TPM_HC_PCR12 = 0x0000000c
+    TPM_HC_PCR13 = 0x0000000d
+    TPM_HC_PCR14 = 0x0000000e
+    TPM_HC_PCR15 = 0x0000000f
+    TPM_HC_PCR16 = 0x00000010
+    TPM_HC_PCR17 = 0x00000011
+    TPM_HC_PCR18 = 0x00000012
+    TPM_HC_PCR19 = 0x00000013
+    TPM_HC_PCR20 = 0x00000014
+    TPM_HC_PCR21 = 0x00000015
+    TPM_HC_PCR22 = 0x00000016
+    TPM_HC_PCR23 = 0x00000017
+    # Reserved Handles in Non-Volatile storage index
+    TPM_RESERVED_HANDLE_EK_CERT = 0x01c00002  # EK Certificate
+    TPM_RESERVED_HANDLE_IDEVID_CERT = 0x01c90000  # IDevID Certificate
+    # TPM_RH: Resource Handle
+    TPM_RH_SRK = 0x40000000  # SRK = Storage Root Key
+    TPM_RH_OWNER = 0x40000001  # handle references the Storage Primary Seed (SPS), the ownerAuth, and the ownerPolicy
+    TPM_RH_REVOKE = 0x40000002
+    TPM_RH_TRANSPORT = 0x40000003
+    TPM_RH_OPERATOR = 0x40000004
+    TPM_RH_ADMIN = 0x40000005
+    TPM_RH_EK = 0x40000006  # EK = Endorsement Key (Root Trust for Reporting, RTR)
+    TPM_RH_NULL = 0x40000007  # a handle associated with the null hierarchy, an EmptyAuth authValue, and an Empty Policy authPolicy  # noqa
+    TPM_RH_UNASSIGNED = 0x40000008  # value reserved to the TPM to indicate a handle location that has not been initialized or assigned  # noqa
+    TPM_RS_PW = 0x40000009  # authorization value used to indicate a password authorization session  # noqa
+    TPM_RH_LOCKOUT = 0x4000000a  # references the authorization associated with the dictionary attack lockout reset  # noqa
+    TPM_RH_ENDORSEMENT = 0x4000000b  # references the Endorsement Primary Seed (EPS), endorsementAuth, and endorsementPolicy  # noqa
+    TPM_RH_PLATFORM = 0x4000000c  # references the Platform Primary Seed (PPS), platformAuth, and platformPolicy  # noqa
+    TPM_RH_PLATFORM_NV = 0x4000000d  # for phEnableNV
+    TPM_RH_AUTH_00 = 0x40000010 # Start of a range of authorization values that are vendorspecific. A TPM may support any of the values in this range as are needed for vendor-specific purposes  # noqa
+    TPM_RH_AUTH_FF = 0x4000010f
+    TPM_RH_ACT_0 = 0x40000110  # Start of the range of authenticated timers
+    TPM_RH_ACT_F = 0x4000011f
+    # Reserved Handles in persistent objects
+    # cf. Registry of reserved TPM 2.0 handles and localities
+    # https://trustedcomputinggroup.org/wp-content/uploads/131011-Registry-of-reserved-TPM2-handles-and-localities.pdf
+    # 0x81000000-0x8100ffff: Storage primary keys
+    TPM_RESERVED_HANDLE_SRK = 0x81000001
+    TPM_RESERVED_HANDLE_SRK_2 = 0x81000002
+    # 0x81010000-0x8101ffff: Endorsement primary keys
+    TPM_RESERVED_HANDLE_EK = 0x81010001
+    TPM_RESERVED_HANDLE_IDEVID_KEY = 0x81020000  # IDevID Key
+    # 0x81800000-0x8180ffff: Platforms primary keys
+    TPM_RESERVED_HANDLE_PLATFORM_KEY = 0x81800001
+
+
+class Tpm20PublicStruct:
+    """Represent a TPMT_PUBLIC in TPM 2.0
+
+    struct TPMT_PUBLIC {
+        TPMI_ALG_PUBLIC type; // TPM_ALG_ID = UINT16
+        TPMI_ALG_HASH nameAlg; // TPM_ALG_ID = UINT16
+        TPMA_OBJECT objectAttributes;
+        TPM2B_DIGEST authPolicy;
+        TPMU_PUBLIC_PARMS parameters;
+        TPMU_PUBLIC_ID unique;
+    }
+    As "parameters" and "unique" are variable-length and depends on the type,
+    store them in the same field.
+    struct TPMA_OBJECT {
+        UINT32 reserved1            : 1;
+        UINT32 fixedTPM             : 1;
+        UINT32 stClear              : 1;
+        UINT32 reserved4            : 1;
+        UINT32 fixedParent          : 1;
+        UINT32 sensitiveDataOrigin  : 1;
+        UINT32 userWithAuth         : 1;
+        UINT32 adminWithPolicy      : 1;
+        UINT32 reserved8_9          : 2;
+        UINT32 noDA                 : 1;
+        UINT32 encryptedDuplication : 1;
+        UINT32 reserved12_15        : 4;
+        UINT32 restricted           : 1;
+        UINT32 decrypt              : 1;
+        UINT32 sign                 : 1;
+        UINT32 reserved19_31        : 13;
+    }
+    union TPMU_PUBLIC_PARMS {
+        TPMS_KEYEDHASH_PARMS keyedHashDetail;
+        TPMT_SYM_DEF_OBJECT symDetail;
+        TPMS_RSA_PARMS rsaDetail;
+        TPMS_ECC_PARMS eccDetail;
+        TPMS_ASYM_PARMS asymDetail;
+    }
+    union TPMU_PUBLIC_ID {
+        TPM2B_DIGEST keyedHash;
+        TPM2B_DIGEST sym;
+        TPM2B_PUBLIC_KEY_RSA rsa;
+        TPMS_ECC_POINT ecc;
+    }
+    """
+    def __init__(self, type_alg: TpmAlgId, name_alg: TpmAlgId, attributes: int,
+                 auth_policy: bytes, parameters_unique: bytes):
+        self.type_alg = type_alg
+        self.name_alg = name_alg
+        self.attributes = attributes
+        self.auth_policy = auth_policy
+        self.parameters_unique = parameters_unique
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> 'Tpm20PublicStruct':
+        type_alg_id, name_alg_id, attributes, digest_size = struct.unpack('>HHIH', data[:0xa])
+        auth_policy = data[0xa:0xa + digest_size]
+        parameters_unique = data[0xa + digest_size:]
+        type_alg = TpmAlgId(type_alg_id)
+        name_alg = TpmAlgId(name_alg_id)
+        return cls(type_alg, name_alg, attributes, auth_policy, parameters_unique)
+
+    def to_bytes(self) -> bytes:
+        """Convert to bytes"""
+        return (
+            struct.pack('>HHIH', self.type_alg.value, self.name_alg.value, self.attributes, len(self.auth_policy)) +
+            self.auth_policy +
+            self.parameters_unique)
+
+    def compute_name(self) -> bytes:
+        """Get the name of the Non-Volatile Index
+
+        cf. clause 16 of Trusted Platform Module Library Specification,
+        Family "2.0", Level 00, Revision 01.59 - November 2019
+        Part 1: Architecture
+        """
+        return struct.pack('>H', self.name_alg.value) + self.name_alg.compute_hash(self.to_bytes())
+
+    def attr_desc(self) -> str:
+        """Get the description of the attribute"""
+        remaining = self.attributes
+        if not remaining:
+            return ''
+        all_desc: List[str] = []
+        for bitmask, bit_desc in TPM20_OBJECT_ATTR_DESC:
+            if remaining & bitmask:
+                all_desc.append(bit_desc)
+                remaining &= ~bitmask
+                if not remaining:
+                    return '|'.join(all_desc)
+            assert remaining
+        all_desc.append(hex(remaining))
+        return '|'.join(all_desc)
+
+    def print_parameters(self, indent: str = ''):
+        """Describe the parameters"""
+        if self.type_alg == TpmAlgId.TPM_ALG_RSA:
+            """
+            struct TPMS_RSA_PARMS {
+                TPMT_SYM_DEF_OBJECT symmetric;
+                TPMT_RSA_SCHEME scheme;
+                TPMI_RSA_KEY_BITS keyBits; // TPM_KEY_BITS = UINT16
+                UINT32 exponent;
+            }
+            struct TPMT_SYM_DEF_OBJECT {
+                TPMI_ALG_SYM_OBJECT algorithm; // TPM_ALG_ID = UINT16
+                TPMU_SYM_KEY_BITS keyBits; // TPM_KEY_BITS = UINT16
+                TPMU_SYM_MODE mode; // TPMI_ALG_SYM_MODE = TPM_ALG_ID = UINT16
+            }
+            struct TPMT_RSA_SCHEME {
+                TPMI_ALG_RSA_SCHEME scheme; // TPM_ALG_ID = UINT16
+                TPMU_ASYM_SCHEME details; // TPMS_SCHEME_SIGHASH = TPMI_ALG_HASH = TPM_ALG_ID = UINT16
+            }
+
+            Examples:
+            * For a signature key:
+                0010  symmetric.algorithm = TPM_ALG_NULL
+                0014  scheme.scheme = TPM_ALG_RSASSA
+                0004  scheme.details = TPM_ALG_SHA1
+                0800  keyBits = 2048
+                0000 0000  exponent = 0 (default exponent is 0x10001)
+                0100  unique.TPM2B_PUBLIC_KEY_RSA.size = 256 bytes
+                ...   modulus
+            * For an encryption key:
+                0006  symmetric.algorithm = TPM_ALG_AES
+                0080  symmetric.keyBits = 128
+                0043  symmetric.mode = TPM_ALG_CFB
+                0010  scheme.scheme = TPM_ALG_NULL
+                0800  keyBits = 2048
+                0000 0000  exponent = 0 (default exponent is 0x10001)
+                0100  unique.TPM2B_PUBLIC_KEY_RSA.size = 256 bytes
+                ...   modulus
+            """
+            sym_alg_id, = struct.unpack('>H', self.parameters_unique[:2])
+            offset = 2
+            sym_alg = TpmAlgId(sym_alg_id)
+            if sym_alg == TpmAlgId.TPM_ALG_NULL:
+                print(f"{indent}- symmetric: {sym_alg.name} ({sym_alg_id:#x})")
+            elif sym_alg == TpmAlgId.TPM_ALG_AES:
+                sym_keybits, sym_mode_id = struct.unpack('>HH', self.parameters_unique[offset:offset + 4])
+                offset += 4
+                sym_mode = TpmAlgId(sym_mode_id)
+                print(f"{indent}- symmetric: {sym_alg.name} ({sym_alg_id:#x}), keyBits={sym_keybits}, mode={sym_mode.name} ({sym_mode_id:#x})")  # noqa
+            else:
+                raise NotImplementedError(f"Unimplemented parameters for RSA/sym algorithm {sym_alg!r}")
+            scheme_alg_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
+            offset += 2
+            scheme_alg = TpmAlgId(scheme_alg_id)
+            if scheme_alg == TpmAlgId.TPM_ALG_NULL:
+                print(f"{indent}- scheme: {scheme_alg.name} ({scheme_alg:#x})")
+            elif scheme_alg == TpmAlgId.TPM_ALG_RSASSA:
+                scheme_details_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
+                offset += 2
+                scheme_details = TpmAlgId(scheme_details_id)
+                print(f"{indent}- scheme: {scheme_alg.name} ({scheme_alg:#x}), halg={scheme_details.name} ({scheme_details_id:#x})")  # noqa
+            else:
+                raise NotImplementedError(f"Unimplemented parameters for RSA/scheme algorithm {scheme_alg!r}")
+            keybits, exponent, unique_size = struct.unpack('>HIH', self.parameters_unique[offset:offset + 8])
+            offset += 8
+            if exponent == 0:
+                print(f"{indent}- exponent: {exponent:#x} (default is 0x10001)")
+            else:
+                print(f"{indent}- exponent: {exponent:#x}")
+            print(f"{indent}- keybits: {keybits} ({unique_size} bytes)")
+            if keybits != unique_size * 8:
+                raise RuntimeError(f"Unexpected RSA-{keybits} modulus size: {unique_size} bytes")
+            unique = self.parameters_unique[offset:]
+            print(f"{indent}- unique (RSA modulus):")
+            hexdump(unique, indent=indent + "  ")
+            if offset + unique_size != len(self.parameters_unique):
+                raise RuntimeError(f"Unexpected parameters format for RSA public key object: {self.parameters_unique!r}")  # noqa
+            return
+        raise NotImplementedError(f"Unimplemented object public parameters for algorithm {self.type_alg!r}")
+
+
+# Description of the TPMA_OBJECT bits
+TPM20_OBJECT_ATTR_DESC: Tuple[Tuple[int, str], ...] = (
+    # bit 0: reserved
+    (0x00000002, 'fixedTPM'),  # the object cannot be duplicated for use on a different TPM
+    (0x00000004, 'stClear'),  # saved contexts of this object will be invalidated on TPM2_Startup(TPM_SU_CLEAR)
+    # bit 3: reserved
+    (0x00000010, 'fixedParent'),  # the object's parent may not be changed ; this object may not be the object of a TPM2_Duplicate()  # noqa
+    (0x00000020, 'sensitiveDataOrigin'),  # the key was generated by TPM.
+    (0x00000040, 'userWithAuth'),  # authorization for operations that require USER role authorization may be given if the caller provides proof of knowledge of the authValue of the object with an HMAC authorization session or a password  # noqa
+    (0x00000080, 'adminWithPolicy'),  #  HMAC or password authorizations may not be used for ADMIN role authorizations.  # noqa
+    # bits 8-9: reserved
+    (0x00000400, 'noDA'),  # authorization failures for the object do not affect the dictionary attack protection logic and authorization of the object is not blocked if the TPM is in lockout.  # noqa
+    (0x00000800, 'encryptedDuplication'),  # when the object is duplicated, the sensitive portion of the object is required to be encrypted with an inner wrapper and the new parent shall be an asymmetric key and not TPM_RH_NULL.  # noqa
+    # bits 12-15: reserved
+    (0x00010000, 'restricted'),  # this attribute modifies the decrypt and sign attributes of an object.
+    (0x00020000, 'decrypt'),  # the private portion of this key can be used to decrypt an external blob.
+    (0x00040000, 'signOrEncrypt'),  # the private portion of this key may be used to sign a digest if the key is an asymmetric key or to encrypt a block of data if the key is a symmetric key.  # noqa
+    # bits 19-31: reserved
+)
+
+
+class Tpm20NvPublicStruct:
+    """Represent a TPMS_NV_PUBLIC in TPM 2.0
+
+    struct TPMS_NV_PUBLIC {
+        TPMI_RH_NV_INDEX nvIndex; // TPM_HANDLE = UINT32
+        TPMI_ALG_HASH nameAlg; // TPM_ALG_ID = UINT16
+        TPMA_NV attributes; // UINT32
+        TPM2B_DIGEST authPolicy;
+        UINT16 dataSize;
+    }
+    struct TPMA_NV {
+        UINT32 TPMA_NV_PPWRITE        : 1;
+        UINT32 TPMA_NV_OWNERWRITE     : 1;
+        UINT32 TPMA_NV_AUTHWRITE      : 1;
+        UINT32 TPMA_NV_POLICYWRITE    : 1;
+        UINT32 TPMA_NV_COUNTER        : 1;
+        UINT32 TPMA_NV_BITS           : 1;
+        UINT32 TPMA_NV_EXTEND         : 1;
+        UINT32 reserved7_9            : 3;
+        UINT32 TPMA_NV_POLICY_DELETE  : 1;
+        UINT32 TPMA_NV_WRITELOCKED    : 1;
+        UINT32 TPMA_NV_WRITEALL       : 1;
+        UINT32 TPMA_NV_WRITEDEFINE    : 1;
+        UINT32 TPMA_NV_WRITE_STCLEAR  : 1;
+        UINT32 TPMA_NV_GLOBALLOCK     : 1;
+        UINT32 TPMA_NV_PPREAD         : 1;
+        UINT32 TPMA_NV_OWNERREAD      : 1;
+        UINT32 TPMA_NV_AUTHREAD       : 1;
+        UINT32 TPMA_NV_POLICYREAD     : 1;
+        UINT32 reserved20_24          : 5;
+        UINT32 TPMA_NV_NO_DA          : 1;
+        UINT32 TPMA_NV_ORDERLY        : 1;
+        UINT32 TPMA_NV_CLEAR_STCLEAR  : 1;
+        UINT32 TPMA_NV_READLOCKED     : 1;
+        UINT32 TPMA_NV_WRITTEN        : 1;
+        UINT32 TPMA_NV_PLATFORMCREATE : 1;
+        UINT32 TPMA_NV_READ_STCLEAR   : 1;
+    }
+    struct TPM2B_DIGEST {
+        UINT16 size;
+        BYTE buffer[sizeof(TPMU_HA)];
+    }
+    """
+    def __init__(self, nv_index: int, name_alg: TpmAlgId, attributes: int, auth_policy: bytes, data_size: int):
+        self.nv_index = nv_index
+        self.name_alg = name_alg
+        self.attributes = attributes
+        self.auth_policy = auth_policy
+        self.data_size = data_size
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> 'Tpm20NvPublicStruct':
+        nv_index, name_alg_id, attributes, digest_size = struct.unpack('>IHIH', data[:0xc])
+        auth_policy = data[0xc:0xc + digest_size]
+        data_size, = struct.unpack('>H', data[0xc + digest_size:])  # Fail if the data is too large
+        name_alg = TpmAlgId(name_alg_id)
+        return cls(nv_index, name_alg, attributes, auth_policy, data_size)
+
+    def to_bytes(self) -> bytes:
+        """Convert to bytes"""
+        return (
+            struct.pack('>IHIH', self.nv_index, self.name_alg.value, self.attributes, len(self.auth_policy)) +
+            self.auth_policy +
+            struct.pack('>H', self.data_size))
+
+    def compute_name(self) -> bytes:
+        """Get the name of the Non-Volatile Index
+
+        cf. clause 16 of Trusted Platform Module Library Specification,
+        Family "2.0", Level 00, Revision 01.59 - November 2019
+        Part 1: Architecture
+        """
+        return struct.pack('>H', self.name_alg.value) + self.name_alg.compute_hash(self.to_bytes())
+
+    def attr_desc(self) -> str:
+        """Get the description of the attribute, using a syntax from
+        https://github.com/tpm2-software/tpm2-tools/blob/master/man/common/nv-attrs.md
+        """
+        remaining = self.attributes
+        if not remaining:
+            return ''
+        all_desc: List[str] = []
+        for bitmask, bit_desc in TPM20_NV_ATTR_DESC:
+            if remaining & bitmask:
+                all_desc.append(bit_desc)
+                remaining &= ~bitmask
+                if not remaining:
+                    return '|'.join(all_desc)
+            assert remaining
+        all_desc.append(hex(remaining))
+        return '|'.join(all_desc)
+
+
+# Description of the TPMA_NV bits
+TPM20_NV_ATTR_DESC: Tuple[Tuple[int, str], ...] = (
+    (0x00000001, 'ppwrite'),
+    (0x00000002, 'ownerwrite'),
+    (0x00000004, 'authwrite'),
+    (0x00000008, 'policywrite'),
+    (0x00000010, 'counter'),
+    (0x00000020, 'bits'),
+    (0x00000040, 'extend'),
+    # bits 7-9: reserved
+    (0x00000400, 'policy_delete'),
+    (0x00000800, 'writelocked'),
+    (0x00001000, 'writeall'),
+    (0x00002000, 'writedefine'),
+    (0x00004000, 'write_stclear'),
+    (0x00008000, 'globallock'),
+    (0x00010000, 'ppread'),
+    (0x00020000, 'ownerread'),
+    (0x00040000, 'authread'),
+    (0x00080000, 'policyread'),
+    # bits 20-24: reserved
+    (0x02000000, 'no_da'),
+    (0x04000000, 'orderly'),
+    (0x08000000, 'clear_stclear'),
+    (0x10000000, 'readlocked'),
+    (0x20000000, 'written'),
+    (0x40000000, 'platformcreate'),
+    (0x80000000, 'read_stclear'),
+)
+
+
+class Tpm20AuthSessionContext:
+    """Context of an authorization session"""
+    def __init__(self, session_handle: int, hash_alg: TpmAlgId,
+                 nonce_caller: bytes, nonce_tpm: bytes, session_key: bytes):
+        self.session_handle = session_handle
+        self.hash_alg = hash_alg
+        self.nonce_caller = nonce_caller
+        self.nonce_tpm = nonce_tpm
+        self.session_key = session_key
+
+
+TPM2_MAX_CAP_BUFFER = 1024
+TPM2_MAX_CAP_CC = 256
+TPM2_MAX_PCRS = 32
+TPM2_PCR_SELECT_MAX = (TPM2_MAX_PCRS + 7) // 8
+SIZEOF_TPM2_CAP = 4
+SIZEOF_TPM2_HANDLE = 4
+SIZEOF_TPM2_ALG_ID = 2
+SIZEOF_TPMA_ALGORITHM = 4
+SIZEOF_TPMS_ALG_PROPERTY = SIZEOF_TPM2_ALG_ID + SIZEOF_TPMA_ALGORITHM
+SIZEOF_TPM2_PT = 4
+SIZEOF_TPMS_TAGGED_PROPERTY = SIZEOF_TPM2_PT + 4
+SIZEOF_TPM2_PT_PCR = 4
+SIZEOF_TPMS_TAGGED_PCR_SELECT = SIZEOF_TPM2_PT_PCR + 1 + TPM2_PCR_SELECT_MAX
+SIZEOF_TPM2_ECC_CURVE = 2
+SIZEOF_TPMI_ALG_HASH = SIZEOF_TPM2_ALG_ID
+SIZEOF_TPMU_HA = 0x40  # SHA512 is maximum
+SIZEOF_TPMT_HA = SIZEOF_TPMI_ALG_HASH + SIZEOF_TPMU_HA
+SIZEOF_TPMS_TAGGED_POLICY = SIZEOF_TPM2_HANDLE + SIZEOF_TPMT_HA
+TPM2_MAX_CAP_HANDLES = (TPM2_MAX_CAP_BUFFER - SIZEOF_TPM2_CAP - 4) // SIZEOF_TPM2_HANDLE
+TPM2_MAX_CAP_ALGS = (TPM2_MAX_CAP_BUFFER - SIZEOF_TPM2_CAP - 4) // SIZEOF_TPMS_ALG_PROPERTY
+TPM2_MAX_TPM_PROPERTIES = (TPM2_MAX_CAP_BUFFER - SIZEOF_TPM2_CAP - 4) // SIZEOF_TPMS_TAGGED_PROPERTY
+TPM2_MAX_PCR_PROPERTIES = (TPM2_MAX_CAP_BUFFER - SIZEOF_TPM2_CAP - 4) // SIZEOF_TPMS_TAGGED_PCR_SELECT
+TPM2_MAX_ECC_CURVES = (TPM2_MAX_CAP_BUFFER - SIZEOF_TPM2_CAP - 4) // SIZEOF_TPM2_ECC_CURVE
+TPM2_MAX_TAGGED_POLICIES = (TPM2_MAX_CAP_BUFFER - SIZEOF_TPM2_CAP - 4) // SIZEOF_TPMS_TAGGED_POLICY
+
+
+Tpm20CapAlgs = List[Tuple[TpmAlgId, int]]
+Tpm20CapCommands = List[Tuple[int, int]]
+Tpm20CapEccCurves = List[Tpm20EccCurve]
+Tpm20CapHandles = List[int]
+Tpm20CapPcrProperties = List[Tuple[int, Sequence[int]]]
+Tpm20CapPcrSelection = List[Tuple[TpmAlgId, Sequence[int]]]
+Tpm20CapTpmProperties = List[Tuple[int, int]]
+
+
+class IsNotTpm12Error(Exception):
+    """Identify when a TPM 1.2 command is attempted on a TPM 2.0 device"""
+
+
+class IsNotTpm20Error(Exception):
+    """Identify when a TPM 2.0 command is attempted on a TPM 1.2 device"""
+
+
+class TpmDevice:
+    def __init__(self, dev: BinaryIO):
+        self.dev = dev
+
+    @classmethod
+    @contextmanager
+    def open(cls, dev_path: Path) -> Generator['TpmDevice', None, None]:
+        """Open the specified device, to be used in a with block"""
+        with dev_path.open('r+b', buffering=0) as dev:
+            yield cls(dev)
+
+    def transmit_command(self, tag: int, code: int, params: Optional[bytes] = None):
+        """Transmit a command to the TPM device
+
+        Command header:
+        * For TPM 1.2
+            struct TPM_RQU_COMMAND_HDR {
+                TPM_STRUCTURE_TAG tag; // UINT16
+                UINT32 paramSize;
+                TPM_COMMAND_CODE ordinal; // UINT32
+            }
+        * For TPM 2.0
+            struct TPM2_COMMAND_HEADER {
+                TPM_ST tag; // UINT16
+                UINT32 paramSize;
+                TPM_CC commandCode; // UINT32
+            }
+        """
+        if params:
+            cmd = struct.pack('>HII', tag, 10 + len(params), code) + params
+        else:
+            cmd = struct.pack('>HII', tag, 10, code)
+        written = self.dev.write(cmd)
+        if written != len(cmd):
+            raise RuntimeError(
+                f"Fail to write the whole command to TPM device: {written} != {len(cmd)}")
+
+    def receive_response(self) -> Tuple[int, int, bytes]:
+        """Receive a response from the TPM device
+
+        Response header:
+        * For TPM 1.2
+            struct TPM_RSP_COMMAND_HDR {
+                TPM_STRUCTURE_TAG tag; // UINT16
+                UINT32 paramSize;
+                TPM_RESULT returnCode; // UINT32
+            }
+        * For TPM 2.0
+            struct TPM2_RESPONSE_HEADER {
+                TPM_ST tag; // UINT16
+                UINT32 paramSize;
+                TPM_RC responseCode; // UINT32
+            }
+        """
+        # On Linux, TPM_BUFSIZE = 4096
+        response = self.dev.read(4096)
+        if len(response) < 10:
+            raise RuntimeError(f"Received response too short: {response!r}")
+        tag, param_size, code = struct.unpack('>HII', response[:10])
+        if len(response) != param_size:
+            raise RuntimeError(
+                f"Unexpected param size {param_size} in {len(response)}-byte long response: {response!r}")
+        return tag, code, response[10:]
+
+    def tpm12_run(self, tag: Tpm12Tag, code: Tpm12CommandCode, params: Optional[bytes] = None) -> bytes:
+        """Run a TPM 1.2 command"""
+        self.transmit_command(tag.value, code.value, params)
+        resp_tag, resp_code, response = self.receive_response()
+        if resp_tag == 0x8001 and resp_code == 0xb0143 and response == b'':
+            # Linux driver forges a TPM2 response when the command is not implemented by the TPM:
+            #     tag = TPM2_ST_NO_SESSIONS
+            #     code = TPM2_RC_COMMAND_CODE | TSS2_RESMGR_TPM_RC_LAYER
+            #       (with TSS2_RESMGR_TPM_RC_LAYER = 11 << 16)
+            raise IsNotTpm12Error()
+
+        if resp_tag == Tpm12Tag.TPM_TAG_RSP_COMMAND.value and resp_code == Tpm12ResponseCode.TPM_BADTAG:
+            # Using /dev/tpm0 directly when it is a TPM 2.0 returns a TPM_BADTAG error
+            raise IsNotTpm12Error()
+        try:
+            tpm12_tag = Tpm12Tag(resp_tag)
+        except ValueError:
+            raise NotImplementedError(f"Unknown tag {resp_tag:#x} for TPM 1.2 response code")
+        if resp_code != 0:
+            # Failure
+            raise Tpm12Failure(resp_code)
+
+        if (tag == Tpm12Tag.TPM_TAG_RQU_COMMAND and tpm12_tag == Tpm12Tag.TPM_TAG_RSP_COMMAND) or \
+                (tag == Tpm12Tag.TPM_TAG_RQU_AUTH1_COMMAND and tpm12_tag == Tpm12Tag.TPM_TAG_RSP_AUTH1_COMMAND) or \
+                (tag == Tpm12Tag.TPM_TAG_RQU_AUTH2_COMMAND and tpm12_tag == Tpm12Tag.TPM_TAG_RSP_AUTH2_COMMAND):
+            return response
+        raise RuntimeError(f"Unexpected response tag {tpm12_tag!r} from request {tag!r}")
+
+    def tpm20_run(self, tag: Tpm20Tag, code: Tpm20CommandCode, params: Optional[bytes] = None) -> bytes:
+        """Run a TPM 2.0 command"""
+        self.transmit_command(tag.value, code.value, params)
+        resp_tag, resp_code, response = self.receive_response()
+        if resp_tag == 0x00c4 and resp_code == 0x000a and response == b'':
+            # Received a TPM1 response (tag=TPM_RSP_COMMAND, resp_code=TPM_BAD_ORDINAL)
+            raise IsNotTpm20Error()
+        try:
+            tpm20_tag = Tpm20Tag(resp_tag)
+        except ValueError:
+            raise NotImplementedError(f"Unknown tag {resp_tag:#x} for TPM 2.0 response code")
+        if resp_code != 0:
+            # Failure
+            raise Tpm20Failure(resp_code)
+
+        if (tag == Tpm20Tag.TPM2_ST_NO_SESSIONS and tpm20_tag == Tpm20Tag.TPM2_ST_NO_SESSIONS) or \
+                (tag == Tpm20Tag.TPM2_ST_SESSIONS and tpm20_tag == Tpm20Tag.TPM2_ST_SESSIONS):
+            return response
+        raise RuntimeError(f"Unexpected response tag {tpm20_tag!r} from request {tag!r}")
+
+    @functools.cached_property
+    def is_tpm12(self) -> bool:
+        """Is the device a TPM 1.2?"""
+        # Try reading PCR 0
+        try:
+            self.tpm12_pcr_read(0)
+        except IsNotTpm12Error:
+            return False
+        return True
+
+    @functools.cached_property
+    def is_tpm20(self) -> bool:
+        """Is the device a TPM 2.0?"""
+        # Try reading PCR 0
+        try:
+            self.tpm20_pcr_read(0, TpmAlgId.TPM_ALG_SHA1)
+        except IsNotTpm20Error:
+            return False
+        return True
+
+    def tpm_version(self) -> str:
+        if self.is_tpm20:
+            return '2.0'
+        if self.is_tpm12:
+            return '1.2'
+        raise NotImplementedError("Unable to guess the TPM version")
+
+    def tpm12_pcr_read(self, pcr_idx: int) -> bytes:
+        """Read a PCR (Platform Control Register) using TPM 1.2 command"""
+        resp = self.tpm12_run(
+            Tpm12Tag.TPM_TAG_RQU_COMMAND,
+            Tpm12CommandCode.TPM_ORD_PcrRead,
+            struct.pack('>I', pcr_idx))
+        if len(resp) != 20:
+            raise RuntimeError(f"Unexpected size of TPM 1.2 PCR (SHA1): {len(resp)}, {resp!r})")
+        return resp
+
+    def tpm12_get_capability_with_bytes(self, cap_area: Tpm12CapabilityArea, subcap: bytes) -> bytes:
+        """Get a TPM 1.2 capability, with sub capability given as bytes"""
+        resp = self.tpm12_run(
+            Tpm12Tag.TPM_TAG_RQU_COMMAND,
+            Tpm12CommandCode.TPM_ORD_GetCapability,
+            struct.pack('>II', cap_area.value, len(subcap)) + subcap)
+        resp_size, = struct.unpack('>I', resp[:4])
+        if 4 + resp_size != len(resp):
+            raise RuntimeError(f"Unexpected response format for TPM_ORD_GetCapability: {resp!r}")
+        return resp[4:]
+
+    def tpm12_get_capability_nosub(self, cap_area: Tpm12CapabilityArea) -> bytes:
+        """Get a TPM 1.2 capability with no sub capability"""
+        return self.tpm12_get_capability_with_bytes(cap_area, b'')
+
+    def tpm12_get_capability_prop(self, subcap: Tpm12CapabilityArea) -> Union[bool, int, Tuple[int, ...]]:
+        """Get a TPM 1.2 capability TPM_CAP_PROPERTY with a sub-capability"""
+        resp = self.tpm12_get_capability_with_bytes(
+            Tpm12CapabilityArea.TPM_CAP_PROPERTY,
+            struct.pack('>I', subcap.value))
+        if subcap == Tpm12CapabilityArea.TPM_CAP_PROP_TIS_TIMEOUT and len(resp) == 0x10:
+            if TYPE_CHECKING:
+                return (0, 0, 0, 0)  # Make mypy happy, as struct.unpack returns Tuple[Any, ...]
+            return struct.unpack('>IIII', resp)
+        if subcap == Tpm12CapabilityArea.TPM_CAP_PROP_DURATION and len(resp) == 0xc:
+            if TYPE_CHECKING:
+                return (0, 0, 0)
+            return struct.unpack('>III', resp)
+        if resp in (b'\x00', b'\x01'):
+            return resp != b'\x00'  # boolean
+        if len(resp) == 4:
+            return struct.unpack('>I', resp)[0]
+        raise RuntimeError(f"Unexpected response format for TPM_CAP_PROPERTY: {resp!r}")
+
+    def tpm12_get_cap_ordinal(self, ordinal: int) -> bool:
+        """Get a TPM 1.2 capability TPM_CAP_ORD (true if the associated command code is available)"""
+        resp = self.tpm12_get_capability_with_bytes(
+            Tpm12CapabilityArea.TPM_CAP_ORD,
+            struct.pack('>I', ordinal))
+        if resp not in (b'\x00', b'\x01'):
+            raise RuntimeError(f"Unexpected response format for cap TPM_CAP_ORD: {resp!r}")
+        return resp != b'\x00'
+
+    def tpm12_get_cap_algorithm(self, algorithm: int) -> bool:
+        """Get a TPM 1.2 capability TPM_CAP_ALG (true if the associated algorithm is available)"""
+        resp = self.tpm12_get_capability_with_bytes(
+            Tpm12CapabilityArea.TPM_CAP_ALG,
+            struct.pack('>I', algorithm))
+        if resp not in (b'\x00', b'\x01'):
+            raise RuntimeError(f"Unexpected response format for cap TPM_CAP_ALG: {resp!r}")
+        return resp != b'\x00'
+
+    def tpm12_get_cap_sym_mode(self, sym_mode: int) -> bool:
+        """Get a TPM 1.2 capability TPM_CAP_SYM_MODE (true if the associated sym_mode is available)"""
+        resp = self.tpm12_get_capability_with_bytes(
+            Tpm12CapabilityArea.TPM_CAP_SYM_MODE,
+            struct.pack('>I', sym_mode))
+        if resp not in (b'\x00', b'\x01'):
+            raise RuntimeError(f"Unexpected response format for cap TPM_CAP_SYM_MODE: {resp!r}")
+        return resp != b'\x00'
+
+    def tpm12_get_cap_protocol(self, protocol: int) -> bool:
+        """Get a TPM 1.2 capability TPM_CAP_PID (true if the associated protocol is available)"""
+        resp = self.tpm12_get_capability_with_bytes(
+            Tpm12CapabilityArea.TPM_CAP_PID,
+            struct.pack('>H', protocol))
+        if resp not in (b'\x00', b'\x01'):
+            raise RuntimeError(f"Unexpected response format for cap TPM_CAP_PID: {resp!r}")
+        return resp != b'\x00'
+
+    def tpm12_get_cap_flag(self, flag: Tpm12CapabilityArea) -> Tuple[bool, ...]:
+        """Get a TPM 1.2 capability TPM_CAP_FLAG"""
+        resp = self.tpm12_get_capability_with_bytes(
+            Tpm12CapabilityArea.TPM_CAP_FLAG,
+            struct.pack('>I', flag.value))
+        tag, = struct.unpack('>H', resp[:2])
+        if flag == Tpm12CapabilityArea.TPM_CAP_FLAG_PERMANENT:
+            if tag != Tpm12Tag.TPM_TAG_PERMANENT_FLAGS:
+                raise RuntimeError(f"Unexpected response format for cap TPM_CAP_FLAG: {resp!r}")
+        elif flag == Tpm12CapabilityArea.TPM_CAP_FLAG_VOLATILE:
+            if tag != Tpm12Tag.TPM_TAG_STCLEAR_FLAGS:
+                raise RuntimeError(f"Unexpected response format for cap TPM_CAP_FLAG: {resp!r}")
+        else:
+            raise ValueError("Unsupported TPM_CAP_FLAG {flag!r}")
+        if any(x not in (0, 1) for x in resp[2:]):
+            raise RuntimeError(f"Unexpected response format for cap TPM_CAP_FLAG: {resp!r}")
+        return tuple(x != 0 for x in resp[2:])
+
+    def tpm12_get_cap_nv_list(self) -> Tuple[int, ...]:
+        """Get a TPM 1.2 capability TPM_CAP_NV_LIST"""
+        resp = self.tpm12_get_capability_nosub(Tpm12CapabilityArea.TPM_CAP_NV_LIST)
+        return struct.unpack('>' + 'I' * (len(resp) // 4), resp)
+
+    def tpm12_print_cap_version(self, indent: str = ''):
+        """Print TPM 1.2 capability TPM_CAP_VERSION
+
+        Response: struct TPM_STRUCT_VER which is always 1, 1, 0, 0
+        """
+        resp = self.tpm12_get_capability_nosub(Tpm12CapabilityArea.TPM_CAP_VERSION)
+        v_maj, v_min, v_rmaj, v_rmin = struct.unpack('4B', resp)
+        print(f"{indent}- Version (deprecated): {v_maj}.{v_min}.{v_rmaj}.{v_rmin}")
+        if resp != b'\x01\x01\x00\x00':
+            print(f"Warning: unexpected TPM_CAP_VERSION {resp!r}", file=sys.stderr)
+
+    def tpm12_print_cap_version_info(self, indent: str = ''):
+        """Print TPM 1.2 capability TPM_CAP_VERSION_VAL
+
+        Response:
+            struct TPM_CAP_VERSION_INFO {
+                TPM_STRUCTURE_TAG tag; // UINT16
+                TPM_VERSION version;
+                UINT16 specLevel;
+                UINT8 errataRev;
+                UINT8 tpmVendorID[4];
+                UINT16 vendorSpecificSize;
+                UINT8 *vendorSpecific;
+            }
+            struct TPM_VERSION {
+                TPM_VERSION_BYTE major;
+                TPM_VERSION_BYTE minor;
+                UINT8 revMajor;
+                UINT8 revMinor;
+           }
+        """
+        resp = self.tpm12_get_capability_nosub(Tpm12CapabilityArea.TPM_CAP_VERSION_VAL)
+        tag, v_maj, v_min, v_rmaj, v_rmin, spc, erra, vendor, vend_spec_size = struct.unpack('>HBBBBHBIH', resp[:0xf])
+        if tag != Tpm12Tag.TPM_TAG_CAP_VERSION_INFO.value:
+            raise RuntimeError(f"Unexpected TPM_CAP_VERSION_INFO tag: {tag:#x}")
+        if 0xf + vend_spec_size != len(resp):
+            raise RuntimeError(f"Unexpected response format for cap TPM_CAP_VERSION_VAL: {resp!r}")
+        print(f"{indent}- Version Info:")
+        # Split version field like /sys/class/tpm/tpm0/caps
+        print(f"{indent}  - TCG version: {v_maj}.{v_min}")
+        print(f"{indent}  - Firmware version: {v_rmaj}.{v_rmin}")
+        print(f"{indent}  - spec level: {spc}")
+        print(f"{indent}  - errata revision: {erra}")
+        bytes_vendor = struct.pack('>I', vendor).rstrip(b'\0')
+        try:
+            repr_vendor = repr(bytes_vendor.decode('ascii'))
+        except UnicodeDecodeError:
+            repr_vendor = repr(bytes_vendor)
+        print(f"{indent}  - TPM vendor ID: {repr_vendor} ({vendor:#x})")
+        if vend_spec_size:
+            vend_spec_hex = binascii.hexlify(resp[0xf:]).decode('ascii')
+            print(f"{indent}  - vendor specific information: {vend_spec_hex}")
+
+    def tpm12_print_cap_nv_index(self, nv_idx: int, indent: str = ''):
+        """Print TPM 1.2 capability TPM_CAP_NV_INDEX
+
+        struct TPM_NV_DATA_PUBLIC {
+            TPM_STRUCTURE_TAG tag;
+            TPM_NV_INDEX nvIndex;
+            TPM_PCR_INFO_SHORT pcrInfoRead;
+            TPM_PCR_INFO_SHORT pcrInfoWrite;
+            TPM_NV_ATTRIBUTES permission;
+            BOOLEAN bReadSTClear;
+            BOOLEAN bWriteSTClear;
+            BOOLEAN bWriteDefine;
+            UINT32 dataSize;
+        }
+        struct TPM_PCR_INFO_SHORT {
+            TPM_PCR_SELECTION pcrSelection;
+            TPM_LOCALITY_SELECTION localityAtRelease; // UINT8
+            TPM_COMPOSITE_HASH digestAtRelease; // TPM_DIGEST = UINT8[20]
+        }
+        struct TPM_PCR_SELECTION {
+            UINT16 sizeOfSelect;
+            UINT8 pcrSelect[];
+        }
+        struct TPM_NV_ATTRIBUTES {
+            TPM_STRUCTURE_TAG tag;
+            UINT32 attributes;
+        }
+        """
+        resp = self.tpm12_get_capability_with_bytes(
+            Tpm12CapabilityArea.TPM_CAP_NV_INDEX,
+            struct.pack('>I', nv_idx))
+        tag, nv_index = struct.unpack('>HI', resp[:6])
+        if tag != Tpm12Tag.TPM_TAG_NV_DATA_PUBLIC or nv_index != nv_idx:
+            raise RuntimeError(f"Unexpected response format for cap TPM_CAP_NV_INDEX: {resp!r}")
+        offset = 6
+        for read_write in range(2):
+            pcr_select_size, = struct.unpack('>H', resp[offset:offset + 2])
+            offset += 2
+            pcr_select = []
+            for pcr_idx_bytepos in range(pcr_select_size):
+                pcrsel_byte = resp[offset + pcr_idx_bytepos]
+                pcr_idx = pcr_idx_bytepos * 8
+                while pcrsel_byte:
+                    if pcrsel_byte & 1:
+                        pcr_select.append(pcr_idx)
+                    pcrsel_byte >>= 1
+                    pcr_idx += 1
+            offset += pcr_select_size
+            pcr_loc_at_release, = struct.unpack('B', resp[offset:offset + 1])
+            offset += 1
+            pcr_digest_at_release_hex = binascii.hexlify(resp[offset:offset + 20]).decode('ascii')
+            offset += 20
+            print(f"{indent}- PCR info {['read', 'write'][read_write]}: {pcr_select}")
+            print(f"{indent}  - localities at release: {pcr_loc_at_release:#x}")  # 0x1f is "ALL" in tpm_nvinfo
+            if pcr_digest_at_release_hex != '0' * 40:
+                print(f"{indent}  - digest at release: {pcr_digest_at_release_hex}")
+        perm_tag, attr, r_st_clear, w_st_clear, w_define, data_size = struct.unpack('>HIBBBI', resp[offset:])
+        if perm_tag != Tpm12Tag.TPM_TAG_NV_ATTRIBUTES:
+            raise RuntimeError(f"Unexpected response format for cap TPM_CAP_NV_INDEX (perm tag): {resp!r}")
+        perm_desc: List[str] = []
+        remaining = attr
+        for bitmask, bit_desc in TPM12_NV_ATTRIBUTES_DESC:
+            if remaining & bitmask:
+                perm_desc.append(bit_desc)
+                remaining &= ~bitmask
+            if not remaining:
+                break
+        if remaining:
+            perm_desc.append(hex(remaining))
+        if not perm_desc:
+            perm_desc = ['none']
+        print(f"{indent}- Permission attributes: {'|'.join(perm_desc)} ({attr:#x})")
+        bool_xlate: Mapping[int, bool] = {0: False, 1: True}
+        print(f"{indent}- Read ST Clear: {bool_xlate.get(r_st_clear, r_st_clear)}")
+        print(f"{indent}- Write ST Clear: {bool_xlate.get(w_st_clear, w_st_clear)}")
+        print(f"{indent}- Write Define: {bool_xlate.get(w_define, w_define)}")
+        print(f"{indent}- Data Size: {data_size:#x}")
+        if data_size:
+            try:
+                data = self.tpm12_nv_read_all(nv_idx, data_size)
+            except Tpm12Failure as exc:
+                if exc.code == Tpm12ResponseCode.TPM_AUTH_CONFLICT:
+                    print(f"{indent}- NV data: error TPM_AUTH_CONFLICT")
+                else:
+                    raise
+            else:
+                print(f"{indent}- NV data:")
+                hexdump(data, indent=indent + '  ')
+
+    def tpm12_nv_read(self, nv_idx: int, offset: int, size: int) -> bytes:
+        """Read a non-volatile variable, using TPM_NV_ReadValue"""
+        resp = self.tpm12_run(
+            Tpm12Tag.TPM_TAG_RQU_COMMAND,
+            Tpm12CommandCode.TPM_ORD_NV_ReadValue,
+            struct.pack('>III', nv_idx, offset, size))
+        resp_size, = struct.unpack('>I', resp[:4])
+        if 4 + resp_size != len(resp):
+            raise RuntimeError(f"Unexpected response format for TPM_ORD_NV_ReadValue: {resp!r}")
+        return resp[4:]
+
+    def tpm12_nv_read_all(self, nv_idx: int, size: int) -> bytes:
+        """Read a non-volatile variable, using repeated TPM2_NV_Read"""
+        nv_buffer_size = 0x400
+        data = b''
+        while len(data) < size:
+            requested_size = min(size - len(data), nv_buffer_size)
+            resp = self.tpm12_nv_read(nv_idx, len(data), requested_size)
+            if not resp:
+                print(f"Warning: unable to get whole data for {nv_idx:#x}: {len(data):#x}/{size:#x}",
+                      file=sys.stderr)
+                break
+            data += resp
+        return data
+
+    def tpm12_read_pubek(self) -> bytes:
+        """Read the Public EK, using TPM_ReadPubek
+
+        Response:
+            TPM_PUBKEY pubEndorsementKey
+            TPM_DIGESTchecksum
+        """
+        nonce = secrets.token_bytes(0x14)
+        resp = self.tpm12_run(
+            Tpm12Tag.TPM_TAG_RQU_COMMAND,
+            Tpm12CommandCode.TPM_ORD_ReadPubek,
+            nonce)
+        # TODO: decode the PubEK
+        return resp
+
+    def tpm20_pcr_read(self, pcr_idx: int, alg_id: TpmAlgId) -> Tuple[bytes, int]:
+        """Read a PCR (Platform Control Register) using TPM 2.0 command
+
+        Parameters:
+            TPML_PCR_SELECTION pcrSelectionIn (the selection of PCR to read)
+        Response:
+            UINT32 pcrUpdateCounter (the current value of the PCR update counter)
+            TPML_PCR_SELECTION pcrSelectionOut (the PCR in the returned list)
+            TPML_DIGEST pcrValues (the contents of the PCR, as tagged digests)
+        """
+        # Build a TPML_PCR_SELECTION list with one item
+        # pcrsel is at least 3, because minimum 24 PCR, 8 bit each => TPM2_PCR_SELECT_MIN = 3 bytes
+        pcrsel_size = max((pcr_idx >> 3) + 1, 3)
+        pcrsel = bytearray(pcrsel_size)
+        pcrsel[pcr_idx >> 3] = 1 << (pcr_idx & 7)
+        resp = self.tpm20_run(
+            Tpm20Tag.TPM2_ST_NO_SESSIONS,
+            Tpm20CommandCode.TPM2_CC_PCR_Read,
+            struct.pack('>IHB', 1, alg_id.value, pcrsel_size) + pcrsel)
+
+        pcr_update_counter, selection_count, sel_algid, sel_size = struct.unpack('>IIHB', resp[:11])
+        if selection_count != 1:
+            raise RuntimeError(f"Unexpected selection count {selection_count} != 1")
+        if sel_algid != alg_id.value:
+            raise RuntimeError(f"Unexpected selection alg ID {sel_algid:#x} != {alg_id!r}")
+        if resp[11 + (pcr_idx // 8)] & (1 << (pcr_idx & 7)) == 0:
+            raise RuntimeError(f"Unexpected selected PCR in {resp!r}")
+        offset = 11 + sel_size
+        pcr_values_count, pcr_size = struct.unpack('>IH', resp[offset:offset + 6])
+        if pcr_values_count != 1:
+            raise RuntimeError(f"Unexpected PCR values count {pcr_values_count} != 1")
+        offset += 6
+        if offset + pcr_size != len(resp):
+            raise RuntimeError(f"Unexpected response format for PCR: {resp!r}")
+        return resp[offset:], pcr_update_counter
+
+    def tpm20_get_capability(self, capability: Tpm20Capability, prop: int, prop_count: int = 1
+                             ) -> Tuple[bool, bytes]:
+        """Get a TPM 2.0 capability
+
+        Parameters:
+            TPM_CAP capability (group selection; determines the format of the response)
+            UINT32 property (further definition of information)
+            UINT32 propertyCount (number of properties of the indicated type to return)
+        Response:
+            TPMI_YES_NO moreData (flag to indicate if there are more values of this type
+            TPMS_CAPABILITY_DATA capability data:
+                TPM_CAP capability
+                TPMU_CAPABILITIES data
+
+        (TPML for List, TPMS for Structure, TPMU for Union)
+        """
+        resp = self.tpm20_run(
+            Tpm20Tag.TPM2_ST_NO_SESSIONS,
+            Tpm20CommandCode.TPM2_CC_GetCapability,
+            struct.pack('>III', capability.value, prop, prop_count))
+        resp_more_data, resp_capability = struct.unpack('>BI', resp[:5])
+        if resp_capability != capability.value:
+            raise RuntimeError(f"Unexpected response capability {resp_capability:#x} for requested {capability!r}")
+        return resp_more_data != 0, resp[5:]
+
+    def tpm20_get_capability_vec_gen(self, capability: Tpm20Capability, prop_start: int, page_count: int,
+                                     item_size_opt: Optional[int]) -> Generator[bytes, None, None]:
+        """Get a TPM 2.0 capability with all its properties as a generator
+
+        Suppose that the returned value contains the count and that all items
+        share the same size (so it is a real "vector").
+        """
+        while True:
+            more_data, resp_data = self.tpm20_get_capability(capability, prop_start, page_count)
+            items_count, = struct.unpack('>I', resp_data[:4])
+            if items_count:
+                if not item_size_opt:
+                    item_size = (len(resp_data) - 4) // items_count
+                else:
+                    item_size = item_size_opt
+                if len(resp_data) != 4 + item_size * items_count:
+                    raise RuntimeError(
+                        f"Unexpected unaligned response for capability {capability.name}: " +
+                        f"{len(resp_data)} != 4 + {item_size} * {items_count}")
+                offset = 4
+                for offset in range(4, len(resp_data), item_size):
+                    yield resp_data[offset:offset + item_size]
+            if not more_data:
+                return
+            prop_start += page_count
+
+    def tpm20_get_cap_algs(self) -> Tpm20CapAlgs:
+        """Get TPM 2.0 capability TPM_CAP_ALGS
+
+        "prop" is the starting algorithm ID.
+
+        struct TPML_ALG_PROPERTY {
+            UINT32 count;
+            TPMS_ALG_PROPERTY algProperties[MAX_CAP_ALGS];
+        }
+        struct TPMS_ALG_PROPERTY {
+            TPM_ALG_ID alg;
+            TPMA_ALGORITHM algProperties;
+        }
+        struct TPMA_ALGORITHM {
+            UINT32 asymmetric    : 1;
+            UINT32 symmetric     : 1;
+            UINT32 hash          : 1;
+            UINT32 object        : 1;
+            UINT32 reserved4_7   : 4;
+            UINT32 signing       : 1;
+            UINT32 encrypting    : 1;
+            UINT32 method        : 1;
+            UINT32 reserved11_31 : 21;
+        }
+        """
+        algs: Tpm20CapAlgs = []
+        for resp_data in self.tpm20_get_capability_vec_gen(Tpm20Capability.TPM_CAP_ALGS, 0, TPM2_MAX_CAP_ALGS, 6):
+            alg_id, alg_property = struct.unpack('>HI', resp_data)
+            algs.append((TpmAlgId(alg_id), alg_property))
+        return algs
+
+    def tpm20_get_cap_ecc_curves(self) -> Tpm20CapEccCurves:
+        """Get TPM 2.0 capability TPM_CAP_ECC_CURVES
+
+        "prop" is the starting ECC curve algorithm ID.
+
+        struct TPML_ECC_CURVE {
+            UINT32 count;
+            TPM_ECC_CURVE eccCurves[MAX_ECC_CURVES];
+        }
+        TPM_ECC_CURVE is UINT16
+        """
+        curves: Tpm20CapEccCurves = []
+        for resp_data in self.tpm20_get_capability_vec_gen(
+                Tpm20Capability.TPM_CAP_ECC_CURVES,
+                0,
+                TPM2_MAX_ECC_CURVES,
+                2):
+            ecc_curve_id, = struct.unpack('>H', resp_data)
+            curves.append(Tpm20EccCurve(ecc_curve_id))
+        return curves
+
+    def tpm20_get_cap_handles(self, bruteforce=False) -> Tpm20CapHandles:
+        """Get TPM 2.0 capability TPM_CAP_HANDLES
+
+        "prop" is the starting handle.
+
+        struct TPML_HANDLE {
+            UINT32 count;
+            TPM2_HANDLE tpmProperty[TPM2_MAX_CAP_HANDLES];
+        }
+        TPM2_HANDLE is UINT32
+        """
+        handles: Tpm20CapHandles = []
+        for starting_handle in range(0, 0x100000000, 0x1000000):
+            if not bruteforce:
+                # Limit to the known handle types
+                try:
+                    Tpm20HandleType(starting_handle >> 24)
+                except ValueError:
+                    continue
+            try:
+                for resp_data in self.tpm20_get_capability_vec_gen(
+                        Tpm20Capability.TPM_CAP_HANDLES,
+                        starting_handle,
+                        TPM2_MAX_CAP_HANDLES,
+                        4):
+                    handle, = struct.unpack('>I', resp_data)
+                    handles.append(handle)
+            except Tpm20Failure as exc:
+                if exc.code == Tpm20ResponseCode.TPM2_RC_HANDLE_GetCapability_property.value:
+                    # GetCapability returns response code 0x2cb for unsupported input handle types
+                    continue
+                raise
+        return handles
+
+    def tpm20_get_cap_commands(self, cap: Tpm20Capability) -> Tpm20CapCommands:
+        """Get TPM 2.0 capability TPM_CAP_COMMANDS, TPM_CAP_PP_COMMANDS or TPM_CAP_AUDIT_COMMAND
+
+        "prop" is the starting command code.
+
+        struct TPML_CCA {
+            UINT32 count;
+            TPMA_CC commandAttributes[MAX_CAP_CC];
+        }
+        struct TPMA_CC {
+            UINT32 commandIndex  : 16;
+            UINT32 reserved16_21 : 6;
+            UINT32 nv            : 1;
+            UINT32 extensive     : 1;
+            UINT32 flushed       : 1;
+            UINT32 cHandles      : 3;
+            UINT32 rHandle       : 1;
+            UINT32 V             : 1;
+            UINT32 Res           : 2;
+        }
+        """
+        comms: Tpm20CapCommands = []
+        for starting_command in range(0, 0x10000, 0x1000):
+            for resp_data in self.tpm20_get_capability_vec_gen(
+                    cap,
+                    starting_command,
+                    TPM2_MAX_CAP_CC,
+                    4):
+                comm_attr, comm_code = struct.unpack('>HH', resp_data)
+                if comm_code >= starting_command:
+                    comms.append((comm_code, comm_attr))
+        return comms
+
+    def tpm20_get_cap_pcrs(self) -> Tpm20CapPcrSelection:
+        """Get TPM 2.0 capability TPM_CAP_PCRS
+
+        struct TPML_PCR_SELECTION {
+            UINT32 count;
+            TPMS_PCR_SELECTION pcrSelections[HASH_COUNT];
+        }
+        struct TPMS_PCR_SELECTION {
+            TPMI_ALG_HASH hash;
+            UINT8 sizeofSelect;
+            BYTE pcrSelect[PCR_SELECT_MAX];
+        }
+        """
+        # Do not use tpm20_get_capability_vec_gen as the size of TPMS_PCR_SELECTION
+        # depends on the implementation
+        more_data, resp_data = self.tpm20_get_capability(Tpm20Capability.TPM_CAP_PCRS, 0)
+        if more_data:
+            raise RuntimeError(f"Unexpected more data for TPM_CAP_PCRS")
+
+        nr_banks, = struct.unpack('>I', resp_data[:4])
+        pcr_select: Tpm20CapPcrSelection = []
+        offset = 4
+        for _ in range(nr_banks):
+            bank_alg_hash, select_size = struct.unpack('>HB', resp_data[offset:offset + 3])
+            offset += 3
+            bank_pcr_select = []
+            for pcr_idx_bytepos in range(select_size):
+                pcrsel_byte = resp_data[offset + pcr_idx_bytepos]
+                pcr_idx = pcr_idx_bytepos * 8
+                while pcrsel_byte:
+                    if pcrsel_byte & 1:
+                        bank_pcr_select.append(pcr_idx)
+                    pcrsel_byte >>= 1
+                    pcr_idx += 1
+            offset += select_size
+            pcr_select.append((TpmAlgId(bank_alg_hash), bank_pcr_select))
+        if offset != len(resp_data):
+            raise RuntimeError(f"Unexpected response format for cap TPM_CAP_PCRS: {resp_data!r}")
+        return pcr_select
+
+    def tpm20_get_cap_tpm_properties(self) -> Tpm20CapTpmProperties:
+        """Get TPM 2.0 capability TPM_CAP_TPM_PROPERTIES
+
+        "prop" is the starting property.
+
+        struct TPML_TAGGED_TPM_PROPERTY {
+            UINT32 count;
+            TPMS_TAGGED_PROPERTY tpmProperty[MAX_TPM_PROPERTIES];
+        }
+        struct TPMS_TAGGED_PROPERTY {
+            TPM_PT property; // UINT32
+            UINT32 value;
+        }
+        """
+        properties: Tpm20CapTpmProperties = []
+        for resp_data in self.tpm20_get_capability_vec_gen(
+                Tpm20Capability.TPM_CAP_TPM_PROPERTIES,
+                0,
+                TPM2_MAX_TPM_PROPERTIES,
+                8):
+            prop, value = struct.unpack('>II', resp_data)
+            properties.append((prop, value))
+        return properties
+
+    def tpm20_get_cap_tpm_property(self, prop: Tpm20Property) -> Optional[int]:
+        """Get a TPM 2.0 capability from TPM_CAP_TPM_PROPERTIES"""
+        resp_data = self.tpm20_get_capability(Tpm20Capability.TPM_CAP_TPM_PROPERTIES, prop.value, 1)[1]
+        items_count, = struct.unpack('>I', resp_data[:4])
+        if items_count == 0 and len(resp_data) == 4:
+            # The property does not exist
+            return None
+        if items_count != 1 or len(resp_data) != 0xc:
+            raise RuntimeError(f"Unexpected response format for cap TPM_CAP_PCRS: {resp_data!r}")
+        prop_id, value = struct.unpack('>II', resp_data[4:])
+        if prop_id != prop.value:
+            # Another property is returned when the property does not exist
+            return None
+        return value
+
+    def tpm20_get_cap_pcr_properties(self) -> Tpm20CapPcrProperties:
+        """Get TPM 2.0 capability TPM_CAP_PCR_PROPERTIES
+
+        "prop" is the starting property.
+
+        struct TPMS_TAGGED_PCR_SELECT {
+            TPM_PT tag; // UINT32
+            UINT8 sizeofSelect;
+            BYTE pcrSelect[PCR_SELECT_MAX];
+        }
+        struct TPMS_PCR_SELECT {
+            UINT8 sizeofSelect;
+            BYTE pcrSelect[PCR_SELECT_MAX];
+        }
+        """
+        properties: Tpm20CapPcrProperties = []
+        for resp_data in self.tpm20_get_capability_vec_gen(
+                Tpm20Capability.TPM_CAP_PCR_PROPERTIES,
+                0,
+                TPM2_MAX_PCR_PROPERTIES,
+                None):
+            prop, select_size = struct.unpack('>IB', resp_data[:5])
+            if len(resp_data) != 5 + select_size:
+                raise RuntimeError(
+                    f"Unexpected size of select for TPM_CAP_PCR_PROPERTIES: " +
+                    f"{len(resp_data)} != 5 + {select_size}")
+            pcr_select = []
+            for pcr_idx_bytepos in range(select_size):
+                pcrsel_byte = resp_data[5 + pcr_idx_bytepos]
+                pcr_idx = pcr_idx_bytepos * 8
+                while pcrsel_byte:
+                    if pcrsel_byte & 1:
+                        pcr_select.append(pcr_idx)
+                    pcrsel_byte >>= 1
+                    pcr_idx += 1
+            properties.append((prop, pcr_select))
+        return properties
+
+    def tpm20_public_read(self, handle: int) -> Tuple[Tpm20PublicStruct, bytes, bytes]:
+        """Read the public area of a loaded object, without authorization, using TPM2_ReadPublic
+
+        Response:
+            TPM2B_PUBLIC outPublic : structure containing the public area of an object
+            TPM2B_NAME name : name of the object
+            TPM2B_NAME qualifiedName : the Qualified Name of the object
+
+        struct {
+            UINT16 size;
+            TPMT_PUBLIC publicArea;
+        } TPM2B_PUBLIC;
+        struct TPM2B_NAME {
+            UINT16 size;
+            BYTE name[sizeof(TPMU_NAME)];
+        }
+        """
+        resp = self.tpm20_run(
+            Tpm20Tag.TPM2_ST_NO_SESSIONS,
+            Tpm20CommandCode.TPM2_CC_ReadPublic,
+            struct.pack('>I', handle))
+        public_size, = struct.unpack('>H', resp[:2])
+        public = Tpm20PublicStruct.from_bytes(resp[2:2 + public_size])
+        offset = 2 + public_size
+        name_size, = struct.unpack('>H', resp[offset:offset + 2])
+        name = resp[offset + 2:offset + 2 + name_size]
+        offset += 2 + name_size
+        qualified_name_size, = struct.unpack('>H', resp[offset:offset + 2])
+        qualified_name = resp[offset + 2:offset + 2 + qualified_name_size]
+        if offset + 2 + qualified_name_size != len(resp):
+            raise RuntimeError(f"Unexpected response format for TPM2_CC_ReadPublic: {resp!r}")
+        return public, name, qualified_name
+
+    def tpm20_nv_public_read(self, nv_index: int) -> Tuple[Tpm20NvPublicStruct, bytes]:
+        """Read the public area and name of an Non-Volatile Index, using TPM2_NV_ReadPublic
+
+        Response:
+            TPM2B_NV_PUBLIC nvPublic : the public area of the NV Index
+            TPM2B_NAME nvName : the Name of the NV Index
+
+        struct TPM2B_NV_PUBLIC{
+            UINT16 size;
+            TPMS_NV_PUBLIC nvPublic;
+        }
+        struct TPM2B_NAME {
+            UINT16 size;
+            BYTE name[sizeof(TPMU_NAME)];
+        }
+        """
+        resp = self.tpm20_run(
+            Tpm20Tag.TPM2_ST_NO_SESSIONS,
+            Tpm20CommandCode.TPM2_CC_NV_ReadPublic,
+            struct.pack('>I', nv_index))
+        public_size, = struct.unpack('>H', resp[:2])
+        public = Tpm20NvPublicStruct.from_bytes(resp[2:2 + public_size])
+        name_size, = struct.unpack('>H', resp[2 + public_size:4 + public_size])
+        name = resp[4 + public_size:4 + public_size + name_size]
+        if 4 + public_size + name_size != len(resp):
+            raise RuntimeError(f"Unexpected response format for TPM2_CC_NV_ReadPublic: {resp!r}")
+        return public, name
+
+    def tpm20_start_auth_session_hmac(self) -> Tpm20AuthSessionContext:
+        """Start an authorization session with HMAC-SHA256, using TPM2_StartAuthSession
+
+        The session is "Unbound and Unsalted", as it does not use tpmKey nor bind parameter.
+
+        Parameters:
+            TPMI_DH_OBJECT tpmKey: handle of a loaded decrypt key used to encrypt salt
+            TPMI_DH_ENTITY bind: entity providing the authValue
+            TPM2B_NONCE nonceCaller
+            TPM2B_ENCRYPTED_SECRET encryptedSalt
+            TPM_SE sessionType
+            TPMT_SYM_DEF+ symmetric: the algorithm and key size for parameter encryption
+            TPMI_ALG_HASH authHash
+
+        Response:
+            TPMI_SH_AUTH_SESSION sessionHandle
+            TPM2B_NONCE nonceTPM
+
+        TPM2B_NONCE is TPM2B_DIGEST (UINT16 size followed by bytes)
+        TPM2B_ENCRYPTED_SECRET is also struct {UINT16 size; BYTE secret[sizeof(TPMU_ENCRYPTED_SECRET)];}
+        """
+        nonce_caller: bytes = secrets.token_bytes(0x20)
+        resp = self.tpm20_run(
+            Tpm20Tag.TPM2_ST_NO_SESSIONS,
+            Tpm20CommandCode.TPM2_CC_StartAuthSession,
+            struct.pack(
+                '>IIH',
+                Tpm20Handle.TPM_RH_NULL.value,  # tpmKey
+                Tpm20Handle.TPM_RH_NULL.value,  # bind
+                len(nonce_caller)) +  # nonceCaller.size
+            nonce_caller +  # nonceCaller.buffer
+            struct.pack(
+                '>HBHH',
+                0,  # encryptedSalt.size
+                0,  # sessionType = TPM_SE_HMAC
+                TpmAlgId.TPM_ALG_NULL.value,  # symmetric
+                TpmAlgId.TPM_ALG_SHA256))  # authHash
+        session_handle, nonce_tpm_size = struct.unpack('>IH', resp[:6])
+        nonce_tpm = resp[6:6 + nonce_tpm_size]
+        if 6 + nonce_tpm_size != len(resp):
+            raise RuntimeError(f"Unexpected response format for TPM2_CC_StartAuthSession: {resp!r}")
+        return Tpm20AuthSessionContext(session_handle, TpmAlgId.TPM_ALG_SHA256, nonce_caller, nonce_tpm, b'')
+
+    def tpm20_flush_context(self, handle: int):
+        """Remove from the TPM memory the context associated with a loaded
+        object, sequence object, or session, using TPM2_FlushContext.
+        """
+        self.tpm20_run(
+            Tpm20Tag.TPM2_ST_NO_SESSIONS,
+            Tpm20CommandCode.TPM2_CC_FlushContext,
+            struct.pack('>I', handle))
+
+    def tpm20_nv_read(self, handle: int, auth_session: Tpm20AuthSessionContext,
+                      handle_name: bytes, offset: int, size: int) -> bytes:
+        """Read a non-volatile variable, using the given auth_session, using TPM2_NV_Read"""
+        parameters = struct.pack('>HH', size, offset)
+
+        # Define session attributes to 1 for "continueSession"
+        session_attributes = b'\x01'
+
+        # Compute the cpHash (Command Parameter Hash)
+        cphash = auth_session.hash_alg.compute_hash(
+            struct.pack('>I', Tpm20CommandCode.TPM2_CC_NV_Read) +
+            handle_name +
+            handle_name +
+            parameters)
+
+        # Generate a new caller nonce
+        auth_session.nonce_caller = secrets.token_bytes(len(auth_session.nonce_caller))
+
+        # Compute the HMAC
+        hmac_command = auth_session.hash_alg.compute_hmac(
+            auth_session.session_key,
+            cphash + auth_session.nonce_caller + auth_session.nonce_tpm + session_attributes)
+
+        # Transmit an authenticated command
+        resp = self.tpm20_run(
+            Tpm20Tag.TPM2_ST_SESSIONS,
+            Tpm20CommandCode.TPM2_CC_NV_Read,
+            struct.pack(
+                '>IIIIH',
+                handle,  # parameter @authHandle
+                handle,  # parameter nvIndex
+                9 + len(auth_session.nonce_caller) + len(hmac_command),  # Authorization_area.size
+                auth_session.session_handle,
+                len(auth_session.nonce_caller)) +
+            auth_session.nonce_caller +
+            session_attributes +
+            struct.pack('>H', len(hmac_command)) +
+            hmac_command +
+            parameters)
+
+        data_size, = struct.unpack('>I', resp[:4])
+        resp_data = resp[4:4 + data_size]
+        offset = 4 + data_size
+        nonce_tpm_size, = struct.unpack('>H', resp[offset:offset + 2])
+        auth_session.nonce_tpm = resp[offset + 2:offset + 2 + nonce_tpm_size]
+        offset += 2 + nonce_tpm_size
+        resp_session_attr, resp_hmac_size = struct.unpack('>BH', resp[offset:offset + 3])
+        resp_hmac = resp[offset + 3:offset + 3 + resp_hmac_size]
+        if resp_session_attr != 1:
+            raise RuntimeError(f"Unexpected response session attribute for TPM2_CC_NV_Read: {resp_session_attr:#x}")
+        if offset + 3 + resp_hmac_size != len(resp):
+            raise RuntimeError(f"Unexpected response format for TPM2_CC_NV_Read: {resp!r}")
+
+        # Compute the rpHash (Response Parameter Hash)
+        rphash = auth_session.hash_alg.compute_hash(
+            struct.pack('>II', Tpm20ResponseCode.TPM2_RC_SUCCESS, Tpm20CommandCode.TPM2_CC_NV_Read) +
+            resp_data)
+
+        # Verify the HMAC
+        hmac_response = auth_session.hash_alg.compute_hmac(
+            auth_session.session_key,
+            rphash + auth_session.nonce_tpm + auth_session.nonce_caller + struct.pack('B', resp_session_attr))
+        if not hmac.compare_digest(hmac_response, resp_hmac):
+            raise RuntimeError(f"Invalid HMAC in response")
+
+        resp_data_size, = struct.unpack('>H', resp_data[:2])
+        if resp_data_size + 2 != len(resp_data):
+            raise RuntimeError(f"Unexpected response data format for TPM2_CC_NV_Read: {resp!r}")
+        return resp_data[2:]
+
+    def tpm20_nv_read_all(self, handle: int, auth_session: Tpm20AuthSessionContext,
+                          handle_name: bytes, size: int) -> bytes:
+        """Read a non-volatile variable, using the given auth_session, using repeated TPM2_NV_Read"""
+        prop_nv_buffer_max = self.tpm20_get_cap_tpm_property(Tpm20Property.TPM2_PT_NV_BUFFER_MAX)
+        if not prop_nv_buffer_max:
+            print("Warning: unable to get TPM2_PT_NV_BUFFER_MAX, using default value", file=sys.stderr)
+            nv_buffer_size = 0x400
+        else:
+            nv_buffer_size = prop_nv_buffer_max
+
+        # Read parts
+        data = b''
+        while len(data) < size:
+            requested_size = min(size - len(data), nv_buffer_size)
+            resp = self.tpm20_nv_read(handle, auth_session, handle_name, len(data), requested_size)
+            if not resp:
+                print(f"Warning: unable to get whole data for {handle:#x}: {len(data):#x}/{size:#x}",
+                      file=sys.stderr)
+                break
+            data += resp
+        return data
+
+
+def main(argv: Optional[Sequence[str]] = None):
+    parser = argparse.ArgumentParser(description="Get various information from a TPM")
+    parser.add_argument('-d', '--device', type=Path,
+                        help="TPM device to use (/dev/tpmrm0 by default)")
+    args = parser.parse_args(argv)
+
+    dev_path: Optional[Path] = args.device
+    if dev_path is None:
+        for tried_dev in ('/dev/tpmrm0', '/dev/tpm0'):
+            tried_path = Path(tried_dev)
+            if tried_path.exists():
+                dev_path = tried_path
+                break
+    if dev_path is None:
+        print("No TPM device found, exiting")
+        return
+
+    with TpmDevice.open(dev_path) as dev:
+        print(f"Device {dev_path}: TPM {dev.tpm_version()}")
+
+        if dev.is_tpm12:
+            print("TPM Capabilities:")
+            dev.tpm12_print_cap_version("  ")
+            dev.tpm12_print_cap_version_info("  ")
+            print("  - Properties:")
+            prop_pcr = dev.tpm12_get_capability_prop(Tpm12CapabilityArea.TPM_CAP_PROP_PCR)
+            assert isinstance(prop_pcr, int)
+            print(f"    - Number of PCR: {prop_pcr}")
+            print(f"    - Number of DIR: {dev.tpm12_get_capability_prop(Tpm12CapabilityArea.TPM_CAP_PROP_DIR)}")
+            manuf = dev.tpm12_get_capability_prop(Tpm12CapabilityArea.TPM_CAP_PROP_MANUFACTURER)
+            bytes_manuf = struct.pack('>I', manuf).rstrip(b'\0')
+            try:
+                repr_manuf = repr(bytes_manuf.decode('ascii'))
+            except UnicodeDecodeError:
+                repr_manuf = repr(bytes_manuf)
+            print(f"    - Manufacturer: {repr_manuf} ({manuf:#x})")
+            for prop, desc in (
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_KEYS, 'Number of loadable RSA-2048 keys'),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_MIN_COUNTER, "Minimum 10ths of seconds between monotonic counter increments"),  # noqa
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_AUTHSESS, "Available authorization sessions"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_TRANSESS, "Available transport sessions"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_COUNTERS, "Available monotonic counters"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_AUTHSESS, "Maximum authorization sessions"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_TRANSESS, "Maximum transport sessions"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_COUNTERS, "Maximum monotonic counters"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_KEYS, "Maximum RSA-2048 keys"),  # without EK or SRK
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_OWNER, "Is an owner installed"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_CONTEXT, "Available saved session slots"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_CONTEXT, "Maximum saved session slots"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_FAMILYROWS, "Maximum rows in family table"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_TIS_TIMEOUT, "TIS timeouts"),  # timeouts for platform specific TPM Interface Specification.  # noqa
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_STARTUP_EFFECT, "Startup Effect"),  # TPM_STARTUP_EFFECTS = UINT32
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_DELEGATE_ROW, "Maximum size of the delegate table in rows"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_DAA_MAX, "Maximum DAA sessions"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_DAASESS, "Available DAA sessions"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_CONTEXT_DIST, "Maximum distance between count values"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_DAA_INTERRUPT, "Does accept any command while DAA Join or Sign"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_SESSIONS, "Available auth. and transp. sessions"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_SESSIONS, "Maximum sessions"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_CMK_RESTRICTION, "CMK restriction"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_DURATION, "Small, medium and long durations (µs)"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_ACTIVE_COUNTER, "Active counter ID"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_NV_AVAILABLE, "Maximum NV space"),
+                    (Tpm12CapabilityArea.TPM_CAP_PROP_INPUT_BUFFER, "Maximum size of input/output buffers")):
+                prop_value = dev.tpm12_get_capability_prop(prop)
+                if prop == Tpm12CapabilityArea.TPM_CAP_PROP_ACTIVE_COUNTER:
+                    print(f"    - {desc}: {prop_value:#x}")
+                else:
+                    print(f"    - {desc}: {prop_value}")
+            print("")
+
+            print("  - Supported commands:")
+            # TODO when encountering a TPM 1.2, bruteforce all the possible commands
+            for ordinal in itertools.chain(range(0x100), range(0x20000000, 0x20000300), range(0x40000000, 0x40000100)):
+                if dev.tpm12_get_cap_ordinal(ordinal):
+                    print(f"    [{ordinal:#10x}] {Tpm12CommandCode(ordinal).name}")
+            print("")
+
+            print("  - Supported algorithms:")
+            for algorithm in range(0x10):
+                if dev.tpm12_get_cap_algorithm(algorithm):
+                    print(f"    [{algorithm:#4x}] {Tpm12AlgId(algorithm).name}")
+            print("")
+
+            print("  - Supported symmetric modes:")
+            for sym_mode in range(4):
+                if dev.tpm12_get_cap_sym_mode(sym_mode):
+                    print(f"    [{sym_mode:#4x}] {Tpm12SymMode(sym_mode).name}")
+            print("")
+
+            print("  - Supported protocols:")
+            for protocol in range(0x10):
+                if dev.tpm12_get_cap_protocol(protocol):
+                    print(f"    [{protocol:#4x}] {Tpm12ProtocolId(protocol).name}")
+            print("")
+
+            print("  - Permanent flags:")
+            permanent_flags = dev.tpm12_get_cap_flag(Tpm12CapabilityArea.TPM_CAP_FLAG_PERMANENT)
+            for flag_idx, flag_value in enumerate(permanent_flags):
+                if flag_idx < len(TPM12_PERMANENT_FLAGS_DESC):
+                    print(f"    [{flag_idx:2d}] {TPM12_PERMANENT_FLAGS_DESC[flag_idx]} = {flag_value}")
+                else:
+                    print(f"    [{flag_idx:2d}] Unknown? = {flag_value}")
+            print("")
+
+            print("  - Volatile (Startup Clear) flags:")
+            for flag_idx, flag_value in enumerate(dev.tpm12_get_cap_flag(Tpm12CapabilityArea.TPM_CAP_FLAG_VOLATILE)):
+                if flag_idx < len(TPM12_STCLEAR_FLAGS_DESC):
+                    print(f"    [{flag_idx:2d}] {TPM12_STCLEAR_FLAGS_DESC[flag_idx]} = {flag_value}")
+                else:
+                    print(f"    [{flag_idx:2d}] Unknown? = {flag_value}")
+            print("")
+
+            print("PCR:")
+            for pcr_idx in range(prop_pcr):
+                pcr_digest = dev.tpm12_pcr_read(pcr_idx)
+                pcr_digest_hex = binascii.hexlify(pcr_digest).decode('ascii')
+                print(f"  {pcr_idx:2d}: {pcr_digest_hex}")
+            print("")
+
+            print("Non Volatile memory:")
+            for nv_idx in dev.tpm12_get_cap_nv_list():
+                nv_desc = TPM12_RESERVED_NV_INDEXES_DESC.get(nv_idx)
+                if nv_desc:
+                    print(f"  [{nv_idx:#010x}] {nv_desc}")
+                else:
+                    print(f"  [{nv_idx:#010x}]")
+                dev.tpm12_print_cap_nv_index(nv_idx, indent="    ")
+            print("")
+
+            print("PubEK (Public Endorsement Key):")  # This is a privacy sentitive value, according to the spec.
+            try:
+                pubek = dev.tpm12_read_pubek()
+            except Tpm12Failure as exc:
+                if exc.code == Tpm12ResponseCode.TPM_DISABLED_CMD:
+                    if not permanent_flags[3]:
+                        print("  Error TPM_DISABLED_CMD as expected (readPubek is false, an owner may exist)")
+                    else:
+                        print("  Error TPM_DISABLED_CMD but readPubek is true, raise the exception")
+                        raise
+                else:
+                    raise
+            else:
+                hexdump(pubek, indent="  ")
+                raise NotImplementedError("I did not implement PubEK parsing for TPM 1.2")
+
+        if dev.is_tpm20:
+            tpm_prop_group = None
+            for prop_id, prop_value in dev.tpm20_get_cap_tpm_properties():
+                if tpm_prop_group is None or prop_id >= tpm_prop_group + 0x100:
+                    # Next group
+                    tpm_prop_group = prop_id & ~0xff
+                    if tpm_prop_group == 0x100:
+                        print("TPM fixed properties:")
+                    elif tpm_prop_group == 0x200:
+                        print("TPM variable properties:")
+                    else:
+                        print(f"TPM properties group {tpm_prop_group:#x} (UNKNOWN):")
+                try:
+                    prop_name = Tpm20Property(prop_id).name
+                except ValueError:
+                    prop_name = f"<UNKNOWN property {prop_id}>"
+                repr_prop_value = hex(prop_value)
+                if prop_id in (
+                        Tpm20Property.TPM2_PT_FAMILY_INDICATOR.value,
+                        Tpm20Property.TPM2_PT_MANUFACTURER.value,
+                        Tpm20Property.TPM2_PT_VENDOR_STRING_1.value,
+                        Tpm20Property.TPM2_PT_VENDOR_STRING_2.value,
+                        Tpm20Property.TPM2_PT_VENDOR_STRING_3.value,
+                        Tpm20Property.TPM2_PT_VENDOR_STRING_4.value):
+                    # String property
+                    bytes_value = struct.pack('>I', prop_value).rstrip(b'\0')
+                    try:
+                        repr_prop_value = repr(bytes_value.decode('ascii'))
+                    except UnicodeDecodeError:
+                        repr_prop_value = repr(bytes_value)
+                elif prop_id == Tpm20Property.TPM2_PT_REVISION.value:
+                    # Version property
+                    repr_prop_value = f"{prop_value // 100}.{prop_value % 100}"
+                elif prop_id in (
+                        Tpm20Property.TPM2_PT_FIRMWARE_VERSION_1,
+                        Tpm20Property.TPM2_PT_FIRMWARE_VERSION_2):
+                    version_major = (prop_value >> 16) & 0xffff
+                    version_minor = prop_value & 0xffff
+                    repr_prop_value = f"{version_major}.{version_minor} ({prop_value:#x})"
+                elif prop_id in (
+                        Tpm20Property.TPM2_PT_DAY_OF_YEAR.value,
+                        Tpm20Property.TPM2_PT_YEAR.value,
+                        Tpm20Property.TPM2_PT_PCR_COUNT.value,
+                        Tpm20Property.TPM2_PT_CLOCK_UPDATE.value,
+                        Tpm20Property.TPM2_PT_LOCKOUT_INTERVAL.value,
+                        Tpm20Property.TPM2_PT_LOCKOUT_RECOVERY.value):
+                    # Decimal property
+                    repr_prop_value = str(prop_value)
+                print(f"  [{prop_id:#6x}] {prop_name} = {repr_prop_value}")
+
+            print("")
+
+            print("Supported algorithms:")
+            for alg_id, alg_properties in dev.tpm20_get_cap_algs():
+                desc_props = ""
+                if alg_properties & 1:
+                    desc_props += " asymmetric"
+                if alg_properties & 2:
+                    desc_props += " symmetric"
+                if alg_properties & 4:
+                    desc_props += " hash"
+                if alg_properties & 8:
+                    desc_props += " object"
+                if alg_properties & 0x100:
+                    desc_props += " signing"
+                if alg_properties & 0x200:
+                    desc_props += " encrypting"
+                if alg_properties & 0x400:
+                    desc_props += " method"
+                remaining = alg_properties & ~0x70f
+                if remaining:
+                    desc_props += f" ???({remaining:#x})"
+                print(f"  [{alg_id.value:#4x}] {alg_id.name}:{desc_props}")
+
+            print("")
+
+            print("Supported ECC curves:")
+            for ecc_curve in dev.tpm20_get_cap_ecc_curves():
+                print(f"  [{ecc_curve.value:#4x}] {ecc_curve.name}")
+
+            print("")
+
+            all_update_counters: Set[int] = set()
+            for bank_alg_id, bank_pcr_select in dev.tpm20_get_cap_pcrs():
+                print(f"PCR for bank {bank_alg_id.name}:")
+                for pcr_idx in bank_pcr_select:
+                    pcr_digest, pcr_update_counter = dev.tpm20_pcr_read(pcr_idx, bank_alg_id)
+                    all_update_counters.add(pcr_update_counter)
+                    pcr_digest_hex = binascii.hexlify(pcr_digest).decode('ascii')
+                    print(f"  {pcr_idx:2d}: {pcr_digest_hex}")
+            print(f"PCR update counter: {','.join(str(c) for c in sorted(all_update_counters))}")
+
+            print("")
+
+            print(f"PCR properties:")
+            for pcr_prop_id, pcr_select in dev.tpm20_get_cap_pcr_properties():
+                prop_name = Tpm20PcrProperty(pcr_prop_id).name
+                print(f"  [{pcr_prop_id:#4x}] {prop_name}: {','.join(str(pcr) for pcr in pcr_select)}")
+
+            print("")
+
+            cmd_list: Sequence[Tuple[str, Tpm20Capability]] = (
+                ("Normal commands", Tpm20Capability.TPM_CAP_COMMANDS),
+                # "... for confirmation of platform authorization"
+                ("Commands requiring Physical Presence", Tpm20Capability.TPM_CAP_PP_COMMANDS),
+                ("Audit commands", Tpm20Capability.TPM_CAP_AUDIT_COMMANDS),
+            )
+            for comm_category, comm_cap in cmd_list:
+                print(f"{comm_category}:")
+                for command_code, comm_attr in dev.tpm20_get_cap_commands(comm_cap):
+                    try:
+                        command_name = Tpm20CommandCode(command_code).name
+                    except ValueError:
+                        # If this is not a vendor command, this is fatal
+                        if (comm_attr & 0x2000) == 0:
+                            raise
+                        # Otherwise, it is a vendor command
+                        command_name = f"VendorCommand{command_code}"
+                    desc_attr = ""
+                    if comm_attr & 0x40:
+                        desc_attr += " nv"
+                    if comm_attr & 0x80:
+                        desc_attr += " extensive"
+                    if comm_attr & 0x100:
+                        desc_attr += " flushed"
+                    if comm_attr & 0xe00:
+                        desc_attr += f" cHandles<{(comm_attr >> 9) & 7}>"
+                    if comm_attr & 0x1000:
+                        desc_attr += " rHandle"
+                    if comm_attr & 0x2000:
+                        desc_attr += " Vendor"
+                    remaining = comm_attr & ~0x3fc0
+                    if remaining:
+                        desc_attr += f" ???({remaining:#x})"
+                    print(f"  [{command_code:#6x}] {command_name}:{desc_attr}")
+
+                    if command_code == Tpm20CommandCode.TPM2_CC_FirmwareRead.value:
+                        # Terminate abruptely in order to investigate
+                        print("/!\\ The TPM firmware can be read /!\\", file=sys.stderr)
+                        sys.exit(1)
+
+            print("")
+
+            # Try opening a session with the TPM
+            auth_session = dev.tpm20_start_auth_session_hmac()
+            print(f"Started session with handle {auth_session.session_handle:#x}")
+            try:
+                print("Handles:")
+                previous_handle_type: Optional[int] = None
+                for handle in dev.tpm20_get_cap_handles():
+                    handle_type = handle >> 24
+                    if previous_handle_type != handle_type:
+                        handle_type_name = Tpm20HandleType(handle_type).name
+                        print(f"  [{handle_type:#04x}] Handle type {handle_type_name}")
+                        previous_handle_type = handle_type
+                    try:
+                        handle_name = Tpm20Handle(handle).name
+                    except ValueError:
+                        handle_name = f"<unknown handle {handle:#x}>"
+                    if handle == auth_session.session_handle:
+                        handle_name += " (handle to the active session)"
+                    print(f"    [{handle:#010x}] {handle_name}")
+
+                    # Read the public area on objects
+                    if handle_type not in (
+                            Tpm20HandleType.TPM_HT_PCR.value,
+                            Tpm20HandleType.TPM_HT_NV_INDEX.value,
+                            Tpm20HandleType.TPM_HT_HMAC_SESSION.value,
+                            Tpm20HandleType.TPM_HT_PERMANENT.value):
+                        try:
+                            obj_pubdata, obj_name, obj_qual_name = dev.tpm20_public_read(handle)
+                        except Tpm20Failure as exc:
+                            if exc.code == Tpm20ResponseCode.TPM2_Unknown_RC_from_Public_Read_0x184:
+                                print(f"      - Public object read: unknown error {exc.code:#x}")
+                            else:
+                                raise
+                        else:
+                            obj_name_hex = binascii.hexlify(obj_name).decode('ascii')
+                            obj_qual_name_hex = binascii.hexlify(obj_qual_name).decode('ascii')
+                            print(f"      - object name: {obj_name_hex}")
+                            print(f"      - object qualified name: {obj_qual_name_hex}")
+                            print("      - object public area:")
+                            print(f"        - type alg ({obj_pubdata.type_alg.value:#x}): {obj_pubdata.type_alg.name}")  # noqa
+                            print(f"        - name alg ({obj_pubdata.name_alg.value:#x}): {obj_pubdata.name_alg.name}")  # noqa
+                            print(f"        - attributes ({obj_pubdata.attributes:#010x}): {obj_pubdata.attr_desc()}")
+                            if obj_pubdata.auth_policy:
+                                print(f"        - auth policy: {binascii.hexlify(obj_pubdata.auth_policy).decode('ascii')}")  # noqa
+                            else:
+                                print(f"        - auth policy empty")
+                            print(f"        - parameters:")
+                            obj_pubdata.print_parameters(indent="          ")
+
+                            computed_obj_name = obj_pubdata.compute_name()
+                            if computed_obj_name != obj_name:
+                                computed_obj_name_hex = binascii.hexlify(computed_obj_name).decode('ascii')
+                                raise RuntimeError(
+                                    f"Name of object {handle:#x} does not match its public area: {computed_obj_name_hex} != {obj_name_hex}")  # noqa
+
+                    # Read non-volatile indexes
+                    if handle_type == Tpm20HandleType.TPM_HT_NV_INDEX.value:
+                        pub_data, nv_name = dev.tpm20_nv_public_read(handle)
+                        nv_name_hex = binascii.hexlify(nv_name).decode('ascii')
+                        print(f"      - NV name: {nv_name_hex}")
+                        print("      - NV public area:")
+                        assert pub_data.nv_index == handle, f"Unexpected NV Index in public data: {pub_data}"
+                        print(f"        - name alg ({pub_data.name_alg.value:#x}): {pub_data.name_alg.name}")
+                        print(f"        - attributes ({pub_data.attributes:#010x}): {pub_data.attr_desc()}")
+                        if pub_data.auth_policy:
+                            print(f"        - auth policy: {binascii.hexlify(pub_data.auth_policy).decode('ascii')}")
+                        else:
+                            print(f"        - auth policy empty")
+                        print(f"        - data size: {pub_data.data_size:#x} = {pub_data.data_size}")
+
+                        computed_nv_name = pub_data.compute_name()
+                        if computed_nv_name != nv_name:
+                            computed_nv_name_hex = binascii.hexlify(computed_nv_name).decode('ascii')
+                            raise RuntimeError(
+                                f"Name of NV Index {handle:#x} does not match its public area: {computed_nv_name_hex} != {nv_name_hex}")  # noqa
+
+                        try:
+                            # Try reading the handle, using the session
+                            handle_data = dev.tpm20_nv_read_all(
+                                handle, auth_session, nv_name, pub_data.data_size)
+                        except Tpm20Failure as exc:
+                            if exc.code == Tpm20ResponseCode.TPM2_RC_AUTH_UNAVAILABLE:
+                                print("      - NV data: error TPM2_RC_AUTH_UNAVAILABLE")
+                            elif exc.code == Tpm20ResponseCode.TPM2_RC_NV_UNINITIALIZED:
+                                print("      - NV data: error TPM2_RC_NV_UNINITIALIZED")
+                            elif exc.code == Tpm20ResponseCode.TPM2_Unknown_RC_from_NV_Read_0x9a2:
+                                print(f"      - NV data: unknown error {exc.code:#x}")
+                            else:
+                                raise
+                        else:
+                            print("      - NV data:")
+                            hexdump(handle_data, indent='        ')
+            finally:
+                dev.tpm20_flush_context(auth_session.session_handle)
+
+
+if __name__ == '__main__':
+    main()

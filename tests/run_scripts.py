@@ -120,6 +120,7 @@ BIN_SCRIPTS = {
     'syscall': '(/usr/include/asm|/usr/include/linux|/usr/src/linux)args[-l]',
     'systemd-analyze-plot': 'never',
     'tab2space': 'never',
+    'tpm-show': '(python>=3.6)help',
     'update-packages': 'never',
     'vagrant-wireshark': 'args[-h]',
     'vlc': 'never',
