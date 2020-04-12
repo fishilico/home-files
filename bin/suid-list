@@ -201,7 +201,7 @@ TRUSTED_SUID_FILES = [
     # chromium, http://www.chromium.org/Home
     # https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master
     SuidFile('/lib/chromium/chrome-sandbox'),
-    SuidFile('/lib/electron6?/chrome-sandbox'),
+    SuidFile('/lib/electron[67]?/chrome-sandbox'),
     SuidFile('/lib/x86_64-linux-gnu/oxide-qt/chrome-sandbox'),
     SuidFile('/opt/google/chrome/chrome-sandbox'),
 
