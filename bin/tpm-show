@@ -2459,6 +2459,8 @@ def main(argv: Optional[Sequence[str]] = None):
     parser = argparse.ArgumentParser(description="Get various information from a TPM")
     parser.add_argument('-d', '--device', type=Path,
                         help="TPM device to use (/dev/tpmrm0 by default)")
+    parser.add_argument('--quiet-if-not-found', action='store_true',
+                        help="Do not show a message if no TPM is found")
     args = parser.parse_args(argv)
 
     dev_path: Optional[Path] = args.device
@@ -2469,7 +2471,8 @@ def main(argv: Optional[Sequence[str]] = None):
                 dev_path = tried_path
                 break
     if dev_path is None:
-        print("No TPM device found, exiting")
+        if not args.quiet_if_not_found:
+            print("No TPM device found, exiting")
         return
 
     with TpmDevice.open(dev_path) as dev:
