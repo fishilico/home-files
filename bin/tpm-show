@@ -2007,7 +2007,6 @@ class TpmDevice:
                     raise RuntimeError(
                         f"Unexpected unaligned response for capability {capability.name}: " +
                         f"{len(resp_data)} != 4 + {item_size} * {items_count}")
-                offset = 4
                 for offset in range(4, len(resp_data), item_size):
                     yield resp_data[offset:offset + item_size]
             if not more_data:
