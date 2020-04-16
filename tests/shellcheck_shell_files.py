@@ -143,6 +143,9 @@ def test():
         # Ignore files in .git directory
         if '/.git' in dirpath:
             continue
+        # Ignore collected hardware data files
+        if '/specific/collected_hwdata' in dirpath:
+            continue
 
         for filename in sorted(files):
             # Skip .toprc, which is not UTF-8
