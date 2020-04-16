@@ -1507,12 +1507,12 @@ class TpmDevice:
     def __init__(self, dev: BinaryIO):
         self.dev = dev
 
-    @classmethod
+    @staticmethod
     @contextmanager
-    def open(cls, dev_path: Path) -> Generator['TpmDevice', None, None]:
+    def open(dev_path: Path) -> Generator['TpmDevice', None, None]:
         """Open the specified device, to be used in a with block"""
         with dev_path.open('r+b', buffering=0) as dev:
-            yield cls(dev)
+            yield TpmDevice(dev)
 
     def transmit_command(self, tag: int, code: int, params: Optional[bytes] = None):
         """Transmit a command to the TPM device
