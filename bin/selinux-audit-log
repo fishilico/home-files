@@ -619,14 +619,14 @@ def split_audit_fields(type_name, line, prefix=''):
                 if personality == 0:
                     result[prefix + key] = 0
                     continue
-                remaining = personality
+                remaining_bits = personality
                 bit_names = []
                 for bit, name in PERSONALITY_BITS:
                     if personality & bit:
                         bit_names.append(name)
-                        remaining &= ~bit
-                if remaining:
-                    bit_names.append(hex(remaining))
+                        remaining_bits &= ~bit
+                if remaining_bits:
+                    bit_names.append(hex(remaining_bits))
                 joined_names = '|'.join(bit_names)
                 result[prefix + key] = f"{personality:#x} ({joined_names})"
                 continue
