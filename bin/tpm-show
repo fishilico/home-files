@@ -1881,6 +1881,8 @@ class TpmDevice:
             except Tpm12Failure as exc:
                 if exc.code == Tpm12ResponseCode.TPM_AUTH_CONFLICT:
                     print(f"{indent}- NV data: error TPM_AUTH_CONFLICT")
+                elif exc.code == Tpm12ResponseCode.TPM_NOSPACE:
+                    print(f"{indent}- NV data: error TPM_NOSPACE")
                 else:
                     raise
             else:
@@ -2533,7 +2535,15 @@ def main(argv: Optional[Sequence[str]] = None):
             # TODO when encountering a TPM 1.2, bruteforce all the possible commands
             for ordinal in itertools.chain(range(0x100), range(0x20000000, 0x20000300), range(0x40000000, 0x40000100)):
                 if dev.tpm12_get_cap_ordinal(ordinal):
-                    print(f"    [{ordinal:#10x}] {Tpm12CommandCode(ordinal).name}")
+                    try:
+                        command_name = Tpm12CommandCode(ordinal).name
+                    except ValueError:
+                        # If this is not a vendor command, this is fatal
+                        if ordinal < 0x10000:
+                            raise
+                        # Otherwise, it is a vendor command
+                        command_name = f"VendorCommand{ordinal}"
+                    print(f"    [{ordinal:#10x}] {command_name}")
             print("")
 
             print("  - Supported algorithms:")
