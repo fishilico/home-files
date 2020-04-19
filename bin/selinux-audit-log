@@ -1079,6 +1079,66 @@ class SELinuxAuditLogAnalyzer:
                 # Process title has a single entry
                 proc_title = parsed_record['proctitle'].replace('\0', ' ')
                 print(f"    + {type_name}: {repr(proc_title)}", end='\r\n')
+            elif type_name == 'SYSCALL':
+                # Format a SYSCALL entry on few lines (they appear in Debian's audit.log for example)
+                sysc_args = []
+                with suppress(KeyError):
+                    for arg_key in ('a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6'):
+                        sysc_args.append(str(parsed_record[arg_key]))
+                sysc_desc = f"{parsed_record['syscall']} ({','.join(sysc_args)})={ parsed_record['exit']}"
+                sysc_ppid = parsed_record['ppid']
+                if sysc_ppid != 1:  # Skip if the PPID is init
+                    sysc_desc += f" ppid={sysc_ppid}"
+                sysc_uid = parsed_record['uid']
+                if sysc_uid != 0:  # Skip if the UID is root
+                    sysc_desc += f" uid={sysc_uid}"
+                for uid_key in ('euid', 'suid', 'fsuid'):
+                    with suppress(KeyError):
+                        uid_value = parsed_record[uid_key]
+                        if uid_value != sysc_uid:
+                            sysc_desc += f" {uid_key}={uid_value}"
+                # Audit UID is special, as it can be -1 in 32 bits
+                with suppress(KeyError):
+                    uid_value = parsed_record['auid']
+                    if uid_value != sysc_uid:
+                        if uid_value == 0xffffffff:
+                            sysc_desc += f" auid=-1"
+                        else:
+                            sysc_desc += f" auid={uid_value}"
+                sysc_gid = parsed_record['gid']
+                if sysc_gid != 0:  # Skip if the GID is root
+                    sysc_desc += f" gid={sysc_gid}"
+                for gid_key in ('egid', 'sgid', 'fsgid'):
+                    with suppress(KeyError):
+                        gid_value = parsed_record[gid_key]
+                        if gid_value != sysc_gid:
+                            sysc_desc += f" {gid_key}={gid_value}"
+                sysc_tty = parsed_record['tty']
+                if sysc_tty != '(none)':
+                    sysc_desc += f" tty={parsed_record['tty']}"
+                print(f"    + {type_name}: {sysc_desc}", end='\r\n')
+                print(f"        - exe={repr(parsed_record['exe'])}", end='\r\n')
+                for key, value in parsed_record.items():
+                    if key in (
+                            'syscall', 'exit',
+                            'a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6',
+                            'pid',  # Already in the main event
+                            'ppid',
+                            'uid', 'euid', 'suid', 'fsuid', 'auid',
+                            'gid', 'egid', 'sgid', 'fsgid',
+                            'tty',
+                            'comm',  # Already in the main event
+                            'exe',
+                            'subj',
+                            'arch',
+                            'success',
+                            'items',
+                            'ses',
+                            ):
+                        continue
+                    if value in ('(none)', '(null)'):
+                        continue
+                    print(f"        - {key} = {repr(value)}", end='\r\n')
             else:
                 print(f"    + {type_name}:", end='\r\n')
                 for key, value in parsed_record.items():
