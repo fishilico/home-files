@@ -24,7 +24,15 @@
 # Get the rights of the current session about the power management system
 # For D-Bus-related options, "d-feet" lists graphically all available interface
 # Introspection on the CLI can be done with:
-# gdbus introspect --system --dest "org.freedesktop..." --object-path "/org/freedesktop/..."
+#   gdbus introspect --system --dest "org.freedesktop..." --object-path "/org/freedesktop/..."
+# For example:
+#   gdbus introspect --system -d org.freedesktop.DBus -o / -r
+#
+# Listing the available D-Bus names:
+#   dbus-send --system --dest=org.freedesktop.DBus --type=method_call --print-reply
+#      /org/freedesktop/DBus org.freedesktop.DBus.ListNames
+#   gdbus call --system --dest=org.freedesktop.DBus --object-path=/org/freedesktop/DBus
+#      --method=org.freedesktop.DBus.ListNames
 
 if command -v gdbus > /dev/null 2>&1
 then
