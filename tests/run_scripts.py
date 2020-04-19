@@ -122,6 +122,7 @@ BIN_SCRIPTS = {
     'tab2space': 'never',
     'tpm-show': '(python>=3.6)help',
     'update-packages': 'never',
+    'useful-selinux-modules': '(python>=3.5)help',
     'vagrant-wireshark': 'args[-h]',
     'vlc': 'never',
     'who-is-here': 'direct',

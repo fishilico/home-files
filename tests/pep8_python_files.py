@@ -105,6 +105,11 @@ def test():
                     # in Python 3.6
                     if sys.version_info < (3, 6):
                         continue
+                if filename == 'useful-selinux-modules' and dirpath.endswith('bin'):
+                    # these scripts use type hints, which were introduced
+                    # in Python 3.5
+                    if sys.version_info < (3, 5):
+                        continue
             elif not filename.lower().endswith('.py'):
                 continue
 
