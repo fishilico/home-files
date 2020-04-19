@@ -372,6 +372,8 @@ SYSCALLS = {
         121: 'getpgid',
         141: 'setpriority',
         143: 'sched_getparam',
+        165: 'mount',
+        166: 'umount2',
         189: 'lsetxattr',
         190: 'fsetxattr',
         191: 'getxattr',
@@ -381,6 +383,7 @@ SYSCALLS = {
         267: 'readlinkat',
         269: 'faccessat',
         280: 'utimensat',
+        302: 'prlimit64',
     },
 }
 
@@ -601,7 +604,7 @@ def split_audit_fields(type_name, line, prefix=''):
                     if syscall_name:
                         result[prefix + key] = f"{syscall} ({syscall_name})"
                         continue
-                result[prefix + key] = syscall
+                result[prefix + key] = f"{syscall} (UNKNOWN!)"
                 continue
 
             if key == 'per' and re.match(r'^[0-9a-f]+$', value):
