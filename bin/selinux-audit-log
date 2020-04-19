@@ -635,6 +635,11 @@ def split_audit_fields(type_name, line, prefix=''):
                     result[prefix + key] = f"{ioctl_cmd:#x}"
                 continue
 
+            if key == 'flags' and re.match(r'^0x[0-9a-f]+$', value):
+                # MMAP flags is  written with 0x prefix, keep it this way for now
+                result[prefix + key] = value
+                continue
+
             if key == 'mode' and re.match(r'^0[0-7]+$', value):
                 # mode is octal
                 result[prefix + key] = int(value, 8)
@@ -646,6 +651,7 @@ def split_audit_fields(type_name, line, prefix=''):
                 continue
 
             if key in (
+                    'argc',
                     'audit_enabled',
                     'audit_pid',
                     'auid',
@@ -659,6 +665,7 @@ def split_audit_fields(type_name, line, prefix=''):
                     'enforcing',
                     'euid',
                     'exit',
+                    'fd',
                     'fsgid',
                     'fsuid',
                     'gid',
@@ -722,6 +729,7 @@ def split_audit_fields(type_name, line, prefix=''):
                     'SGID',
                     'SUID',
                     'UID',
+                    'a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9',
                     'acct',
                     'cmd',
                     'comm',
