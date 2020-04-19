@@ -32,15 +32,17 @@ import re
 import shlex
 import subprocess
 import sys
+from typing import Dict, FrozenSet, List, Mapping, Optional, Sequence, Tuple, TYPE_CHECKING, Union
 
 
 # Use local timezone, if possible
 try:
     from dateutil.tz import tzlocal
 except ImportError:
-    def tzlocal():
-        """Simulate an empty timezone"""
-        return None
+    if not TYPE_CHECKING:
+        def tzlocal():
+            """Simulate an empty timezone"""
+            return None
 
 
 logger = logging.getLogger(__name__)
@@ -48,20 +50,20 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_AUDIT_LOG_PATH = '/var/log/audit/audit.log'
 
-COLOR_RED = '\033[31m'
-COLOR_BOLDRED = '\033[31;1m'
-COLOR_GREEN = '\033[32m'
-COLOR_YELLOW = '\033[33m'
-COLOR_PURPLE = '\033[35m'
-COLOR_CYAN = '\033[36m'
-COLOR_NORM = '\033[m'
+COLOR_RED: str = '\033[31m'
+COLOR_BOLDRED: str = '\033[31;1m'
+COLOR_GREEN: str = '\033[32m'
+COLOR_YELLOW: str = '\033[33m'
+COLOR_PURPLE: str = '\033[35m'
+COLOR_CYAN: str = '\033[36m'
+COLOR_NORM: str = '\033[m'
 
 
 # Enum from /usr/include/linux/audit.h
 # (https://github.com/torvalds/linux/blob/master/include/uapi/linux/audit.h)
 # and from /usr/include/libaudit.h
 # (https://github.com/linux-audit/audit-userspace/blob/v2.8.5/lib/libaudit.h)
-AUDIT_TYPES = {
+AUDIT_TYPES: Mapping[int, str] = {
     # 1100 - 1199 user space trusted application messages
     1100: 'USER_AUTH',
     1101: 'USER_ACCT',
@@ -271,7 +273,7 @@ AUDIT_TYPES = {
     2506: 'VIRT_MIGRATE_IN',
     2507: 'VIRT_MIGRATE_OUT',
 }
-AUDIT_TYPES_FOR_SELINUX = frozenset((
+AUDIT_TYPES_FOR_SELINUX: FrozenSet[str] = frozenset((
     'AVC',
     'SELINUX_ERR',
     'USER_AVC',
@@ -280,7 +282,7 @@ AUDIT_TYPES_FOR_SELINUX = frozenset((
 
 # Architectures from linux/audit.h:
 # https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/audit.h
-AUDIT_ARCHES = {
+AUDIT_ARCHES: Mapping[int, str] = {
     0xc00000b7: 'AUDIT_ARCH_AARCH64',
     0xc0009026: 'AUDIT_ARCH_ALPHA',
     0x4000005d: 'AUDIT_ARCH_ARCOMPACT',
@@ -335,7 +337,7 @@ AUDIT_ARCHES = {
 }
 
 # Decode syscalls for some architectures
-SYSCALLS = {
+SYSCALLS: Mapping[str, Mapping[int, str]] = {
     'AUDIT_ARCH_X86_64': {
         0: 'read',
         1: 'write',
@@ -395,7 +397,7 @@ SYSCALLS = {
 
 
 # IOCTL commands
-IOCTL_NAMES = {
+IOCTL_NAMES: Mapping[int, str] = {
     0x1268: 'BLKSSZGET',
     0x1272: 'BLKGETSIZE64',
     0x2285: 'SG_IO',
@@ -463,7 +465,7 @@ IOCTL_NAMES = {
 
 # Personality bits from linux/personality.h:
 # https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/personality.h
-PERSONALITY_BITS = (
+PERSONALITY_BITS: Tuple[Tuple[int, str], ...] = (
     (0x0020000, 'UNAME26'),
     (0x0040000, 'ADDR_NO_RANDOMIZE'),
     (0x0080000, 'FDPIC_FUNCPTRS'),
@@ -478,16 +480,17 @@ PERSONALITY_BITS = (
 )
 
 
-def escape_cmdline(command_line):
+def escape_cmdline(command_line: Sequence[str]) -> str:
     """Escape a command line from a list of arguments to a string"""
     return ' '.join(shlex.quote(arg) for arg in command_line)
 
 
-def split_audit_fields(type_name, line, prefix=''):
+def split_audit_fields(type_name: str, line: str, prefix: str = ''
+                       ) -> Mapping[str, Union[bytes, int, str, List[str], None]]:
     """Split fields from a line in the audit logs"""
-    result = collections.OrderedDict()
-    remaining = line.strip()
-    arch_syscalls = None
+    result: Dict[str, Union[bytes, int, str, List[str], None]] = collections.OrderedDict()
+    remaining: str = line.strip()
+    arch_syscalls: Optional[Mapping[int, str]] = None
 
     # Fields may be separated with GS=\x1d (group separator) too
     for remaining in remaining.split('\x1d'):
@@ -496,21 +499,21 @@ def split_audit_fields(type_name, line, prefix=''):
             if remaining.startswith('avc:  received policyload notice'):
                 matches = re.match(r'avc:  received policyload notice \(seqno=([0-9]+)\)(.*)$', remaining)
                 if not matches:
-                    raise ValueError(f"Unable to parse AVC policyload notice line: {repr(line)}")
+                    raise ValueError(f"Unable to parse AVC policyload notice line: {line!r}")
                 seqno_str, remaining = matches.groups()
                 result[prefix + 'avc/notice'] = 'policyload'
                 result[prefix + 'avc/policyload/seqno'] = int(seqno_str)
             elif remaining.startswith('avc:  received setenforce notice'):
                 matches = re.match(r'avc:  received setenforce notice \(enforcing=([01]+)\)(.*)$', remaining)
                 if not matches:
-                    raise ValueError(f"Unable to parse AVC setenforce notice line: {repr(line)}")
+                    raise ValueError(f"Unable to parse AVC setenforce notice line: {line!r}")
                 enforcing_str, remaining = matches.groups()
                 result[prefix + 'avc/notice'] = 'setenforce'
                 result[prefix + 'avc/setenforce/enforcing'] = enforcing_str != '0'
             else:
                 matches = re.match(r'avc:  (denied|granted)  \{([a-z_ ]+)\} for +(.*)$', remaining)
                 if not matches:
-                    raise ValueError(f"Unable to parse AVC line: {repr(line)}")
+                    raise ValueError(f"Unable to parse AVC line: {line!r}")
                 result[prefix + 'avc/result'], avc_perms_str, remaining = matches.groups()
                 result[prefix + 'avc/perms'] = avc_perms_str.split()
             result.update(split_audit_fields(type_name, remaining, prefix=prefix + 'avc/for/'))
@@ -529,7 +532,7 @@ def split_audit_fields(type_name, line, prefix=''):
 
             matches = re.match(r'^ *([0-9A-Za-z_-]+)=([^ ]*)(.*)$', remaining)
             if not matches:
-                raise ValueError(f"Unable to split audit fields: {repr(remaining)} in {repr(line)}")
+                raise ValueError(f"Unable to split audit fields: {remaining!r} in {line!r}")
             key, value, remaining = matches.groups()
 
             # Parse the value according to the key
@@ -539,7 +542,7 @@ def split_audit_fields(type_name, line, prefix=''):
                 parts = remaining.split('}', 1)
                 if len(parts) != 2:
                     raise ValueError(
-                        f"Unable to parse braced {key} in audit fields: {repr(remaining)} in {repr(line)}")
+                        f"Unable to parse braced {key} in audit fields: {remaining!r} in {line!r}")
                 result.update(split_audit_fields(type_name, parts[0], prefix=prefix + 'SADDR/'))
                 remaining = parts[1]
                 continue
@@ -581,7 +584,7 @@ def split_audit_fields(type_name, line, prefix=''):
                         remaining = ''
                     else:
                         raise ValueError(
-                            f"Unable to parse quoted {key} in audit fields: {repr(remaining)} in {repr(line)}")
+                            f"Unable to parse quoted {key} in audit fields: {remaining!r} in {line!r}")
                 continue
 
             if key in ('a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6') and re.match(r'^[0-9a-f]+$', value):
@@ -832,7 +835,7 @@ def split_audit_fields(type_name, line, prefix=''):
 
 class SELinuxAuditLogAnalyzer:
     """Analyze SELinux audit logs"""
-    def __init__(self, argv=None):
+    def __init__(self, argv: Optional[Sequence[str]] = None):
         parser = argparse.ArgumentParser(description="Parse SELinux audit log")
         parser.add_argument('logfiles', metavar='LOGFILES', nargs='*', type=str,
                             help=f"path to audit.log (default: {DEFAULT_AUDIT_LOG_PATH})")
@@ -871,18 +874,18 @@ class SELinuxAuditLogAnalyzer:
             format='[%(levelname)s] %(message)s\r',
             level=logging.DEBUG)
 
-        self.from_dmesg = args.dmesg or args.dmesg_busybox
-        self.show_other = args.show_other
-        self.last_show_evt_idx = None
+        self.from_dmesg: bool = args.dmesg or args.dmesg_busybox
+        self.show_other: bool = args.show_other
+        self.last_show_evt_idx: Optional[int] = None
 
         if args.no_color:
-            self.color_red = ''
-            self.color_boldred = ''
-            self.color_green = ''
-            self.color_yellow = ''
-            self.color_purple = ''
-            self.color_cyan = ''
-            self.color_norm = ''
+            self.color_red: str = ''
+            self.color_boldred: str = ''
+            self.color_green: str = ''
+            self.color_yellow: str = ''
+            self.color_purple: str = ''
+            self.color_cyan: str = ''
+            self.color_norm: str = ''
         else:
             self.color_red = COLOR_RED
             self.color_boldred = COLOR_BOLDRED
@@ -967,7 +970,7 @@ class SELinuxAuditLogAnalyzer:
         elif args.machine:
             command_line = ['ssh', args.machine, escape_cmdline(command_line)]
 
-        self.command_line = command_line
+        self.command_line: Sequence[str] = command_line
 
     def spawn_command_for_audit_log(self):
         """Spawn a process from a command to read the audit log"""
@@ -980,10 +983,10 @@ class SELinuxAuditLogAnalyzer:
         )
         for raw_line in proc.stdout:
             # Remove coloring escape sequences (from journalctl)
-            raw_line = raw_line.replace(b'\x1b[0;34m', b'').replace(b'\x1b[0m', b'')
+            raw_line: bytes = raw_line.replace(b'\x1b[0;34m', b'').replace(b'\x1b[0m', b'')
             try:
                 # Audit logs are always ASCII
-                line = raw_line.decode('ascii').strip()
+                line: str = raw_line.decode('ascii').strip()
             except UnicodeDecodeError:
                 continue
 
@@ -1026,12 +1029,12 @@ class SELinuxAuditLogAnalyzer:
 
             logger.warning("Skipping unknown line %r", line)
 
-        exit_code = proc.wait()
+        exit_code: int = proc.wait()
         if exit_code:
             logger.warning("Command %r exited with code %d", self.command_line, exit_code)
         return exit_code
 
-    def analyze_audit_line(self, line, entry_time=None):
+    def analyze_audit_line(self, line: str, entry_time: Optional[datetime.datetime] = None):
         """Analyze a line from Linux audit log"""
         # The first field is the type, either numerical or textual:
         # - audit.log uses "type=AVC msg=audit(...:...): pid=..."
@@ -1053,7 +1056,7 @@ class SELinuxAuditLogAnalyzer:
                 type_name = AUDIT_TYPES[int(type_intstr)]
             except KeyError:
                 logger.error("Unknown audit type %r in %r", type_intstr, line)
-                raise NotImplementedError(f"Audit type {repr(type_intstr)} not yet known")
+                raise NotImplementedError(f"Audit type {type_intstr!r} not yet known")
 
         assert type_name
 
@@ -1084,26 +1087,30 @@ class SELinuxAuditLogAnalyzer:
 
         self.last_show_evt_idx = evt_idx
 
+        assert entry_time is not None
         entry_date = entry_time.strftime('%Y-%m-%d')
         if entry_date == self.prog_start_date:
             # Do not write the date if it is "today", but write it if the program ran several days.
             entry_formated_time = entry_time.strftime('%H:%M:%S')
         else:
-            entry_formated_time = '{} {}'.format(entry_date, entry_time.strftime('%H:%M:%S'))
+            entry_formated_time = f"{entry_date} {entry_time.strftime('%H:%M:%S')}"
         if related_to_previous and type_name != 'AVC':
             # Indent fields, for new events related to the previous line
             if type_name == 'CWD' and list(parsed_record.keys()) == ['cwd']:
                 cwd = parsed_record['cwd']
-                print(f"    + {type_name}: {repr(cwd)}", end='\r\n')
+                print(f"    + {type_name}: {cwd!r}", end='\r\n')
             elif type_name == 'PATH':
                 # Format a PATH entry on few lines (they appear in audit.log when audit rules are configured)
                 path_desc = f"{parsed_record['name']!r}"
                 path_mode = parsed_record.get('mode')
                 if path_mode:
+                    assert isinstance(path_mode, int)
                     path_desc += f" mode={oct(path_mode)}"
                 path_ouid = parsed_record.get('ouid')
                 path_ogid = parsed_record.get('ogid')
                 if path_ouid or path_ogid:
+                    assert isinstance(path_ouid, int)
+                    assert isinstance(path_ogid, int)
                     path_desc += f" owner={path_ouid}:{path_ogid}"
                 path_rdev = parsed_record.get('rdev')
                 if path_rdev is not None and path_rdev != '00:00':
@@ -1118,12 +1125,17 @@ class SELinuxAuditLogAnalyzer:
                     path_desc += f" obj={path_obj!r}"
                 path_item = parsed_record.get('item')
                 if path_item:
+                    assert isinstance(path_item, int)
                     path_desc += f" item={path_item}"
                 path_cap_fp = parsed_record['cap_fp']
                 path_cap_fi = parsed_record['cap_fi']
                 path_cap_fe = parsed_record['cap_fe']
                 path_cap_fver = parsed_record['cap_fver']
                 if path_cap_fp or path_cap_fi or path_cap_fe or path_cap_fver:
+                    assert isinstance(path_cap_fp, int)
+                    assert isinstance(path_cap_fi, int)
+                    assert isinstance(path_cap_fe, int)
+                    assert isinstance(path_cap_fver, int)
                     path_desc += f" cap=[p={path_cap_fp:#x},i={path_cap_fi:#x},e={path_cap_fe:#x},ver={path_cap_fver}"
                 print(f"    + {type_name}: {path_desc}", end='\r\n')
                 for key, value in parsed_record.items():
@@ -1139,32 +1151,42 @@ class SELinuxAuditLogAnalyzer:
                             'rdev',
                             ):
                         continue
-                    print(f"        - {key} = {repr(value)}", end='\r\n')
+                    print(f"        - {key} = {value!r}", end='\r\n')
             elif type_name == 'PROCTITLE' and list(parsed_record.keys()) == ['proctitle']:
                 # Process title has a single entry
-                proc_title = parsed_record['proctitle'].replace('\0', ' ')
-                print(f"    + {type_name}: {repr(proc_title)}", end='\r\n')
+                proc_title = parsed_record['proctitle']
+                assert isinstance(proc_title, str)
+                proc_title = proc_title.replace('\0', ' ')
+                print(f"    + {type_name}: {proc_title!r}", end='\r\n')
             elif type_name == 'SYSCALL':
                 # Format a SYSCALL entry on few lines (they appear in Debian's audit.log for example)
-                sysc_args = []
+                sysc_syscall = parsed_record['syscall']
+                sysc_exit = parsed_record['exit']
+                sysc_args: List[str] = []
                 with suppress(KeyError):
                     for arg_key in ('a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6'):
                         sysc_args.append(str(parsed_record[arg_key]))
-                sysc_desc = f"{parsed_record['syscall']} ({','.join(sysc_args)})={ parsed_record['exit']}"
+                assert isinstance(sysc_syscall, str)
+                assert isinstance(sysc_exit, int)
+                sysc_desc = f"{sysc_syscall} ({','.join(sysc_args)})={sysc_exit}"
                 sysc_ppid = parsed_record['ppid']
                 if sysc_ppid != 1:  # Skip if the PPID is init
+                    assert isinstance(sysc_ppid, int)
                     sysc_desc += f" ppid={sysc_ppid}"
                 sysc_uid = parsed_record['uid']
                 if sysc_uid != 0:  # Skip if the UID is root
+                    assert isinstance(sysc_uid, int)
                     sysc_desc += f" uid={sysc_uid}"
                 for uid_key in ('euid', 'suid', 'fsuid'):
                     with suppress(KeyError):
                         uid_value = parsed_record[uid_key]
+                        assert isinstance(uid_value, int)
                         if uid_value != sysc_uid:
                             sysc_desc += f" {uid_key}={uid_value}"
                 # Audit UID is special, as it can be -1 in 32 bits
                 with suppress(KeyError):
                     uid_value = parsed_record['auid']
+                    assert isinstance(uid_value, int)
                     if uid_value != sysc_uid:
                         if uid_value == 0xffffffff:
                             sysc_desc += f" auid=-1"
@@ -1172,17 +1194,20 @@ class SELinuxAuditLogAnalyzer:
                             sysc_desc += f" auid={uid_value}"
                 sysc_gid = parsed_record['gid']
                 if sysc_gid != 0:  # Skip if the GID is root
+                    assert isinstance(sysc_gid, int)
                     sysc_desc += f" gid={sysc_gid}"
                 for gid_key in ('egid', 'sgid', 'fsgid'):
                     with suppress(KeyError):
                         gid_value = parsed_record[gid_key]
+                        assert isinstance(gid_value, int)
                         if gid_value != sysc_gid:
                             sysc_desc += f" {gid_key}={gid_value}"
                 sysc_tty = parsed_record['tty']
+                assert isinstance(sysc_tty, str)
                 if sysc_tty != '(none)':
-                    sysc_desc += f" tty={parsed_record['tty']}"
+                    sysc_desc += f" tty={sysc_tty}"
                 print(f"    + {type_name}: {sysc_desc}", end='\r\n')
-                print(f"        - exe={repr(parsed_record['exe'])}", end='\r\n')
+                print(f"        - exe={parsed_record['exe']!r}", end='\r\n')
                 for key, value in parsed_record.items():
                     if key in (
                             'syscall', 'exit',
@@ -1203,19 +1228,26 @@ class SELinuxAuditLogAnalyzer:
                         continue
                     if value in ('(none)', '(null)'):
                         continue
-                    print(f"        - {key} = {repr(value)}", end='\r\n')
+                    print(f"        - {key} = {value!r}", end='\r\n')
             else:
                 print(f"    + {type_name}:", end='\r\n')
                 for key, value in parsed_record.items():
-                    print(f"        - {key} = {repr(value)}", end='\r\n')
+                    print(f"        - {key} = {value!r}", end='\r\n')
         elif type_name == 'AVC':
             avc_result = parsed_record['avc/result']
-            avc_perms = ' '.join(parsed_record['avc/perms'])
-            source_type = parsed_record['avc/for/scontext'].split(':')[2]
-            target_type = parsed_record['avc/for/tcontext'].split(':')[2]
+            assert isinstance(avc_result, str)
+            assert isinstance(parsed_record['avc/perms'], list)
+            avc_perms = ' '.join(str(p) for p in parsed_record['avc/perms'])
+            avc_scontext = parsed_record['avc/for/scontext']
+            assert isinstance(avc_scontext, str)
+            source_type = avc_scontext.split(':')[2]
+            avc_tcontext = parsed_record['avc/for/tcontext']
+            assert isinstance(avc_tcontext, str)
+            target_type = avc_tcontext.split(':')[2]
             if target_type == source_type:
                 target_type = 'self'
             tclass = parsed_record['avc/for/tclass']
+            assert isinstance(tclass, str)
 
             avc_desc = type_name
             if parsed_record.get('avc/for/permissive') == 1:
@@ -1233,17 +1265,19 @@ class SELinuxAuditLogAnalyzer:
             avc_desc += f":{self.color_cyan}{tclass}{self.color_norm}"
             avc_desc += f" {self.color_boldred}{{ {avc_perms} }}{self.color_norm}"
             with suppress(KeyError):
-                avc_desc += " ioctl={}".format(parsed_record['avc/for/ioctlcmd'])
+                avc_ioctlcmd = parsed_record['avc/for/ioctlcmd']
+                assert isinstance(avc_ioctlcmd, str)
+                avc_desc += f" ioctl={avc_ioctlcmd}"
             with suppress(KeyError):
-                avc_desc += " path={}".format(repr(parsed_record['avc/for/path']))
+                avc_desc += f" path={parsed_record['avc/for/path']!r}"
             with suppress(KeyError):
-                avc_desc += " name={}".format(repr(parsed_record['avc/for/name']))
+                avc_desc += f" name={parsed_record['avc/for/name']!r}"
             with suppress(KeyError):
-                avc_desc += " (ino {}:{})".format(parsed_record['avc/for/dev'], parsed_record['avc/for/ino'])
+                avc_desc += f" (ino {parsed_record['avc/for/dev']!r}:{parsed_record['avc/for/ino']!r})"
             with suppress(KeyError):
-                avc_desc += " comm={}".format(repr(parsed_record['avc/for/comm']))
+                avc_desc += f" comm={parsed_record['avc/for/comm']!r}"
             with suppress(KeyError):
-                avc_desc += " pid={}".format(repr(parsed_record['avc/for/pid']))
+                avc_desc += f" pid={parsed_record['avc/for/pid']!r}"
             print(f"[{entry_formated_time}] {avc_desc}", end='\r\n')
             for key, value in parsed_record.items():
                 if key in (
@@ -1265,15 +1299,22 @@ class SELinuxAuditLogAnalyzer:
                     continue
                 if value in ('?', '', None):
                     continue
-                print(f"    - {key} = {repr(value)}", end='\r\n')
+                print(f"    - {key} = {value!r}", end='\r\n')
         elif type_name == 'USER_AVC':
             avc_result = parsed_record['msg/avc/result']
+            assert isinstance(avc_result, str)
+            assert isinstance(parsed_record['msg/avc/perms'], list)
             avc_perms = ' '.join(parsed_record['msg/avc/perms'])
-            source_type = parsed_record['msg/avc/for/scontext'].split(':')[2]
-            target_type = parsed_record['msg/avc/for/tcontext'].split(':')[2]
+            avc_scontext = parsed_record['msg/avc/for/scontext']
+            assert isinstance(avc_scontext, str)
+            source_type = avc_scontext.split(':')[2]
+            avc_tcontext = parsed_record['msg/avc/for/tcontext']
+            assert isinstance(avc_tcontext, str)
+            target_type = avc_tcontext.split(':')[2]
             if target_type == source_type:
                 target_type = 'self'
             tclass = parsed_record['msg/avc/for/tclass']
+            assert isinstance(tclass, str)
 
             avc_desc = type_name
             if parsed_record.get('msg/avc/for/permissive') == 1:
@@ -1291,22 +1332,24 @@ class SELinuxAuditLogAnalyzer:
             avc_desc += f":{self.color_cyan}{tclass}{self.color_norm}"
             avc_desc += f" {self.color_boldred}{{ {avc_perms} }}{self.color_norm}"
             with suppress(KeyError):
-                avc_desc += " path={}".format(repr(parsed_record['msg/avc/for/path']))
+                avc_desc += f" path={parsed_record['msg/avc/for/path']!r}"
             with suppress(KeyError):
-                avc_desc += " spid={}".format(repr(parsed_record['msg/avc/for/spid']))
+                avc_desc += f" spid={parsed_record['msg/avc/for/spid']!r}"
             with suppress(KeyError):
-                avc_desc += " tpid={}".format(repr(parsed_record['msg/avc/for/tpid']))
+                avc_desc += f" tpid={parsed_record['msg/avc/for/tpid']!r}"
 
             avc_desc += " (from"
             with suppress(KeyError):
-                if parsed_record['subj'].startswith('system_u:system_r:system_dbusd_t'):
+                avc_subj = parsed_record['subj']
+                assert isinstance(avc_subj, str)
+                if avc_subj.startswith('system_u:system_r:system_dbusd_t'):
                     avc_desc += " subj=DBUS"
                 else:
-                    avc_desc += " subj={}".format(parsed_record['subj'])
+                    avc_desc += f" subj={avc_subj}"
             with suppress(KeyError):
-                avc_desc += " uid={}".format(parsed_record['uid'])
+                avc_desc += f" uid={parsed_record['uid']!r}"
             with suppress(KeyError):
-                avc_desc += " pid={}".format(parsed_record['pid'])
+                avc_desc += f" pid={parsed_record['pid']!r}"
             avc_desc += ")"
             print(f"[{entry_formated_time}] {avc_desc}", end='\r\n')
             for key, value in parsed_record.items():
@@ -1330,13 +1373,13 @@ class SELinuxAuditLogAnalyzer:
                     continue
                 if value in ('?', '', None):
                     continue
-                print(f"    - {key} = {repr(value)}", end='\r\n')
+                print(f"    - {key} = {value!r}", end='\r\n')
         else:
             print(f"{self.color_yellow}[{entry_formated_time}] {type_name}:{self.color_norm}", end='\r\n')
             for key, value in parsed_record.items():
                 if value in ('?', '', None):
                     continue
-                print(f"{self.color_yellow}    - {key} = {repr(value)}{self.color_norm}", end='\r\n')
+                print(f"{self.color_yellow}    - {key} = {value!r}{self.color_norm}", end='\r\n')
 
 
 if __name__ == '__main__':
