@@ -1161,6 +1161,9 @@ class SELinuxAuditLogAnalyzer:
             if avc_result == 'denied':
                 # Colorize AVC denials in red
                 avc_desc += f" {self.color_red}{avc_result}{self.color_norm}"
+            elif avc_result == 'granted':
+                # Colorize AVC granted (due to "auditallow") in green
+                avc_desc += f" {self.color_green}{avc_result}{self.color_norm}"
             else:
                 avc_desc += f" {avc_result}"
             avc_desc += f" {self.color_purple}{source_type}{self.color_norm}"
@@ -1216,6 +1219,9 @@ class SELinuxAuditLogAnalyzer:
             if avc_result == 'denied':
                 # Colorize AVC denials in red
                 avc_desc += f" {self.color_red}{avc_result}{self.color_norm}"
+            elif avc_result == 'granted':
+                # Colorize AVC granted (due to "auditallow") in green
+                avc_desc += f" {self.color_green}{avc_result}{self.color_norm}"
             else:
                 avc_desc += f" {avc_result}"
             avc_desc += f" {self.color_purple}{source_type}{self.color_norm}"
