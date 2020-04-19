@@ -83,7 +83,7 @@ if [ -e /sys/firmware/dmi/tables/DMI ] ; then
 fi
 if command -v dmidecode > /dev/null 2>&1 ; then
     dmidecode > "dmi/dmidecode.txt" || true
-    # This file is inteded for "dmidecode --from-dump=dmidecode.bin"
+    # This file is intended for "dmidecode --from-dump=dmidecode.bin"
     dmidecode --dump --dump-bin "dmi/dmidecode.bin" || true
 fi
 
@@ -91,7 +91,7 @@ fi
 "${HOME_FILES_BIN}/iommu-show" -d > "${HW_TODAY}/iommu-show-d.txt"
 if command -v chipsec_util > /dev/null 2>&1 ; then
     if chipsec_util iommu config > "${HW_TODAY}/chipsec_util_iommu_config.txt" ; then
-        # The kernel module has succesfully been inserted
+        # The kernel module has successfully been inserted
         chipsec_util iommu list > "${HW_TODAY}/chipsec_util_iommu_list.txt"
         chipsec_util iommu status > "${HW_TODAY}/chipsec_util_iommu_status.txt"
         chipsec_util iommu pt > "${HW_TODAY}/chipsec_util_iommu_pt.txt"
