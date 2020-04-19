@@ -1081,6 +1081,51 @@ class SELinuxAuditLogAnalyzer:
             if type_name == 'CWD' and list(parsed_record.keys()) == ['cwd']:
                 cwd = parsed_record['cwd']
                 print(f"    + {type_name}: {repr(cwd)}", end='\r\n')
+            elif type_name == 'PATH':
+                # Format a PATH entry on few lines (they appear in audit.log when audit rules are configured)
+                path_desc = f"{parsed_record['name']!r}"
+                path_mode = parsed_record.get('mode')
+                if path_mode:
+                    path_desc += f" mode={oct(path_mode)}"
+                path_ouid = parsed_record.get('ouid')
+                path_ogid = parsed_record.get('ogid')
+                if path_ouid or path_ogid:
+                    path_desc += f" owner={path_ouid}:{path_ogid}"
+                path_rdev = parsed_record.get('rdev')
+                if path_rdev is not None and path_rdev != '00:00':
+                    path_desc += f" rdev={path_rdev!r}"
+                path_nametype = parsed_record['nametype']
+                if path_nametype == 'UNKNOWN':
+                    path_desc += f" nametype=unknown"
+                elif path_nametype != 'NORMAL':
+                    path_desc += f" nametype={path_nametype!r}"
+                path_obj = parsed_record.get('obj')
+                if path_obj:
+                    path_desc += f" obj={path_obj!r}"
+                path_item = parsed_record.get('item')
+                if path_item:
+                    path_desc += f" item={path_item}"
+                path_cap_fp = parsed_record['cap_fp']
+                path_cap_fi = parsed_record['cap_fi']
+                path_cap_fe = parsed_record['cap_fe']
+                path_cap_fver = parsed_record['cap_fver']
+                if path_cap_fp or path_cap_fi or path_cap_fe or path_cap_fver:
+                    path_desc += f" cap=[p={path_cap_fp:#x},i={path_cap_fi:#x},e={path_cap_fe:#x},ver={path_cap_fver}"
+                print(f"    + {type_name}: {path_desc}", end='\r\n')
+                for key, value in parsed_record.items():
+                    if key in (
+                            'cap_fe', 'cap_fi', 'cap_fp', 'cap_fver',
+                            'inode',
+                            'item',
+                            'mode',
+                            'name',
+                            'nametype',
+                            'obj',
+                            'ogid', 'ouid',
+                            'rdev',
+                            ):
+                        continue
+                    print(f"        - {key} = {repr(value)}", end='\r\n')
             elif type_name == 'PROCTITLE' and list(parsed_record.keys()) == ['proctitle']:
                 # Process title has a single entry
                 proc_title = parsed_record['proctitle'].replace('\0', ' ')
