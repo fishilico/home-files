@@ -31,6 +31,14 @@ import os.path
 import subprocess
 import sys
 
+# These scripts use f-strings, which were introduced in Python 3.6,
+# and type hints, which were introduced in Python 3.5 but improved in 3.6.
+BIN_REQUIRING_PY36 = frozenset((
+    'selinux-audit-log',
+    'useful-selinux-modules',
+    'tpm-show',
+))
+
 
 def test():
     """Run pep8 on all python files
@@ -100,15 +108,10 @@ def test():
                 if 'python3' in firstline and sys.version_info < (3, ):
                     continue
                 # If there are incompatibilities, list them here
-                if filename in ('selinux-audit-log', 'tpm-show') and dirpath.endswith('bin'):
+                if filename in BIN_REQUIRING_PY36 and dirpath.endswith('bin'):
                     # these scripts use f-strings, which were introduced
                     # in Python 3.6
                     if sys.version_info < (3, 6):
-                        continue
-                if filename == 'useful-selinux-modules' and dirpath.endswith('bin'):
-                    # these scripts use type hints, which were introduced
-                    # in Python 3.5
-                    if sys.version_info < (3, 5):
                         continue
             elif not filename.lower().endswith('.py'):
                 continue
