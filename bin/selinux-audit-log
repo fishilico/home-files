@@ -782,6 +782,7 @@ def split_audit_fields(type_name, line, prefix=''):
                     'rdev',
                     'res',
                     'resrc',
+                    'saddr',
                     'scontext',
                     'selected-context',
                     'service',
