@@ -50,6 +50,7 @@ DEFAULT_AUDIT_LOG_PATH = '/var/log/audit/audit.log'
 
 COLOR_RED = '\033[31m'
 COLOR_BOLDRED = '\033[31;1m'
+COLOR_GREEN = '\033[32m'
 COLOR_YELLOW = '\033[33m'
 COLOR_PURPLE = '\033[35m'
 COLOR_CYAN = '\033[36m'
@@ -860,6 +861,7 @@ class SELinuxAuditLogAnalyzer:
         if args.no_color:
             self.color_red = ''
             self.color_boldred = ''
+            self.color_green = ''
             self.color_yellow = ''
             self.color_purple = ''
             self.color_cyan = ''
@@ -867,6 +869,7 @@ class SELinuxAuditLogAnalyzer:
         else:
             self.color_red = COLOR_RED
             self.color_boldred = COLOR_BOLDRED
+            self.color_green = COLOR_GREEN
             self.color_yellow = COLOR_YELLOW
             self.color_purple = COLOR_PURPLE
             self.color_cyan = COLOR_CYAN
@@ -1152,11 +1155,14 @@ class SELinuxAuditLogAnalyzer:
                 target_type = 'self'
             tclass = parsed_record['avc/for/tclass']
 
+            avc_desc = type_name
+            if parsed_record.get('avc/for/permissive') == 1:
+                avc_desc += f"{self.color_green}p{self.color_norm}"
             if avc_result == 'denied':
                 # Colorize AVC denials in red
-                avc_desc = f"{self.color_red}{avc_result}{self.color_norm}"
+                avc_desc += f" {self.color_red}{avc_result}{self.color_norm}"
             else:
-                avc_desc = avc_result
+                avc_desc += f" {avc_result}"
             avc_desc += f" {self.color_purple}{source_type}{self.color_norm}"
             avc_desc += f" {self.color_yellow}{target_type}{self.color_norm}"
             avc_desc += f":{self.color_cyan}{tclass}{self.color_norm}"
@@ -1173,7 +1179,7 @@ class SELinuxAuditLogAnalyzer:
                 avc_desc += " comm={}".format(repr(parsed_record['avc/for/comm']))
             with suppress(KeyError):
                 avc_desc += " pid={}".format(repr(parsed_record['avc/for/pid']))
-            print(f"[{entry_formated_time}] {type_name} {avc_desc}", end='\r\n')
+            print(f"[{entry_formated_time}] {avc_desc}", end='\r\n')
             for key, value in parsed_record.items():
                 if key in (
                         'avc/for/capability',
@@ -1204,11 +1210,14 @@ class SELinuxAuditLogAnalyzer:
                 target_type = 'self'
             tclass = parsed_record['msg/avc/for/tclass']
 
+            avc_desc = type_name
+            if parsed_record.get('msg/avc/for/permissive') == 1:
+                avc_desc += f"{self.color_green}p{self.color_norm}"
             if avc_result == 'denied':
                 # Colorize AVC denials in red
-                avc_desc = f"{self.color_red}{avc_result}{self.color_norm}"
+                avc_desc += f" {self.color_red}{avc_result}{self.color_norm}"
             else:
-                avc_desc = avc_result
+                avc_desc += f" {avc_result}"
             avc_desc += f" {self.color_purple}{source_type}{self.color_norm}"
             avc_desc += f" {self.color_yellow}{target_type}{self.color_norm}"
             avc_desc += f":{self.color_cyan}{tclass}{self.color_norm}"
@@ -1231,7 +1240,7 @@ class SELinuxAuditLogAnalyzer:
             with suppress(KeyError):
                 avc_desc += " pid={}".format(parsed_record['pid'])
             avc_desc += ")"
-            print(f"[{entry_formated_time}] {type_name} {avc_desc}", end='\r\n')
+            print(f"[{entry_formated_time}] {avc_desc}", end='\r\n')
             for key, value in parsed_record.items():
                 if key in (
                         'auid',
