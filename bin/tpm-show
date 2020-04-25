@@ -1301,6 +1301,100 @@ class Tpm20PublicStruct:
             if offset + unique_size != len(self.parameters_unique):
                 raise RuntimeError(f"Unexpected parameters format for RSA public key object: {self.parameters_unique!r}")  # noqa
             return
+
+        if self.type_alg == TpmAlgId.TPM_ALG_ECC:
+            """
+            struct TPMS_ECC_PARMS {
+                TPMT_SYM_DEF_OBJECT symmetric;
+                TPMT_ECC_SCHEME scheme;
+                TPMI_ECC_CURVE curveID; // TPM_ECC_CURVE = UINT16
+                TPMT_KDF_SCHEME kdf;
+            }
+            struct TPMT_ECC_SCHEME {
+                TPMI_ALG_ECC_SCHEME scheme; // TPM_ALG_ID = UINT16
+                TPMU_SIG_SCHEME details; // TPMS_SCHEME_SIGHASH = TPMI_ALG_HASH = TPM_ALG_ID = UINT16
+            }
+            struct TPMT_KDF_SCHEME {
+                TPMI_ALG_KDF scheme;
+                TPMU_KDF_SCHEME details; // TPMI_ALG_HASH = TPM_ALG_ID = UINT16
+            }
+
+            Examples:
+            * For a signature key:
+                0010  symmetric.algorithm = TPM_ALG_NULL
+                0018  scheme.scheme = TPM_ALG_ECDSA
+                000b  scheme.details = TPM_ALG_SHA256
+                0003  curve = TPM_ECC_NIST_P256
+                0010  kdf.scheme = TPM_ALG_NULL
+                0020  unique.TPMS_ECC_POINT.x.size = 32 bytes
+                ...   point.x
+                0020  unique.TPMS_ECC_POINT.y.size = 32 bytes
+                ...   point.y
+            * For an encryption key:
+                0006  symmetric.algorithm = TPM_ALG_AES
+                0080  symmetric.keyBits = 128
+                0043  symmetric.mode = TPM_ALG_CFB
+                0010  scheme.scheme = TPM_ALG_NULL
+                0003  curve = TPM_ECC_NIST_P256
+                0010  kdf.scheme = TPM_ALG_NULL
+                0020  unique.TPMS_ECC_POINT.x.size = 32 bytes
+                ...   point.x
+                0020  unique.TPMS_ECC_POINT.y.size = 32 bytes
+                ...   point.y
+            """
+            sym_alg_id, = struct.unpack('>H', self.parameters_unique[:2])
+            offset = 2
+            sym_alg = TpmAlgId(sym_alg_id)
+            if sym_alg == TpmAlgId.TPM_ALG_NULL:
+                print(f"{indent}- symmetric: {sym_alg.name} ({sym_alg_id:#x})")
+            elif sym_alg == TpmAlgId.TPM_ALG_AES:
+                sym_keybits, sym_mode_id = struct.unpack('>HH', self.parameters_unique[offset:offset + 4])
+                offset += 4
+                sym_mode = TpmAlgId(sym_mode_id)
+                print(f"{indent}- symmetric: {sym_alg.name} ({sym_alg_id:#x}), keyBits={sym_keybits}, mode={sym_mode.name} ({sym_mode_id:#x})")  # noqa
+            else:
+                raise NotImplementedError(f"Unimplemented parameters for ECC/sym algorithm {sym_alg!r}")
+            scheme_alg_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
+            offset += 2
+            scheme_alg = TpmAlgId(scheme_alg_id)
+            if scheme_alg == TpmAlgId.TPM_ALG_NULL:
+                print(f"{indent}- scheme: {scheme_alg.name} ({scheme_alg:#x})")
+            elif scheme_alg == TpmAlgId.TPM_ALG_ECDSA:
+                scheme_details_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
+                offset += 2
+                scheme_details = TpmAlgId(scheme_details_id)
+                print(f"{indent}- scheme: {scheme_alg.name} ({scheme_alg:#x}), halg={scheme_details.name} ({scheme_details_id:#x})")  # noqa
+            else:
+                raise NotImplementedError(f"Unimplemented parameters for ECC/scheme algorithm {scheme_alg!r}")
+            ecc_curve_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
+            offset += 2
+            ecc_curve = Tpm20EccCurve(ecc_curve_id)
+            print(f"{indent}- curve: {ecc_curve.name} ({ecc_curve:#x})")
+            kdf_scheme_alg_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
+            offset += 2
+            kdf_scheme_alg = TpmAlgId(kdf_scheme_alg_id)
+            if kdf_scheme_alg == TpmAlgId.TPM_ALG_NULL:
+                print(f"{indent}- KDF scheme: {kdf_scheme_alg.name} ({kdf_scheme_alg:#x})")
+            else:
+                raise NotImplementedError(f"Unimplemented parameters for ECC/KDF scheme algorithm {scheme_alg!r}")
+            pt_x_size, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
+            offset += 2
+            pt_x = self.parameters_unique[offset:offset + pt_x_size]
+            offset += pt_x_size
+            print(f"{indent}- public key point.x:")
+            hexdump(pt_x, indent=indent + "  ")
+            pt_y_size, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
+            offset += 2
+            pt_y = self.parameters_unique[offset:offset + pt_y_size]
+            offset += pt_y_size
+            print(f"{indent}- public key point.y:")
+            hexdump(pt_y, indent=indent + "  ")
+            if offset != len(self.parameters_unique):
+                raise RuntimeError(f"Unexpected parameters format for ECC public key object: {self.parameters_unique!r}")  # noqa
+            return
+
+        print(f"Error: Unimplemented object public parameters for algorithm {self.type_alg!r}")
+        hexdump(self.parameters_unique, indent=indent + '  ')
         raise NotImplementedError(f"Unimplemented object public parameters for algorithm {self.type_alg!r}")
 
 
