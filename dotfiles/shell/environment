@@ -137,7 +137,7 @@ export EXA_COLORS='ur=0:uw=0:ux=0:ue=0:gr=0:gw=0:gx=0:ge=0:tr=0:tw=0:tx=0:te=0:x
 # Force using GPG agent for SSH, if the agent is launched and there is not a
 # SSH session already (in order to allow ssh -o ForwardAgent=yes)
 if [ -z "${SSH_CLIENT:-}" ] ; then
-    DIR="$(gpgconf --list-dirs agent-ssh-socket 2> /dev/null)"
+    DIR="$(gpgconf --list-dirs agent-ssh-socket 2> /dev/null || :)"
     if [ -e "$DIR" ] ; then
         export SSH_AUTH_SOCK="$DIR"
         unset SSH_AGENT_PID
