@@ -60,7 +60,7 @@ print_ascii() {
             fi
             # Use "printf %b" to execute the backslashed sequence in dash
             # zsh printf built-in function doesn't understand %b
-            if [ -n "$ZSH_VERSION" ]
+            if [ -n "${ZSH_VERSION:-}" ]
             then
                 # shellcheck disable=SC2017,SC2059
                 printf "\\$((NUM/64*100 + NUM%64/8*10 + NUM%8))"

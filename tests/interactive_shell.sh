@@ -38,14 +38,22 @@ then
             if [ "$TESTED_SHELL" = "busybox" ]
             then
                 # Use "busybox sh"
-                set -- sh "$@"
-            fi
-            if env -i "$TESTED_SHELL" "$@"
-            then
-                echo "[ OK ] $0 $TESTED_SHELL"
+                if env -i "$TESTED_SHELL" sh -u "$@"
+                then
+                    echo "[ OK ] $0 $TESTED_SHELL sh"
+                else
+                    echo "[FAIL] $0 $TESTED_SHELL sh"
+                    RETVAL=1
+                fi
             else
-                echo "[FAIL] $0 $TESTED_SHELL"
-                RETVAL=1
+                # Pass -u in order to error on undefined variables
+                if env -i "$TESTED_SHELL" -u "$@"
+                then
+                    echo "[ OK ] $0 $TESTED_SHELL"
+                else
+                    echo "[FAIL] $0 $TESTED_SHELL"
+                    RETVAL=1
+                fi
             fi
         else
             # Skip test if $TESTED_SHELL is not installed
@@ -92,14 +100,14 @@ export PS1='$ '
 # Source the configuration
 case "$2" in
     bash)
-        [ -n "$BASH_VERSION" ] || die "running bash without \$BASH_VERSION. This is not sane!"
+        [ -n "${BASH_VERSION:-}" ] || die "running bash without \$BASH_VERSION. This is not sane!"
         # shellcheck disable=SC2039
         shopt -s expand_aliases
         # shellcheck source=/dev/null
         source "$ROOTDIR/dotfiles/bashrc"
         ;;
     zsh)
-        [ -n "$ZSH_VERSION" ] || die "running zsh without \$ZSH_VERSION. This is not sane!"
+        [ -n "${ZSH_VERSION:-}" ] || die "running zsh without \$ZSH_VERSION. This is not sane!"
         # shellcheck source=/dev/null
         . "$ROOTDIR/dotfiles/zshrc"
         ;;

@@ -10,13 +10,13 @@
 #umask 022
 
 # if running bash
-if [ -n "$BASH_VERSION" ]; then
+if [ -n "${BASH_VERSION:-}" ]; then
     # include .bashrc if it exists
     if [ -f "$HOME/.bashrc" ]; then
         # shellcheck source=/dev/null
         . "$HOME/.bashrc"
     fi
-elif [ -z "$ZSH_VERSION" ]; then
+elif [ -z "${ZSH_VERSION:-}" ]; then
     # not bash nor zsh, maybe ash or dash?
     # find best configuration dir and include every configuration files
     SHELL_CONFIG_DIR=""
@@ -25,7 +25,7 @@ elif [ -z "$ZSH_VERSION" ]; then
         SHELL_CONFIG_DIR="${0%.profile}.shell"
     elif [ "${0##*/}" = "profile" ] && [ -d "${0%profile}shell" ] ; then
         SHELL_CONFIG_DIR="${0%profile}shell"
-    elif [ -n "$SUDO_USER" ] ; then
+    elif [ -n "${SUDO_USER:-}" ] ; then
         SUDO_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
         SHELL_CONFIG_DIR="$SUDO_HOME/.shell"
         unset SUDO_HOME

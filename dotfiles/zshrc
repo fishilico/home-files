@@ -28,7 +28,7 @@ if [ "${0##*/}" = ".zshrc" ] && [ -d "${0%.zshrc}.shell" ] ; then
     SHELL_CONFIG_DIR="${0%.zshrc}.shell"
 elif [ "${0##*/}" = "zshrc" ] && [ -d "${0%zshrc}shell" ] ; then
     SHELL_CONFIG_DIR="${0%zshrc}shell"
-elif [ -n "$SUDO_USER" ] ; then
+elif [ -n "${SUDO_USER:-}" ] ; then
     SUDO_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
     SHELL_CONFIG_DIR="$SUDO_HOME/.shell"
     unset SUDO_HOME

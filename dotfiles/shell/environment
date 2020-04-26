@@ -35,11 +35,11 @@ unset DIR
 
 # Find real home directory
 # Try sudo user
-if [ -z "$REAL_HOME" ] && [ -n "$SUDO_USER" ] ; then
+if [ -z "${REAL_HOME:-}" ] && [ -n "${SUDO_USER:-}" ] ; then
     REAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
 fi
 # Use current $HOME variable
-if [ -z "$REAL_HOME" ] ; then
+if [ -z "${REAL_HOME:-}" ] ; then
     REAL_HOME="$HOME"
 fi
 export REAL_HOME
@@ -60,8 +60,8 @@ unset COLON_PATH HOMEBIN
 # Fix $TERM to announce 256 colors (useful for screen, tmux, vim...).
 # For XFCE Terminal, this is a workaround for
 # https://bugzilla.gnome.org/show_bug.cgi?id=640940
-if [ "$TERM" = "xterm" ] ; then
-    case "$COLORTERM" in
+if [ "${TERM:-}" = "xterm" ] ; then
+    case "${COLORTERM:-}" in
         gnome-terminal|xfce4-terminal)
             export TERM="xterm-256color"
             ;;
@@ -85,7 +85,7 @@ fi
 export GREP_COLORS='ne'
 
 # Define $COLORFGBG to "dark background" when it is not defined
-if [ -z "$COLORFGBG" ] ; then
+if [ -z "${COLORFGBG:-}" ] ; then
     export COLORFGBG='default;0'
 fi
 
@@ -109,7 +109,7 @@ if [ -x /usr/bin/less ] || command -v less > /dev/null 2>&1 ; then
 fi
 
 # Make less more friendly for non-text input files, see lesspipe(1)
-if [ -x /usr/bin/lesspipe ] ; then
+if [ -x /usr/bin/lesspipe ] || command -v lesspipe > /dev/null 2>&1 ; then
     export LESSOPEN="| /usr/bin/lesspipe %s"
     export LESSCLOSE="/usr/bin/lesspipe %s %s"
 fi
@@ -136,7 +136,7 @@ export EXA_COLORS='ur=0:uw=0:ux=0:ue=0:gr=0:gw=0:gx=0:ge=0:tr=0:tw=0:tx=0:te=0:x
 
 # Force using GPG agent for SSH, if the agent is launched and there is not a
 # SSH session already (in order to allow ssh -o ForwardAgent=yes)
-if [ -z "$SSH_CLIENT" ] ; then
+if [ -z "${SSH_CLIENT:-}" ] ; then
     DIR="$(gpgconf --list-dirs agent-ssh-socket 2> /dev/null)"
     if [ -e "$DIR" ] ; then
         export SSH_AUTH_SOCK="$DIR"
@@ -151,17 +151,17 @@ if [ -s /etc/ld.so.preload ] ; then
     echo >&2 'Warning: /etc/ld.so.preload is present on this system!'
     tput sgr0 2> /dev/null
 fi
-if [ -n "$LD_PRELOAD" ] ; then
+if [ -n "${LD_PRELOAD:-}" ] ; then
     (tput bold && tput setaf 1) 2> /dev/null
     echo >&2 'Warning: LD_PRELOAD is set!'
     tput sgr0 2> /dev/null
 fi
-if [ -n "$LD_LIBRARY_PATH" ] ; then
+if [ -n "${LD_LIBRARY_PATH:-}" ] ; then
     (tput bold && tput setaf 1) 2> /dev/null
     echo >&2 'Warning: LD_LIBRARY_PATH is set!'
     tput sgr0 2> /dev/null
 fi
-if [ -n "$LD_AUDIT" ] ; then
+if [ -n "${LD_AUDIT:-}" ] ; then
     # LD_AUDIT is dangerous:
     # * man 7 rtld-audit : http://man7.org/linux/man-pages/man7/rtld-audit.7.html
     # * https://lwn.net/Articles/412048/

@@ -39,7 +39,7 @@ if [ -n "$CURRENT_NETNS_PROMPT" ] ; then
 fi
 
 # Virtual environments (Python virtualenv, pew...)
-if [ -n "$VIRTUAL_ENV" ] ; then
+if [ -n "${VIRTUAL_ENV:-}" ] ; then
     BASH_PROMPT='\[\e[1;34m\]('"${VIRTUAL_ENV##*/}"')\[\e[m\]'"$BASH_PROMPT"
     ZSH_PROMPT='%B%F{blue}('"${VIRTUAL_ENV##*/}"')%f%b'"$ZSH_PROMPT"
 fi
@@ -63,7 +63,7 @@ else
     BASH_PROMPT="$BASH_PROMPT"'\[\e[33m\]\u\[\e[m\]@'
     ZSH_PROMPT="$ZSH_PROMPT"'%F{yellow}%n%f@'
 
-    if [ -z "$SSH_CLIENT" ]; then
+    if [ -z "${SSH_CLIENT:-}" ]; then
         BASH_PROMPT="$BASH_PROMPT"'\[\e[32m\]\h\[\e[m\]'
         ZSH_PROMPT="$ZSH_PROMPT"'%F{green}%m%f'
     else
@@ -73,7 +73,7 @@ else
 fi
 
 
-if [ -n "$BASH_VERSION" ]; then
+if [ -n "${BASH_VERSION:-}" ]; then
     # Don't forget \[...\] to compute prompt width correctly
     PS1="$BASH_PROMPT "'\[\e[35m\]\w\[\e[m\]\\$ '
     # Set the title to user@host:dir
@@ -82,7 +82,7 @@ if [ -n "$BASH_VERSION" ]; then
             PS1='\[\e]0;\u@\h: \w\a\]'"$PS1"
             ;;
     esac
-elif [ -n "$ZSH_VERSION" ]; then
+elif [ -n "${ZSH_VERSION:-}" ]; then
     PROMPT="$ZSH_PROMPT %F{magenta}%~%f%# "
     # Display last returned value at the beginning of the prompt
     PROMPT="%(?..%F{red}[%?]%f )$PROMPT"
@@ -93,7 +93,7 @@ elif [ -n "$ZSH_VERSION" ]; then
     # shellcheck disable=SC2034
     SPROMPT='zsh: correct %F{red}%R%f to %F{green}%r%f [nyae]? '
     # Set window title too
-    case "$TERM" in
+    case "${TERM:-}" in
         xterm*|rxvt*)
             # shellcheck disable=SC2039
             PROMPT=$'%{\e]0;%n@%m: %~\a%}'"$PROMPT"

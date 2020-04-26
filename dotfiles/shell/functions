@@ -219,7 +219,7 @@ postless() {
 # Highlight a pattern, if grep accept colors
 case $(grep --help 2> /dev/null) in
     *--color*)
-        if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ] ; then
+        if [ -n "${BASH_VERSION:-}" ] || [ -n "${ZSH_VERSION:-}" ] ; then
             # Modern shells support array substitution
             hl() {
                 \grep -E --color=always -e '' "${@/#/-e}"
