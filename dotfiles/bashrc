@@ -21,11 +21,19 @@ HISTFILESIZE=2000
 shopt -s checkwinsize
 
 # Shell completion
+# Disable option -e when sourcing it, as it uses "[ COND ] && action" constructions:
+# https://github.com/scop/bash-completion/blob/2.10/bash_completion#L98
+# Disable option -u too, as some extensions might use undefined variables:
+# https://travis-ci.org/github/fishilico/home-files/jobs/679825554#L3740
+SHELL_OLD_ERREXIT_NOUNSET="$(shopt -po errexit nounset || :)"
+set +eu
 if [ -f /usr/share/bash-completion/bash_completion ]; then
     . /usr/share/bash-completion/bash_completion
 elif [ -f /etc/bash_completion ]; then
     . /etc/bash_completion
 fi
+eval "$SHELL_OLD_ERREXIT_NOUNSET"
+unset SHELL_OLD_ERREXIT_NOUNSET
 
 # Common configuration, find best configuration dir
 SHELL_CONFIG_DIR=""
