@@ -38,7 +38,7 @@ then
             if [ "$TESTED_SHELL" = "busybox" ]
             then
                 # Use "busybox sh"
-                if env -i "$TESTED_SHELL" sh -u "$@"
+                if env -i "$TESTED_SHELL" sh -eu "$@"
                 then
                     echo "[ OK ] $0 $TESTED_SHELL sh"
                 else
@@ -46,8 +46,9 @@ then
                     RETVAL=1
                 fi
             else
+                # Pass -e in order to exit as soon as an error happens
                 # Pass -u in order to error on undefined variables
-                if env -i "$TESTED_SHELL" -u "$@"
+                if env -i "$TESTED_SHELL" -eu "$@"
                 then
                     echo "[ OK ] $0 $TESTED_SHELL"
                 else
