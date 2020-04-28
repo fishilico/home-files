@@ -32,7 +32,7 @@ BASH_PROMPT=""
 ZSH_PROMPT=""
 
 # Network namespace identification
-CURRENT_NETNS_PROMPT="$(! [ -d /run/netns ] || ip netns identify 2> /dev/null)"
+CURRENT_NETNS_PROMPT="$(! [ -d /run/netns ] || ip netns identify 2> /dev/null || :)"
 if [ -n "$CURRENT_NETNS_PROMPT" ] ; then
     BASH_PROMPT='\[\e[1;34m\]['"$CURRENT_NETNS_PROMPT"']\[\e[m\]'"$BASH_PROMPT"
     ZSH_PROMPT='%B%F{blue}['"$CURRENT_NETNS_PROMPT"']%f%b'"$ZSH_PROMPT"
