@@ -67,7 +67,7 @@ if [ -r /proc/device-tree/model ] ; then
     echo '    $ cat /proc/device-tree/model'
     echo "    $(cat /proc/device-tree/model)"
 fi
-if has_command dkpg ; then
+if has_command dpkg ; then
     echo '    $ dpkg --print-architecture'
     echo "    $(dpkg --print-architecture)"
 fi
