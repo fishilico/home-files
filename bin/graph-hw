@@ -1196,7 +1196,17 @@ KNOWN_ACPI_DEVICES = {
     'INT33E1': 'Intel Bluetooth HCI UART',
     'INT33F4': 'X-Powers AXP288 PMIC (Battery)',
     'INT33FC': 'Intel Baytrail GPIO Controller',  # Seen as \_SB_.GPO0, \_SB_.GPO1, \_SB_.GPO2...
+    'INT3400': 'Intel Dynamic Tuning Manager',
+    'INT3403': 'Intel Dynamic Platform and Thermal Framework Generic Participant',  # Thermal sensor
     'INT3404': 'Fan',
+    'INT3406': 'Intel Dynamic Platform and Thermal Framework Display Participant',
+    'INT3407': 'Intel Dynamic Tuning Power Participant',
+    'INT3408': 'Intel Dynamic Tuning Wireless Participant',
+    'INT3409': 'Intel Dynamic Platform and Thermal Framework Ambient Temperature Sensor Participant',
+    'INT340A': 'Intel Dynamic Platform and Thermal Framework Storage Participant',
+    'INT340B': 'Intel Dynamic Platform and Thermal Framework Participant for Intel RealSense 3D Camera',
+    'INT340C': 'Intel Dynamic Tuning Thunderbolt Participant',
+    'INT340D': 'Intel Dynamic Tuning Multi-Chip Discrete Graphics(DGFX) Participant',
     'INT340E': 'Motherboard Resources',  # Seen as \_SB_.PTID
     'INT340F': 'Intel Collaborative Processor Performance Control (CPPC)',  # Seen as \_SB_.PCCD
     'INT3420': 'Intel Bluetooth RF Kill (BTKL)',
@@ -1219,10 +1229,27 @@ KNOWN_ACPI_DEVICES = {
     'INT3471': 'Intel Camera Sensor IMX135',  # Seen as \_SB_.PCI0.LNK0 and \_SB_.PCI0.LNK2
     'INT3472': 'TPS68470 Power Management IC (PMIC-CRDG)',
     'INT3474': 'Camera Sensor OV2740',  # Seen as \_SB_.PCI0.I2C4.CAM1
+    'INT34B0': 'Intel Serial IO SPI Host Controller',  # Seen as \_SB_.PCI0.SPI0
+    'INT34B1': 'Intel Serial IO SPI Host Controller',  # Seen as \_SB_.PCI0.SPI1
+    'INT34B3': 'Intel Serial IO I2C Host Controller',  # Seen as \_SB_.PCI0.I2C1
+    'INT34B4': 'Intel Serial IO I2C Host Controller',  # Seen as \_SB_.PCI0.I2C2
+    'INT34B5': 'Intel Serial IO I2C Host Controller',  # Seen as \_SB_.PCI0.I2C3
+    'INT34B6': 'Intel Serial IO I2C Host Controller',  # Seen as \_SB_.PCI0.I2C4
+    'INT34B7': 'Intel Serial IO I2C Host Controller',  # Seen as \_SB_.PCI0.I2C5
+    'INT34B8': 'Intel Serial IO UART Host Controller',  # Seen as \_SB_.PCI0.UA00
+    'INT34B9': 'Intel Serial IO UART Host Controller',  # Seen as \_SB_.PCI0.UA01
+    'INT34BA': 'Intel Serial IO UART Host Controller',  # Seen as \_SB_.PCI0.UA02
+    'INT34BB': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
+    'INT34BC': 'Intel Serial IO SPI Host Controller',  # Seen as \_SB_.PCI0.SPI2
     'INT3515': 'TI TPS6598x USB Power Delivery Controller (from USB Connection Manager, UCM)',
+    'INT3519': 'Intel CoExistence Manager',  # Seen as \_SB_.COEX
     'INT3F0D': 'Intel Watchdog Timer (CWDT)',  # documented as "ACPI Motherboard Resources"
 
     'INTC0102': 'Intel Trusted Platform Module (iTPM)',
+    'INTC1040': 'Intel Thermal Device',
+    'INTC1043': 'Intel Thermal Device',
+    'INTC1044': 'Intel Thermal Device',
+    'INTC1047': 'Intel Thermal Device',
     'INTC1234': 'Toshiba\'s Bluetooth ACPI',
 
     'INTL9C60': 'Intel Baytrail SOC DMA Controller',  # Seen as \_SB_.PCI0.SDMA
@@ -1266,6 +1293,7 @@ KNOWN_ACPI_DEVICES = {
     'LEN0092': 'Synaptics touchpad for Lenovo X1 Carbon 6',
     'LEN0096': 'Synaptics touchpad for Lenovo X280',
     'LEN0097': 'Synaptics ALPS trackpoint for Lenovo X280',
+    'LEN0100': 'Lenovo Intelligent Thermal Solution',  # Seen as \_SB_.PCI0.LPCB.EC__.ITSD
     'LEN0268': 'Lenovo ThinkPad Hotkey v2 HID',
     'LEN2000': 'Synaptics touchpad for Lenovo S540',
     'LEN2001': 'Synaptics touchpad for Lenovo Edge E431',
@@ -1280,6 +1308,7 @@ KNOWN_ACPI_DEVICES = {
     'LEN200A': 'Synaptics touchpad for Lenovo',
     'LEN200B': 'Synaptics touchpad for Lenovo',
     'LEN200F': 'Synaptics touchpad for Lenovo T450s',
+    'LEN205B': 'Synaptics Pointing Device for Lenovo',  # Seen as \_SB_.PCI0.LPCB.MOU_
 
     'LPE0F28': 'Intel(R) SST Audio device',  # Seen as \_SB_.LPA2
 
@@ -1310,6 +1339,9 @@ KNOWN_ACPI_DEVICES = {
     'MSFT1111': '(Unknown HID Device related to Dell Touchpad)',  # Seen as \_SB_.PCI0.I2C0.TPD4
     # https://docs.microsoft.com/en-us/windows/uwp/devices-sensors/enable-usermode-access : "devcon status *msft8000"
     'MSFT8000': 'Microsoft Resource Hub Proxy device (RHPX)',  # Seen as \_SB_.RHPX
+
+    # NTC: nuvoton (https://www.nuvoton.com/)
+    'NTC0702': 'nuvoton SafeKeeper TPM',  # NPCT75x0 (nuvoton SafeKeeper TPM 2.0) seen as \_SB_.TPM_
 
     'NTRG0001': 'Touchscreen',  # Seen as \_SB_.PCI0.I2C1.TPL2
 
@@ -1550,6 +1582,8 @@ KNOWN_ACPI_DEVICES = {
     # PNPCxxx and PNPDxxx are modems
     'PNPC000': 'Compaq 14400 Modem (TBD)',
     'PNPC001': 'Compaq 2400/9600 Modem (TBD)',
+
+    'PRP00001': 'Generic Container Device',  # Share _CID=PNP0A05, seen as \_SB_.PCI0.HDAS.SNDW
 
     'QEMU0001': 'QEMU\'s PVPanic',
     'QEMU0002': 'QEMU\'s Firmware Configuration',
