@@ -146,8 +146,12 @@ fi
 # Test functions
 # "whichpkg grep" is great because it tests the distribution support,
 # the non-expansion of an alias, etc.
-PKGGREP="$(LANG=C whichpkg grep)"
-if [ $? = 0 ] ; then
+# On Debian, busybox dpkg does not support --search, so skip testing it
+if ! grep -e '^ID=debian$' -e '^ID_LIKE=debian$' /usr/lib/os-release > /dev/null 2>&1 || [ "$2" != busybox ] ; then
+    PKGGREP="$(LANG=C whichpkg grep)"
+    if [ $? != 0 ] ; then
+        die "function whichpkg failed"
+    fi
     case "$PKGGREP" in
         # Alpine Linux with busybox (Docker image)
         /bin/grep\ symlink\ target\ is\ owned\ by\ busybox-*)
@@ -171,7 +175,4 @@ if [ $? = 0 ] ; then
             die "whichpkg grep returned an unknown result: $PKGGREP"
             ;;
     esac
-else
-    # On Debian, busybox dpkg does not support --search, so ignore this failure
-    [ "$2" = "busybox" ] || die "function whichpkg failed"
 fi
