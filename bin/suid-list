@@ -201,7 +201,9 @@ TRUSTED_SUID_FILES = [
     # chromium, http://www.chromium.org/Home
     # https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master
     SuidFile('/lib/chromium/chrome-sandbox'),
+    SuidFile('/lib/chromium-browser/chrome-sandbox'),
     SuidFile('/lib/electron[67]?/chrome-sandbox'),
+    SuidFile('/lib/slack/chrome-sandbox'),
     SuidFile('/lib/x86_64-linux-gnu/oxide-qt/chrome-sandbox'),
     SuidFile('/opt/google/chrome/chrome-sandbox'),
 
@@ -477,6 +479,8 @@ TRUSTED_SGID_FILES = [
     # evolution, https://wiki.gnome.org/Apps/Evolution
     # https://git.gnome.org/browse/evolution-data-server/tree/
     SuidFile('/lib/evolution/camel-lock-helper-[0-9]+.[0-9]+',
+             groups=('mail', )),
+    SuidFile('/libexec/camel-lock-helper-[0-9]+.[0-9]+',
              groups=('mail', )),
 
     # kde-runtime, https://www.kde.org/
@@ -758,6 +762,10 @@ TRUSTED_CAPS_FILES = [
     LinkToCapsFile('/etc/alternatives/traceroute6', '/bin/traceroute6.iputils',
                    '= cap_net_raw+ep'),
 
+    # kinit, https://api.kde.org/frameworks/kinit/html/index.html
+    # https://cgit.kde.org/kinit.git/tree/
+    CapsFile('/lib/x86_64-linux-gnu/libexec/kf5/start_kdeinit', '= cap_sys_resource+ep'),
+
     # kismet, https://www.kismetwireless.net/
     # https://github.com/kismetwireless/kismet.git
     CapsFile('/bin/kismet_cap_freaklabs_zigbee', '= cap_net_admin,cap_net_raw+eip'),
@@ -774,6 +782,11 @@ TRUSTED_CAPS_FILES = [
     CapsFile('/bin/kismet_cap_sdr_rtlamr', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/kismet_cap_sdr_rtlamr_mqtt', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/kismet_cap_ti_cc_2540', '= cap_net_admin,cap_net_raw+eip'),
+
+    # ksysguard, https://userbase.kde.org/KSysGuard
+    # https://cgit.kde.org/ksysguard.git/tree/
+    CapsFile('/lib/x86_64-linux-gnu/libexec/ksysguard/ksgrd_network_helper',
+             '= cap_net_raw+ep'),
 
     # monitoring-plugins, https://www.monitoring-plugins.org/
     # https://github.com/monitoring-plugins/monitoring-plugins
