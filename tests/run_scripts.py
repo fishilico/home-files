@@ -107,6 +107,8 @@ BIN_SCRIPTS = {
     'pacman-disowned': 'never',
     'ping6-local': 'args[-h]',
     'ping-box': 'never',
+    'podman-purge': 'never',
+    'podman-update': 'never',
     'rm-temp': 'never',
     'ruby-gem-home': '(ruby)args[ruby --version]',
     'scan-ip4priv': 'never',
