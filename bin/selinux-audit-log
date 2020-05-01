@@ -1117,7 +1117,7 @@ class SELinuxAuditLogAnalyzer:
                     path_desc += f" rdev={path_rdev!r}"
                 path_nametype = parsed_record['nametype']
                 if path_nametype == 'UNKNOWN':
-                    path_desc += f" nametype=unknown"
+                    path_desc += " nametype=unknown"
                 elif path_nametype != 'NORMAL':
                     path_desc += f" nametype={path_nametype!r}"
                 path_obj = parsed_record.get('obj')
@@ -1189,7 +1189,7 @@ class SELinuxAuditLogAnalyzer:
                     assert isinstance(uid_value, int)
                     if uid_value != sysc_uid:
                         if uid_value == 0xffffffff:
-                            sysc_desc += f" auid=-1"
+                            sysc_desc += " auid=-1"
                         else:
                             sysc_desc += f" auid={uid_value}"
                 sysc_gid = parsed_record['gid']
