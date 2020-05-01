@@ -76,7 +76,18 @@ def custom_lint_rules(filepath):
     result = True
     with open(filepath, 'r') as stream:
         for lineno, line in enumerate(stream, start=1):
-            if re.search(r'echo\s+([0-9]*>\S+\s+)*"\$', line):
+            # Lines must only include ASCII characters, and no tab
+            stripped_line = line
+            if stripped_line.endswith('\n'):
+                stripped_line = stripped_line[:-1]
+            invalid_chars = set(re.findall(r'[^- !"#$%&()*+,./0-9:;<=>?@A-Z\[\\\]^_`a-z{|}~' + "']", stripped_line))
+            if invalid_chars:
+                print("Error: using invalid characters %r" % (sorted(invalid_chars),))
+                print("  in %s:%d: %r" % (filepath, lineno, line))
+                result = False
+
+            # Match 'echo "$VAR"', 'echo 2>&1 "$VAR"', etc.
+            if re.search(r'echo [^"|;]*"\$', line):
                 # http://www.etalabs.net/sh_tricks.html
                 # NEVER use echo like this. According to POSIX, echo has
                 # unspecified behavior if any of its arguments contain "\" or
