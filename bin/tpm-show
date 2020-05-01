@@ -2245,7 +2245,7 @@ class TpmDevice:
         # depends on the implementation
         more_data, resp_data = self.tpm20_get_capability(Tpm20Capability.TPM_CAP_PCRS, 0)
         if more_data:
-            raise RuntimeError(f"Unexpected more data for TPM_CAP_PCRS")
+            raise RuntimeError("Unexpected more data for TPM_CAP_PCRS")
 
         nr_banks, = struct.unpack('>I', resp_data[:4])
         pcr_select: Tpm20CapPcrSelection = []
@@ -2331,7 +2331,7 @@ class TpmDevice:
             prop, select_size = struct.unpack('>IB', resp_data[:5])
             if len(resp_data) != 5 + select_size:
                 raise RuntimeError(
-                    f"Unexpected size of select for TPM_CAP_PCR_PROPERTIES: " +
+                    "Unexpected size of select for TPM_CAP_PCR_PROPERTIES: " +
                     f"{len(resp_data)} != 5 + {select_size}")
             pcr_select = []
             for pcr_idx_bytepos in range(select_size):
@@ -2521,7 +2521,7 @@ class TpmDevice:
             auth_session.session_key,
             rphash + auth_session.nonce_tpm + auth_session.nonce_caller + struct.pack('B', resp_session_attr))
         if not hmac.compare_digest(hmac_response, resp_hmac):
-            raise RuntimeError(f"Invalid HMAC in response")
+            raise RuntimeError("Invalid HMAC in response")
 
         resp_data_size, = struct.unpack('>H', resp_data[:2])
         if resp_data_size + 2 != len(resp_data):
@@ -2802,7 +2802,7 @@ def main(argv: Optional[Sequence[str]] = None):
 
             print("")
 
-            print(f"PCR properties:")
+            print("PCR properties:")
             for pcr_prop_id, pcr_select in dev.tpm20_get_cap_pcr_properties():
                 prop_name = Tpm20PcrProperty(pcr_prop_id).name
                 print(f"  [{pcr_prop_id:#4x}] {prop_name}: {','.join(str(pcr) for pcr in pcr_select)}")
@@ -2896,8 +2896,8 @@ def main(argv: Optional[Sequence[str]] = None):
                             if obj_pubdata.auth_policy:
                                 print(f"        - auth policy: {binascii.hexlify(obj_pubdata.auth_policy).decode('ascii')}")  # noqa
                             else:
-                                print(f"        - auth policy empty")
-                            print(f"        - parameters:")
+                                print("        - auth policy empty")
+                            print("        - parameters:")
                             obj_pubdata.print_parameters(indent="          ")
 
                             computed_obj_name = obj_pubdata.compute_name()
@@ -2918,7 +2918,7 @@ def main(argv: Optional[Sequence[str]] = None):
                         if pub_data.auth_policy:
                             print(f"        - auth policy: {binascii.hexlify(pub_data.auth_policy).decode('ascii')}")
                         else:
-                            print(f"        - auth policy empty")
+                            print("        - auth policy empty")
                         print(f"        - data size: {pub_data.data_size:#x} = {pub_data.data_size}")
 
                         computed_nv_name = pub_data.compute_name()
