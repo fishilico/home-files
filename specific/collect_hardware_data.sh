@@ -46,7 +46,7 @@ cd collected_hwdata
 HW_TODAY="hw_$(date -I)"
 
 # Create directories
-mkdir -p "${HW_TODAY}" acpi_tables dmi efivars fwupd wmi_bus
+mkdir -p "${HW_TODAY}" acpi_tables dmi edid_monitors efivars fwupd wmi_bus
 
 # Run usual commands to collect information about connected hardware devices
 if command -v lspci > /dev/null 2>&1 ; then
@@ -86,6 +86,18 @@ if command -v dmidecode > /dev/null 2>&1 ; then
     # This file is intended for "dmidecode --from-dump=dmidecode.bin"
     dmidecode --dump --dump-bin "dmi/dmidecode.bin" || true
 fi
+
+# Collect EDID data from monitors
+for EDID_FILE in /sys/class/drm/*/edid ; do
+    if [ -e "$EDID_FILE" ] ; then
+        EDID_DIR="${EDID_FILE%/edid}"
+        OUTPUT_FILENAME="edid__$(printf %s "${EDID_DIR#/sys/class/drm/}" | sed 's/[^a-zA-Z0-9_.-]/__/g')"
+        cat "$EDID_FILE" > "edid_monitors/${OUTPUT_FILENAME}.bin"
+        if [ -s "edid_monitors/${OUTPUT_FILENAME}.bin" ] && command -v parse-edid > /dev/null 2>&1 ; then
+            parse-edid < "edid_monitors/${OUTPUT_FILENAME}.bin" > "edid_monitors/${OUTPUT_FILENAME}.decoded.txt"
+        fi
+    fi
+done
 
 # Collect I/OMMU tables
 "${HOME_FILES_BIN}/iommu-show" -d > "${HW_TODAY}/iommu-show-d.txt"
