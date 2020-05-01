@@ -328,7 +328,7 @@ class MountInfoEntry(object):
             with open(mountinfo_path, 'r') as mntinfo:
                 for line in mntinfo:
                     match = re.match(
-                        r'^([0-9]+) ([0-9]+) ([0-9]+):([0-9]+) (\S+) (\S+) (\S+) ((?:\S+:\S+ )*)- (\S+) (\S+) (\S+)\n?$',  # noqa
+                        r'^([0-9]+) ([0-9]+) ([0-9]+):([0-9]+) (\S+) (\S+) (\S+) ([a-z0-9: ]*)- (\S+) (\S+) (\S+)\n?$',
                         line)
                     if match is None:
                         logger.error("Invalid mountinfo line in %s: %r",
