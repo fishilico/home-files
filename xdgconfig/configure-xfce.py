@@ -186,7 +186,7 @@ class Xfce4Panels(object):
         if is_list:
             if len(lines) <= 2 or not lines[0].endswith(':') or lines[1] != '':
                 raise ValueError("unexpected xfce4-panel%s value: %r" % (prop, lines))
-            return [prop_type[0](l) for l in lines[2:]]
+            return [prop_type[0](line) for line in lines[2:]]
         if prop_type is bool and len(lines) == 1:
             if lines[0] == 'true':
                 return True

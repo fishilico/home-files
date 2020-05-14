@@ -2232,7 +2232,7 @@ def shorten_label_paths(device_tree):
         desc = dev['label_desc']
         if not desc:
             continue
-        dev['label_desc'] = '\n'.join(shorten_paths_in_label(l) for l in desc.split('\n'))
+        dev['label_desc'] = '\n'.join(shorten_paths_in_label(lab) for lab in desc.split('\n'))
 
 
 def dump_dot_graph(device_tree, stream, output_tree, output_circle):

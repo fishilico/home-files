@@ -320,10 +320,10 @@ def main(argv=None):
         lines.append((columns, color_columns))
 
     num_cols = 4 + len(nsnames)
-    assert all(len(l[0]) == len(l[1]) == num_cols for l in lines)
+    assert all(len(line[0]) == len(line[1]) == num_cols for line in lines)
     cols_format = [
         '{{0[{0}]:{1}{2}}}'.format(c, '>' if 1 <= c <= 2 else '',
-                                   max(len(l[0][c]) for l in lines))
+                                   max(len(line[0][c]) for line in lines))
         for c in range(num_cols)]
     if not args.nocolor:
         line_format = '  '.join(

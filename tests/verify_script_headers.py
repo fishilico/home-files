@@ -200,7 +200,7 @@ def verify_sh(filepath):
             line = curfile.readline()
 
         # Verify copyright, if any
-        if not any('copyright' in l.lower() for l in comment_lines):
+        if not any('copyright' in line.lower() for line in comment_lines):
             # Well... short program don't have to hold a copyright information
             numlines = len(curfile.readlines())
             if numlines > 10:
