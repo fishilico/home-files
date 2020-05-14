@@ -93,8 +93,14 @@ for EDID_FILE in /sys/class/drm/*/edid ; do
         EDID_DIR="${EDID_FILE%/edid}"
         OUTPUT_FILENAME="edid__$(printf %s "${EDID_DIR#/sys/class/drm/}" | sed 's/[^a-zA-Z0-9_.-]/__/g')"
         cat "$EDID_FILE" > "edid_monitors/${OUTPUT_FILENAME}.bin"
-        if [ -s "edid_monitors/${OUTPUT_FILENAME}.bin" ] && command -v parse-edid > /dev/null 2>&1 ; then
-            parse-edid < "edid_monitors/${OUTPUT_FILENAME}.bin" > "edid_monitors/${OUTPUT_FILENAME}.decoded.txt"
+        if [ -s "edid_monitors/${OUTPUT_FILENAME}.bin" ] ; then
+            if command -v edid-decode > /dev/null 2>&1 ; then
+                # Use https://git.linuxtv.org/edid-decode.git/ (previously http://cgit.freedesktop.org/xorg/app/edid-decode/)
+                edid-decode < "edid_monitors/${OUTPUT_FILENAME}.bin" > "edid_monitors/${OUTPUT_FILENAME}.decoded.txt"
+            elif command -v parse-edid > /dev/null 2>&1 ; then
+                # Use http://www.polypux.org/projects/read-edid/
+                parse-edid < "edid_monitors/${OUTPUT_FILENAME}.bin" > "edid_monitors/${OUTPUT_FILENAME}.decoded.txt"
+            fi
         fi
     fi
 done
