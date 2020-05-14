@@ -195,6 +195,12 @@ elif has_command mount ; then
 else
     echo '* findmnt and mount commands not found.'
 fi
+if has_command losetup ; then
+    echo '* losetup -l::'
+    losetup -l 2>&1 | indent_out
+else
+    echo '* losetup command not found.'
+fi
 if has_command blkid ; then
     echo '* blkid::'
     blkid 2>&1 | indent_out
