@@ -213,6 +213,10 @@ TRUSTED_SUID_FILES = [
     SuidFile('/bin/crontab'),
     SuidFile('/bin/crontab', groups=('crontab', )),
 
+    # davfs2, https://savannah.nongnu.org/projects/davfs2
+    # https://cvs.savannah.nongnu.org/viewvc/davfs2/
+    SuidFile('/s?bin/mount.davfs'),
+
     # dbus, http://www.freedesktop.org/wiki/Software/dbus/
     # http://cgit.freedesktop.org/dbus/dbus/tree/
     SuidFile('/lib(32|64|exec)?/dbus-1(.0)?/dbus-daemon-launch-helper'),
