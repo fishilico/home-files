@@ -1224,6 +1224,7 @@ KNOWN_ACPI_DEVICES = {
     'INT3449': 'Intel Serial IO UART Host Controller',  # Seen as \_SB_.PCI0.UA01
     'INT344A': 'Intel Serial IO UART Host Controller',  # Seen as \_SB_.PCI0.UA02
     'INT344B': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
+    'INT3451': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PC00.GPI0
     'INT345D': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
     'INT3470': 'Intel AVStream Camera 2500',  # Seen as \_SB_.SKC0
     'INT3471': 'Intel Camera Sensor IMX135',  # Seen as \_SB_.PCI0.LNK0 and \_SB_.PCI0.LNK2
