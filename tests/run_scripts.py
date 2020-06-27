@@ -54,6 +54,7 @@ BIN_SCRIPTS = {
     'captive-portal': '(python3)help',
     'check-certificate': 'help',
     'chromium-incognito': '(chromium)never',
+    'clang-format-meld': '(clang-format)direct',
     'clean-pdf': 'never',
     'colortable': 'direct',
     'compile-netbpf': '(tcpdump,/proc)direct',
