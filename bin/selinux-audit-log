@@ -760,7 +760,6 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     'SGID',
                     'SUID',
                     'UID',
-                    'a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9',
                     'acct',
                     'cmd',
                     'comm',
@@ -776,7 +775,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     'srawcon',
                     'tglob',
                     'trawcon',
-                    ):
+                    ) or re.match(r'^a[0-9]+', key):
                 # Quoted or hex-escaped strings
                 if len(value) >= 2 and value[0] == '"' == value[-1]:
                     result[prefix + key] = value[1:-1]
