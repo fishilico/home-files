@@ -532,6 +532,9 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
 
             matches = re.match(r'^ *([0-9A-Za-z_-]+)=([^ ]*)(.*)$', remaining)
             if not matches:
+                # Match ' a150[0]="argument_150"' in EXECVE records
+                matches = re.match(r'^ *([0-9A-Za-z_-]+\[[0-9]+\])=([^ ]*)(.*)$', remaining)
+            if not matches:
                 raise ValueError(f"Unable to split audit fields: {remaining!r} in {line!r}")
             key, value, remaining = matches.groups()
 
@@ -571,6 +574,24 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
 
             # Unescaped command-line in USER_AVC: 'cmdline="/usr/bin/dbus-broker-launch --scope system --audit"'
             if key == 'cmdline' and value.startswith('"'):
+                if len(value) >= 2 and value.endswith('"'):
+                    result[prefix + key] = value[1:-1]
+                else:
+                    # Find the ending quote in the remaining
+                    parts = remaining.split('" ', 1)
+                    if len(parts) == 2:
+                        result[prefix + key] = value[1:] + parts[0]
+                        remaining = parts[1]
+                    elif remaining.endswith('"'):
+                        result[prefix + key] = value[1:] + remaining[:-1]
+                        remaining = ''
+                    else:
+                        raise ValueError(
+                            f"Unable to parse quoted {key} in audit fields: {remaining!r} in {line!r}")
+                continue
+
+            # Unescaped command-line in USER_AVC: 'cmdline="/usr/bin/dbus-broker-launch --scope system --audit"'
+            if key == 'lockdown_reason' and value.startswith('"'):
                 if len(value) >= 2 and value.endswith('"'):
                     result[prefix + key] = value[1:-1]
                 else:
