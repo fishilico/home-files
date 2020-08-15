@@ -667,6 +667,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     'cap_fe',
                     'cap_fi',
                     'cap_fp',
+                    'cap_frootid',
                     'cap_fver',
                     'capability',
                     'egid',
@@ -1136,11 +1137,16 @@ class SELinuxAuditLogAnalyzer:
                     assert isinstance(path_cap_fi, int)
                     assert isinstance(path_cap_fe, int)
                     assert isinstance(path_cap_fver, int)
-                    path_desc += f" cap=[p={path_cap_fp:#x},i={path_cap_fi:#x},e={path_cap_fe:#x},ver={path_cap_fver}"
+                    path_desc += f" cap=[p={path_cap_fp:#x},i={path_cap_fi:#x},e={path_cap_fe:#x},ver={path_cap_fver}]"
+                path_cap_frootid = parsed_record.get('cap_frootid')
+                if path_cap_frootid:
+                    assert isinstance(path_cap_frootid, int)
+                    path_desc += f" cap_frootid={path_cap_frootid}"
                 print(f"    + {type_name}: {path_desc}", end='\r\n')
                 for key, value in parsed_record.items():
                     if key in (
                             'cap_fe', 'cap_fi', 'cap_fp', 'cap_fver',
+                            'cap_frootid',
                             'inode',
                             'item',
                             'mode',
