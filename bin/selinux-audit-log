@@ -746,6 +746,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     'permissive',
                     'pid',
                     'ppid',
+                    'prog-id',
                     'res',
                     'rport',
                     'sauid',
