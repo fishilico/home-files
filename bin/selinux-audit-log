@@ -1102,7 +1102,13 @@ class SELinuxAuditLogAnalyzer:
                 print(f"    + {type_name}: {cwd!r}", end='\r\n')
             elif type_name == 'PATH':
                 # Format a PATH entry on few lines (they appear in audit.log when audit rules are configured)
-                path_desc = f"{parsed_record['name']!r}"
+                path_desc = ''
+                path_name = parsed_record.get('name')
+                if path_name:
+                    assert isinstance(path_name, str)
+                    path_desc += path_name
+                else:
+                    path_desc += '(no name)'
                 path_mode = parsed_record.get('mode')
                 if path_mode:
                     assert isinstance(path_mode, int)
