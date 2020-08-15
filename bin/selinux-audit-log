@@ -1007,7 +1007,8 @@ class SELinuxAuditLogAnalyzer:
             raw_line: bytes = raw_line.replace(b'\x1b[0;34m', b'').replace(b'\x1b[0m', b'')
             try:
                 # Audit logs are always ASCII
-                line: str = raw_line.decode('ascii').strip()
+                # '\0' could happen in corrupted journal files
+                line: str = raw_line.decode('ascii').strip('\0').strip()
             except UnicodeDecodeError:
                 continue
 
