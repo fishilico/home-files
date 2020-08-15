@@ -1173,13 +1173,16 @@ class SELinuxAuditLogAnalyzer:
             elif type_name == 'SYSCALL':
                 # Format a SYSCALL entry on few lines (they appear in Debian's audit.log for example)
                 sysc_syscall = parsed_record['syscall']
-                sysc_exit = parsed_record['exit']
+                sysc_exit = parsed_record.get('exit')
                 sysc_args: List[str] = []
                 with suppress(KeyError):
                     for arg_key in ('a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6'):
                         sysc_args.append(str(parsed_record[arg_key]))
                 assert isinstance(sysc_syscall, str)
-                assert isinstance(sysc_exit, int)
+                if sysc_exit is None:
+                    sysc_exit = '?'
+                else:
+                    assert isinstance(sysc_exit, int)
                 sysc_desc = f"{sysc_syscall} ({','.join(sysc_args)})={sysc_exit}"
                 sysc_ppid = parsed_record['ppid']
                 if sysc_ppid != 1:  # Skip if the PPID is init
