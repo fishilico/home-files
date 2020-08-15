@@ -511,7 +511,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                 result[prefix + 'avc/notice'] = 'setenforce'
                 result[prefix + 'avc/setenforce/enforcing'] = enforcing_str != '0'
             else:
-                matches = re.match(r'avc:  (denied|granted)  \{([a-z_ ]+)\} for +(.*)$', remaining)
+                matches = re.match(r'avc:  (denied|granted)  \{([0-9a-z_ ]+)\} for +(.*)$', remaining)
                 if not matches:
                     raise ValueError(f"Unable to parse AVC line: {line!r}")
                 result[prefix + 'avc/result'], avc_perms_str, remaining = matches.groups()
