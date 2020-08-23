@@ -212,6 +212,7 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib/chromium/chrome-sandbox'),
     SuidFile('/lib/chromium-browser/chrome-sandbox'),
     SuidFile('/lib/electron[67]?/chrome-sandbox'),
+    SuidFile('/lib/signal-desktop/chrome-sandbox'),
     SuidFile('/lib/slack/chrome-sandbox'),
     SuidFile('/lib/x86_64-linux-gnu/oxide-qt/chrome-sandbox'),
     SuidFile('/opt/google/chrome/chrome-sandbox'),
