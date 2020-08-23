@@ -628,6 +628,12 @@ class ElfFile:
             if m:
                 self.library_paths.insert(0, m.group(1))
 
+        # arm-linux-gnueabihf-binutils uses /usr/x86_64-pc-linux-gnu/arm-linux-gnueabihf/lib
+        # avr-binutils uses /usr/x86_64-pc-linux-gnu/avr/lib
+        m = re.match(r'^(/usr/[^/]+-linux-gnu/(arm-[^/]+|avr)/lib)/', path)
+        if m:
+            self.library_paths.insert(0, m.group(1))
+
         # Add RPATH and RUNPATH to the library path
         for runpath_offset in (dyn_rpath_offset, dyn_runpath_offset):
             if runpath_offset is not None:
