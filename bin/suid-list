@@ -138,10 +138,19 @@ class CapsFile(object):
 
     def is_match(self, path, realpath, caps):
         """Does the given path which resolve to realpath matches the file?"""
-        return (
-            path == realpath and
-            self.filepattern.match(path) and
-            self.caps == caps)
+        if path != realpath or not self.filepattern.match(path):
+            return False
+        if self.caps == caps:
+            return True
+        # libcap 2.42 modified the representation of capabilities,
+        # from "= cap_net_bind_service+ep"
+        # to "cap_net_bind_service=ep".
+        # Convert the new format to the old one
+        if caps and caps[0] != '=' and caps.endswith(('=eip', '=ep')):
+            caps_in_old_format = '= ' + caps.replace('=eip', '+eip').replace('=ep', '+ep')
+            if self.caps == caps_in_old_format:
+                return True
+        return False
 
 
 class LinkToCapsFile(object):
