@@ -72,6 +72,9 @@ if type alias > /dev/null 2>&1 ; then
     alias du1='du -h --max-depth=1'
     alias du2='du -h --max-depth=2'
 
+    # Show real devices, not virtual ones (/dev/loop or tmpfs)
+    alias dfreal='df --local --exclude-type=devtmpfs --exclude-type=squashfs --exclude-type=tmpfs'
+
     # VIM aliases
     alias :w='echo "Save is not implemented in ${SHELL##*/} :p"'
     alias :x=':w'
