@@ -226,6 +226,7 @@ TRUSTED_SUID_FILES = [
     # davfs2, https://savannah.nongnu.org/projects/davfs2
     # https://cvs.savannah.nongnu.org/viewvc/davfs2/
     SuidFile('/s?bin/mount.davfs'),
+    LinkToSuidFile('/s?bin/mount.davfs', '/s?bin/mount.davfs'),
 
     # dbus, http://www.freedesktop.org/wiki/Software/dbus/
     # http://cgit.freedesktop.org/dbus/dbus/tree/
@@ -413,6 +414,7 @@ TRUSTED_SUID_FILES = [
 
     # spice-gtk3, http://spice-space.org
     SuidFile('/bin/spice-client-glib-usb-acl-helper'),
+    SuidFile('/lib/spice-gtk/spice-client-glib-usb-acl-helper'),
 
     # sssd, https://pagure.io/SSSD/sssd
     # https://github.com/SSSD/sssd
@@ -439,13 +441,19 @@ TRUSTED_SUID_FILES = [
     # virtualbox, https://www.virtualbox.org/
     # https://www.virtualbox.org/browser/vbox/trunk
     SuidFile('/lib/virtualbox/VBoxHeadless'),
+    SuidFile('/lib/virtualbox/VBoxHeadless', owners=('root', ), groups=('root', )),
     SuidFile('/lib/virtualbox/VBoxNetAdpCtl'),
+    SuidFile('/lib/virtualbox/VBoxNetAdpCtl', owners=('root', ), groups=('root', )),
     SuidFile('/lib/virtualbox/VBoxManage'),
     SuidFile('/lib/virtualbox/VBoxNetDHCP'),
+    SuidFile('/lib/virtualbox/VBoxNetDHCP', owners=('root', ), groups=('root', )),
     SuidFile('/lib/virtualbox/VBoxNetNAT'),
+    SuidFile('/lib/virtualbox/VBoxNetNAT', owners=('root', ), groups=('root', )),
     SuidFile('/lib/virtualbox/VBoxSDL'),
+    SuidFile('/lib/virtualbox/VBoxSDL', owners=('root', ), groups=('root', )),
     SuidFile('/lib/virtualbox/VirtualBox'),
     SuidFile('/lib/virtualbox/VirtualBoxVM'),
+    SuidFile('/lib/virtualbox/VirtualBoxVM', owners=('root', ), groups=('root', )),
 
     # weston, http://wayland.freedesktop.org
     # http://cgit.freedesktop.org/wayland/weston/tree/
