@@ -596,25 +596,8 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                 continue
 
             # Unescaped command-line in USER_AVC: 'cmdline="/usr/bin/dbus-broker-launch --scope system --audit"'
-            if key == 'cmdline' and value.startswith('"'):
-                if len(value) >= 2 and value.endswith('"'):
-                    result[prefix + key] = value[1:-1]
-                else:
-                    # Find the ending quote in the remaining
-                    parts = remaining.split('" ', 1)
-                    if len(parts) == 2:
-                        result[prefix + key] = value[1:] + parts[0]
-                        remaining = parts[1]
-                    elif remaining.endswith('"'):
-                        result[prefix + key] = value[1:] + remaining[:-1]
-                        remaining = ''
-                    else:
-                        raise ValueError(
-                            f"Unable to parse quoted {key} in audit fields: {remaining!r} in {line!r}")
-                continue
-
-            # Unescaped command-line in USER_AVC: 'cmdline="/usr/bin/dbus-broker-launch --scope system --audit"'
-            if key == 'lockdown_reason' and value.startswith('"'):
+            # Same for lockdown reason and AppArmor info
+            if key in ('cmdline', 'lockdown_reason', 'info') and value.startswith('"'):
                 if len(value) >= 2 and value.endswith('"'):
                     result[prefix + key] = value[1:-1]
                 else:
@@ -743,6 +726,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     'old_enforcing',
                     'old_val',
                     'ouid',
+                    'peer_pid',
                     'permissive',
                     'pid',
                     'ppid',
@@ -785,17 +769,29 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     'SUID',
                     'UID',
                     'acct',
+                    'apparmor',
+                    'bus',
+                    'capname',
                     'cmd',
                     'comm',
                     'cwd',
+                    'denied_mask',
                     'dev',
                     'exe',
+                    'interface',
                     'invalid_context',
                     'kmod',
+                    'label',
+                    'mask',
+                    'member',
                     'name',
                     'old-level',
+                    'operation',
                     'path',
+                    'peer_label',
                     'proctitle',
+                    'profile',
+                    'requested_mask',
                     'srawcon',
                     'tglob',
                     'trawcon',
@@ -803,12 +799,16 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                 # Quoted or hex-escaped strings
                 if len(value) >= 2 and value[0] == '"' == value[-1]:
                     result[prefix + key] = value[1:-1]
-                elif re.match(r'^([0-9A-F][0-9A-F])+$', value):
+                    continue
+                if re.match(r'^([0-9A-F][0-9A-F])+$', value):
                     result[prefix + key] = binascii.unhexlify(value).decode('utf-8', 'replace')
-                elif key == 'path':
+                    continue
+                if key in ('interface', 'member', 'path'):
                     # The value may be directly written too!
                     result[prefix + key] = value
-                continue
+                    continue
+                logger.warning("Quoted %s%s was unquoted in audit fields: %r in %s, %r",
+                               prefix, key, value, type_name, line)
 
             if key in (
                     'ARCH',
@@ -826,14 +826,12 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     'ftype',
                     'grantors',
                     'hostname',
-                    'interface',
                     'kernel',
                     'key',
                     'kind',
                     'laddr',
                     'lsm',
                     'mac',
-                    'member',
                     'msgtype',
                     'nametype',
                     'new-range',
@@ -1131,6 +1129,11 @@ class SELinuxAuditLogAnalyzer:
         if parsed_record.get('msg/avc/notice') in ('policyload', 'setenforce'):
             return
 
+        # Ignore AppArmor profile load
+        if parsed_record.get('apparmor') == 'STATUS':
+            if parsed_record.get('operation') in ('profile_load', 'profile_replace'):
+                return
+
         self.last_show_evt_idx = evt_idx
 
         assert entry_time is not None
@@ -1293,7 +1296,64 @@ class SELinuxAuditLogAnalyzer:
                 print(f"    + {type_name}:", end='\r\n')
                 for key, value in parsed_record.items():
                     print(f"        - {key} = {value!r}", end='\r\n')
-        elif type_name == 'AVC':
+        elif type_name == 'AVC' and 'apparmor' in parsed_record:  # AppArmor AVC
+            apparmor_result = parsed_record['apparmor']
+            operation = parsed_record['operation']
+            used_keys = {'apparmor', 'operation'}
+            avc_desc = type_name
+            if apparmor_result == 'DENIED':
+                avc_desc += f" {self.color_red}{apparmor_result}{self.color_norm}"
+            elif apparmor_result == 'ALLOWED':
+                avc_desc += f" {self.color_green}{apparmor_result}{self.color_norm}"
+            else:
+                avc_desc += f" {apparmor_result}"
+
+            avc_desc += f" {self.color_boldred}{operation}{self.color_norm}"
+
+            if operation == 'capable':
+                capability = parsed_record['capability']
+                capname = parsed_record['capname']
+                used_keys.add('capability')
+                used_keys.add('capname')
+                avc_desc += f"({self.color_cyan}{capname}{self.color_norm}"
+                avc_desc += f"={self.color_yellow}{capability}{self.color_norm})"
+            elif operation in ('file_mmap', 'mknod', 'open'):
+                name = parsed_record['name']
+                requested_mask = parsed_record['requested_mask']
+                denied_mask = parsed_record['denied_mask']
+                used_keys.add('name')
+                used_keys.add('requested_mask')
+                used_keys.add('denied_mask')
+                if requested_mask == denied_mask:
+                    arg_mask = denied_mask
+                else:
+                    arg_mask = f"{requested_mask}->{denied_mask})"
+                avc_desc += f"({self.color_cyan}{name!r}{self.color_norm},"
+                avc_desc += f" {self.color_yellow}{arg_mask}{self.color_norm})"
+
+            with suppress(KeyError):
+                avc_desc += f" profile={parsed_record['profile']!r}"
+            used_keys.add('profile')
+            with suppress(KeyError):
+                avc_desc += f" comm={parsed_record['comm']!r}"
+            used_keys.add('comm')
+            with suppress(KeyError):
+                avc_desc += f" pid={parsed_record['pid']!r}"
+            used_keys.add('pid')
+            with suppress(KeyError):
+                avc_desc += f" fsuid={parsed_record['fsuid']!r}"
+            used_keys.add('fsuid')
+            with suppress(KeyError):
+                avc_desc += f" ouid={parsed_record['ouid']!r}"
+            used_keys.add('ouid')
+            print(f"[{entry_formated_time}] {avc_desc}", end='\r\n')
+            for key, value in parsed_record.items():
+                if key in used_keys:
+                    continue
+                if value in ('?', '', None):
+                    continue
+                print(f"    - {key} = {value!r}", end='\r\n')
+        elif type_name == 'AVC' and 'avc/result' in parsed_record:  # SELinux AVC
             avc_result = parsed_record['avc/result']
             assert isinstance(avc_result, str)
             assert isinstance(parsed_record['avc/perms'], list)
@@ -1360,7 +1420,60 @@ class SELinuxAuditLogAnalyzer:
                 if value in ('?', '', None):
                     continue
                 print(f"    - {key} = {value!r}", end='\r\n')
-        elif type_name == 'USER_AVC':
+        elif type_name == 'USER_AVC' and 'msg/apparmor' in parsed_record:  # AppArmor user AVC
+            apparmor_result = parsed_record['msg/apparmor']
+            operation = parsed_record['msg/operation']
+            used_keys = {'msg/apparmor', 'msg/operation'}
+            avc_desc = type_name
+            if apparmor_result == 'DENIED':
+                avc_desc += f" {self.color_red}{apparmor_result}{self.color_norm}"
+            elif apparmor_result == 'ALLOWED':
+                avc_desc += f" {self.color_green}{apparmor_result}{self.color_norm}"
+            else:
+                avc_desc += f" {apparmor_result}"
+
+            avc_desc += f" {self.color_boldred}{operation}{self.color_norm}"
+
+            if operation == 'dbus_method_call':
+                dbus_bus = parsed_record['msg/bus']
+                dbus_path = parsed_record['msg/path']
+                dbus_interface = parsed_record['msg/interface']
+                dbus_member = parsed_record['msg/member']
+                used_keys.add('msg/bus')
+                used_keys.add('msg/path')
+                used_keys.add('msg/interface')
+                used_keys.add('msg/member')
+                avc_desc += f"({self.color_cyan}{dbus_bus!r}{self.color_norm},"
+                avc_desc += f" {self.color_cyan}{dbus_path!r}{self.color_norm},"
+                avc_desc += f" {self.color_cyan}{dbus_interface!r}{self.color_norm},"
+                avc_desc += f" {self.color_cyan}{dbus_member!r}{self.color_norm})"
+
+            avc_desc += " (from"
+            with suppress(KeyError):
+                avc_desc += f" uid={parsed_record['uid']!r}"
+                if parsed_record['uid'] == parsed_record['msg/sauid']:
+                    used_keys.add('msg/sauid')
+            used_keys.add('uid')
+            with suppress(KeyError):
+                if parsed_record['auid'] != 0xffffffff:
+                    avc_desc += f" auid={parsed_record['auid']!r}"
+            used_keys.add('auid')
+            with suppress(KeyError):
+                if parsed_record['ses'] != 0xffffffff:
+                    avc_desc += f" ses={parsed_record['ses']!r}"
+            used_keys.add('ses')
+            with suppress(KeyError):
+                avc_desc += f" pid={parsed_record['pid']!r}"
+            used_keys.add('pid')
+            avc_desc += ")"
+            print(f"[{entry_formated_time}] {avc_desc}", end='\r\n')
+            for key, value in parsed_record.items():
+                if key in used_keys:
+                    continue
+                if value in ('?', '', None):
+                    continue
+                print(f"    - {key} = {value!r}", end='\r\n')
+        elif type_name == 'USER_AVC' and 'msg/avc/result' in parsed_record:  # SELinux user AVC
             avc_result = parsed_record['msg/avc/result']
             assert isinstance(avc_result, str)
             assert isinstance(parsed_record['msg/avc/perms'], list)
