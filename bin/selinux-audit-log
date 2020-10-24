@@ -913,6 +913,8 @@ class SELinuxAuditLogAnalyzer:
                             help="cut the log to this number of lines")
         parser.add_argument('-f', '--follow', action='store_true',
                             help="follow the log (tail -F)")
+        parser.add_argument('-i', '--forward-stdin', action='store_true',
+                            help="forward the standard input to the launched command")
         parser.add_argument('-s', '--sudo', action='store_true',
                             help="use sudo to become root")
         parser.add_argument('-S', '--show-other', action='store_true',
@@ -931,6 +933,7 @@ class SELinuxAuditLogAnalyzer:
         self.from_dmesg: bool = args.dmesg or args.dmesg_busybox
         self.show_other: bool = args.show_other
         self.last_show_evt_idx: Optional[int] = None
+        self.forward_stdin: bool = args.forward_stdin
 
         if args.no_color:
             self.color_red: str = ''
@@ -1031,7 +1034,8 @@ class SELinuxAuditLogAnalyzer:
         logger.debug("Running %r", escape_cmdline(self.command_line))
         proc = subprocess.Popen(
             self.command_line,
-            stdin=None,  # Forward input to the child process
+            # Forward input to the child process if an option is given
+            stdin=None if self.forward_stdin else subprocess.DEVNULL,
             stdout=subprocess.PIPE,  # Grab the output
             stderr=None,  # Show errors to the console directly
         )
