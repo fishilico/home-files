@@ -526,6 +526,12 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                 seqno_str, remaining = matches.groups()
                 result[prefix + 'avc/notice'] = 'policyload'
                 result[prefix + 'avc/policyload/seqno'] = int(seqno_str)
+            elif remaining.startswith('avc:  op=load_policy '):
+                matches = re.match(r'avc:  op=(load_policy) (.*)$', remaining)
+                if not matches:
+                    raise ValueError(f"Unable to parse AVC load_policy line: {line!r}")
+                avc_op, remaining = matches.groups()
+                result[prefix + 'avc/op'] = avc_op
             elif remaining.startswith('avc:  received setenforce notice'):
                 matches = re.match(r'avc:  received setenforce notice \(enforcing=([01]+)\)(.*)$', remaining)
                 if not matches:
@@ -735,6 +741,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     'rport',
                     'sauid',
                     'sec',
+                    'seqno',
                     'ses',
                     'sgid',
                     'spid',
@@ -816,6 +823,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     'addr',
                     'bool',
                     'cipher',
+                    'daddr',
                     'default-context',
                     'dest',
                     'direction',
@@ -834,6 +842,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     'mac',
                     'msgtype',
                     'nametype',
+                    'netif',
                     'new-range',
                     'new-role',
                     'new-seuser',
@@ -844,8 +853,10 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     'old-seuser',
                     'oldcontext',
                     'op',
+                    'perms',
                     'pfs',
                     'rdev',
+                    'reason',
                     'res',
                     'resrc',
                     'saddr',
@@ -1046,7 +1057,7 @@ class SELinuxAuditLogAnalyzer:
                 continue
 
             # Match audit.log entries
-            if re.match(r'^type=([A-Z_]+|UNKNOWN\[[0-9]+\]) msg=audit', line):
+            if re.match(r'^type=([0-9A-Z_]+|UNKNOWN\[[0-9]+\]) msg=audit', line):
                 self.analyze_audit_line(line)
                 continue
 
@@ -1085,7 +1096,7 @@ class SELinuxAuditLogAnalyzer:
         # - audit.log may use "type=UNKNOWN[1332]" for messages that are not yet known to auditd
         # - dmesg uses "type=1400 audit(...:...): pid=..."
         # - systemd's journal uses "AVC pid=..."
-        matches = re.match(r'^(?:type=)?(?:([0-9]+)|([A-Z_]+)|(?:UNKNOWN\[([0-9]+)\])) (.*)$', line)
+        matches = re.match(r'^(?:type=)?(?:([0-9]+)|([0-9A-Z_]+)|(?:UNKNOWN\[([0-9]+)\])) (.*)$', line)
         if not matches:
             logger.error("Invalid audit line: %r", line)
             return
@@ -1127,6 +1138,8 @@ class SELinuxAuditLogAnalyzer:
 
         # Ignore notices for policyload and setenforce
         if parsed_record.get('msg/avc/notice') in ('policyload', 'setenforce'):
+            return
+        if parsed_record.get('msg/avc/op') == 'load_policy':
             return
 
         # Ignore AppArmor profile load
