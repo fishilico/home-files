@@ -134,7 +134,7 @@ augroup usercommands
   autocmd BufRead *.te set noexpandtab shiftwidth=8 softtabstop=8 tabstop=8
 
   " Wrap long git commit messages
-  autocmd FileType gitcommit set textwidth=72
+  autocmd FileType gitcommit set colorcolumn=72 textwidth=72
 augroup END
 
 " Transparent editing of gpg encrypted files.
