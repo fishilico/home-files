@@ -658,6 +658,7 @@ KNOWN_MEI_UUIDS = {
     'd2de1625-382d-417d-48a4-efabba8a1206': 'NFC Info',
     'd2ea63bc-5f04-4997-9454-8cadf4e3ef8a': 'Thermal',
     'f908627d-13bf-4a04-b91f-a64e9245323d': 'CLS (Capability Licensing Service)',
+    'fbf6fcf1-96cf-4e2e-a6a6-1bab8cbe36b1': 'PAVP (Protected Audio Video Path)',
 }
 
 
@@ -1170,6 +1171,8 @@ KNOWN_ACPI_DEVICES = {
 
     'IFX0101': 'Infineon Trusted Platform Module (TPM)',
     'IFX0102': 'Infineon Trusted Platform Module (TPM)',
+
+    'IMPJ0003': 'Impinj RFID Device (MonzaX 8K)',  # Seen as \\_SB_.PCI0.I2C1.IMP3
 
     'INT0002': 'Virtual GPIO Controller',  # Seen as \_SB_.GPED
     # /proc/iomem on an x86-64 computer contains:
@@ -1910,7 +1913,6 @@ UNKNWON_ACPI_DEVICES = {
     'CYP0001': '\\_SB_.PCI0.I2C1.TPD3',
     'EETI7900': '\\_SB_.PCI0.I2C1.TPL3',
     'FPNT_DIS': '\\_SB_.PCI0.SPI1.FPNT',
-    'IMPJ0003': '\\_SB_.PCI0.I2C1.IMP3',
     'INT0000': '\\_SB_.PCI0.I2C0.HDAC',
     'INT339B': '\\CHUB',
     'INT33D7': '\\_SB_.PCI0.I2C0.DFUD',
