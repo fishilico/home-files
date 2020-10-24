@@ -1070,6 +1070,10 @@ KNOWN_ACPI_DEVICES = {
     'ACPI0013': 'Generic Event Device (GED)',
     'ACPI0014': 'Wireless Power Calibration Device',
 
+    # Alps Electric Company Ltd
+    'ALP0001': 'ALPS Touchpad',  # Seen as \_SB_.PCI0.I2C1.TPD2
+    'ALPS0001': 'ALPS Touchpad',  # Seen as \_SB_.PCI0.I2C4.TPD0
+
     'APP0001': 'Apple System Management Controller (SMC)',  # Seen as \_SB_.PCI0.SBRG.SMC_
 
     'ARMH0011': 'ARM PrimeCell UART (PL011 model)',
@@ -1078,7 +1082,9 @@ KNOWN_ACPI_DEVICES = {
     'ATML1000': 'Atmel Touchscreen Controller',
 
     # Broadcom
+    'BCM2E20': 'Broadcom Serial Bus Driver over UART Bus Enumerator',  # \_SB_.PCI0.UA01.BTH2
     'BCM2F1A': 'Broadcom NFC SMBus Device',  # Seen as \_SB_.PCI0.SMBU.NFC_
+    'BCM4752': 'Broadcom Integrated Multi-Constellation GNSS Receiver',  # Seen as \_SB_.PCI0.URT2.GPS1
 
     'DELLABCE': 'Dell Airplane Mode Switch',
 
@@ -1088,6 +1094,10 @@ KNOWN_ACPI_DEVICES = {
     'DMA0F28': 'Intel Audio DMA0',  # Seen as \_SB_.LPA2.ADMA
 
     # ELAN Microelectronics Corp.
+    'ELAN1000': 'ELAN Touchpad',  # Seen as \_SB_.PCI0.I2C1.TPD0',
+    'ELAN1001': 'ELAN Touch Panel',  # Seen as \_SB_.PCI0.I2C1.TPL1',
+    'ELAN1010': 'ELAN Touchpad',  # Seen as \_SB_.PCI0.I2C1.TPD7',
+
     'ETD0000': 'ELAN PS/2 Port Input Device',
     'ETD0400': 'Clevo ELAN PS/2 Port Smart-Pad',
     'ETD0401': 'Acer Synaptics PS/2 Port Compatible TouchPad',
@@ -1143,6 +1153,9 @@ KNOWN_ACPI_DEVICES = {
     'ETD0610': 'ELAN PS/2 Port Smart-Pad',
     'ETD0702': 'ELAN PS/2 Port Smart-Pad',
 
+    # Synaptics Fingerprint Sensor
+    'FS4304': 'Synaptics biometric fingerprint sensor',  # Seen as \_SB_.PCI0.SPI1.FPNT
+
     'HPQ0004': 'Hewlett-Packard 3D DriveGuard accelerometer',
 
     'HYPER_V_GEN_COUN': 'Microsoft Hyper-V Generation Counter',
@@ -1193,7 +1206,9 @@ KNOWN_ACPI_DEVICES = {
     'INT33D6': 'Intel Virtual Buttons Device',
     # Seen as \_SB_.PCI0.UA00.BTH0 and \_SB_.PCI0.UA01.BTH1
     'INT33E0': 'Intel Bluetooth Serial Bus Driver over UART Bus Enumerator',
-    'INT33E1': 'Intel Bluetooth HCI UART',
+    'INT33E1': 'Intel Bluetooth Serial Bus Driver over UART Bus Enumerator',  # Also "Intel Bluetooth HCI UART"
+    'INT33E3': 'Intel Bluetooth Serial Bus Driver over UART Bus Enumerator',  # Seen as \_SB_.PCI0.BTH1
+    'INT33E4': 'Intel Bluetooth Serial Bus Driver over UART Bus Enumerator',
     'INT33F4': 'X-Powers AXP288 PMIC (Battery)',
     'INT33FC': 'Intel Baytrail GPIO Controller',  # Seen as \_SB_.GPO0, \_SB_.GPO1, \_SB_.GPO2...
     'INT3400': 'Intel Dynamic Tuning Manager',
@@ -1210,6 +1225,7 @@ KNOWN_ACPI_DEVICES = {
     'INT340E': 'Motherboard Resources',  # Seen as \_SB_.PTID
     'INT340F': 'Intel Collaborative Processor Performance Control (CPPC)',  # Seen as \_SB_.PCCD
     'INT3420': 'Intel Bluetooth RF Kill (BTKL)',
+    'INT343A': 'Intel Smart Sound Technology Audio Codec',  # Seen as \_SB_.PCI0.I2C0.HDAC
     'INT343D': 'Intel Dynamic Platform and Thermal Framework PCH SPT ACPI Participant',  # Seen as \_SB_.PCI0.TERM
     'INT343E': 'Intel CSI2 Host Controller (CIO2)',  # Seen as \_SB_.PCI0.CIO2
     'INT3440': 'Intel Serial IO SPI Host Controller',  # Seen as \_SB_.PCI0.SPI0
@@ -1225,6 +1241,7 @@ KNOWN_ACPI_DEVICES = {
     'INT344A': 'Intel Serial IO UART Host Controller',  # Seen as \_SB_.PCI0.UA02
     'INT344B': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
     'INT3451': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PC00.GPI0
+    'INT3453': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.GPO1
     'INT345D': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
     'INT3470': 'Intel AVStream Camera 2500',  # Seen as \_SB_.SKC0
     'INT3471': 'Intel Camera Sensor IMX135',  # Seen as \_SB_.PCI0.LNK0 and \_SB_.PCI0.LNK2
@@ -1242,6 +1259,7 @@ KNOWN_ACPI_DEVICES = {
     'INT34BA': 'Intel Serial IO UART Host Controller',  # Seen as \_SB_.PCI0.UA02
     'INT34BB': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
     'INT34BC': 'Intel Serial IO SPI Host Controller',  # Seen as \_SB_.PCI0.SPI2
+    'INT34C1': 'Intel Smart Sound Technology Audio Codec',  # Seen as \_SB_.PCI0.I2C0.ACD0
     'INT3515': 'TI TPS6598x USB Power Delivery Controller (from USB Connection Manager, UCM)',
     'INT3519': 'Intel CoExistence Manager',  # Seen as \_SB_.COEX
     'INT3F0D': 'Intel Watchdog Timer (CWDT)',  # documented as "ACPI Motherboard Resources"
@@ -1259,6 +1277,8 @@ KNOWN_ACPI_DEVICES = {
     # * \_SB_.PCI0.LPC0.NIPM on a Dell server (for iDRAC)
     # * \_SB_.PCI0.LPC0.KCS_ on a HP server (for iLO)
     'IPI0001': 'Intelligent Platform Management Interface (IPMI)',
+
+    'ITE8708': 'ITECIR Infrared Receiver (EC)',  # Seen as \_SB_.PCI0.SBRG.CIR_
 
     'LEN0017': 'Synaptics touchpad for Lenovo',
     'LEN0018': 'Synaptics touchpad for Lenovo',
@@ -1880,18 +1900,15 @@ KNOWN_ACPI_DEVICES = {
     'USBC000': 'USB Type C',
 
     'VMBUS': 'Microsoft Hyper-V Virtual Machine Bus',
+
+    'WCOM508E': 'Wacom Touch panel',  # Seen as \_SB_.PCI0.I2C7.TPL1
 }
 
 # ACPI device IDs that have been seen but are not known
 UNKNWON_ACPI_DEVICES = {
-    'ALP0001': '\\_SB_.PCI0.I2C1.TPD2',
     'ATML2000': '\\_SB_.PCI0.I2C1.TPFU',
-    'BCM2E20': '\\_SB_.PCI0.UA01.BTH2',
     'CYP0001': '\\_SB_.PCI0.I2C1.TPD3',
     'EETI7900': '\\_SB_.PCI0.I2C1.TPL3',
-    'ELAN1000': '\\_SB_.PCI0.I2C1.TPD0',
-    'ELAN1001': '\\_SB_.PCI0.I2C1.TPL1',
-    'ELAN1010': '\\_SB_.PCI0.I2C1.TPD7',
     'FPNT_DIS': '\\_SB_.PCI0.SPI1.FPNT',
     'IMPJ0003': '\\_SB_.PCI0.I2C1.IMP3',
     'INT0000': '\\_SB_.PCI0.I2C0.HDAC',
