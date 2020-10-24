@@ -29,6 +29,7 @@ import datetime
 import logging
 import os
 import re
+import signal
 import shlex
 import subprocess
 import sys
@@ -1039,54 +1040,60 @@ class SELinuxAuditLogAnalyzer:
             stdout=subprocess.PIPE,  # Grab the output
             stderr=None,  # Show errors to the console directly
         )
-        for raw_line in proc.stdout:
-            # Remove coloring escape sequences (from journalctl)
-            raw_line: bytes = raw_line.replace(b'\x1b[0;34m', b'').replace(b'\x1b[0m', b'')
-            try:
-                # Audit logs are always ASCII
-                # '\0' could happen in corrupted journal files
-                line: str = raw_line.decode('ascii').strip('\0').strip()
-            except UnicodeDecodeError:
-                continue
-
-            if not line:
-                continue
-
-            if self.from_dmesg:
-                # Strip the prefix after the timestamp
-                matches = re.match(r'^\[[0-9.]+\] audit: (.*)$', line)
-                if matches:
-                    self.analyze_audit_line(matches.group(1))
-                # When using dmesg, ignore all lines that do not match
-                continue
-
-            # Match audit.log entries
-            if re.match(r'^type=([0-9A-Z_]+|UNKNOWN\[[0-9]+\]) msg=audit', line):
-                self.analyze_audit_line(line)
-                continue
-
-            # Try to match systemd's journal entries using ISO timestamps
-            first_parts = line.split(' ', 3)
-            if re.match(r'^[0-9]+-[0-9]+-[0-9]+T[0-9][0-9]:[0-9][0-9]:[0-9][0-9][0-9+-]*$', first_parts[0]):
-                if len(first_parts) != 4 or not first_parts[2].startswith('audit'):
-                    logger.warning("Unexpected line prefix for journal: %r", first_parts[:3])
+        try:
+            for raw_line in proc.stdout:
+                # Remove coloring escape sequences (from journalctl)
+                raw_line: bytes = raw_line.replace(b'\x1b[0;34m', b'').replace(b'\x1b[0m', b'')
+                try:
+                    # Audit logs are always ASCII
+                    # '\0' could happen in corrupted journal files
+                    line: str = raw_line.decode('ascii').strip('\0').strip()
+                except UnicodeDecodeError:
                     continue
 
-                self.analyze_audit_line(
-                    first_parts[3],
-                    entry_time=datetime.datetime.strptime(first_parts[0], '%Y-%m-%dT%H:%M:%S%z'),
-                )
-                continue
+                if not line:
+                    continue
 
-            # Skip the journald prolog line
-            if line.startswith('-- Logs begin at '):
-                continue
+                if self.from_dmesg:
+                    # Strip the prefix after the timestamp
+                    matches = re.match(r'^\[[0-9.]+\] audit: (.*)$', line)
+                    if matches:
+                        self.analyze_audit_line(matches.group(1))
+                    # When using dmesg, ignore all lines that do not match
+                    continue
 
-            # Skip lines from ausearch like "time->Thu  1 Jan 00:00:00 UTC 1970"
-            if line == '----' or re.match(r'time->\S+ \S+ [0-9]+ [0-9:]+ [0-9]{4}$', line):
-                continue
+                # Match audit.log entries
+                if re.match(r'^type=([0-9A-Z_]+|UNKNOWN\[[0-9]+\]) msg=audit', line):
+                    self.analyze_audit_line(line)
+                    continue
 
-            logger.warning("Skipping unknown line %r", line)
+                # Try to match systemd's journal entries using ISO timestamps
+                first_parts = line.split(' ', 3)
+                if re.match(r'^[0-9]+-[0-9]+-[0-9]+T[0-9][0-9]:[0-9][0-9]:[0-9][0-9][0-9+-]*$', first_parts[0]):
+                    if len(first_parts) != 4 or not first_parts[2].startswith('audit'):
+                        logger.warning("Unexpected line prefix for journal: %r", first_parts[:3])
+                        continue
+
+                    self.analyze_audit_line(
+                        first_parts[3],
+                        entry_time=datetime.datetime.strptime(first_parts[0], '%Y-%m-%dT%H:%M:%S%z'),
+                    )
+                    continue
+
+                # Skip the journald prolog line
+                if line.startswith('-- Logs begin at '):
+                    continue
+
+                # Skip lines from ausearch like "time->Thu  1 Jan 00:00:00 UTC 1970"
+                if line == '----' or re.match(r'time->\S+ \S+ [0-9]+ [0-9:]+ [0-9]{4}$', line):
+                    continue
+
+                logger.warning("Skipping unknown line %r", line)
+        finally:
+            if proc.poll() is None:
+                proc.send_signal(signal.SIGHUP)
+                proc.terminate()
+                proc.wait(timeout=5)
 
         exit_code: int = proc.wait()
         if exit_code:
