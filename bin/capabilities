@@ -42,6 +42,7 @@ CAPABILITY_PATH = (
     '/usr/src/linux/include/uapi/linux/capability.h',
 )
 
+# From https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/capability.h
 CAPABILITIES = [
     'CAP_CHOWN',  # 0
     'CAP_DAC_OVERRIDE',  # 1
@@ -81,6 +82,9 @@ CAPABILITIES = [
     'CAP_WAKE_ALARM',  # 35
     'CAP_BLOCK_SUSPEND',  # 36
     'CAP_AUDIT_READ',  # 37
+    'CAP_PERFMON',  # 38
+    'CAP_BPF',  # 39
+    'CAP_CHECKPOINT_RESTORE',  # 40
 ]
 
 # Transitions across execve of file F from P to P':
