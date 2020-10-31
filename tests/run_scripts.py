@@ -108,6 +108,7 @@ BIN_SCRIPTS = {
     'pacman-disowned': 'never',
     'ping6-local': 'args[-h]',
     'ping-box': 'never',
+    'podman-bpytop': 'never',
     'podman-purge': 'never',
     'podman-update': 'never',
     'rm-temp': 'never',

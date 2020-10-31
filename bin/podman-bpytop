@@ -1,0 +1,15 @@
+#!/bin/sh
+# Run https://github.com/aristocratos/bpytop in a podman container
+#
+# cf. https://twitter.com/HB9FXQ/status/1320114147691057155
+# and https://www.linuxtricks.fr/news/10-logiciels-libres/479-bpytop-un-moniteur-systeme-en-python-tres-reactif-et-qui-claque/
+
+exec podman run --rm --net=host -v /proc:/hostproc:ro -ti python:3.9-alpine sh -c \
+    'apk --no-cache --update add gcc linux-headers musl-dev &&
+    pip3 install bpytop &&
+    adduser -D user &&
+    echo "import psutil" > /run-bpytop.py &&
+    echo "psutil.PROCFS_PATH=\"/hostproc\"" >> /run-bpytop.py &&
+    echo "import bpytop" >> /run-bpytop.py &&
+    echo "bpytop.main()" >> /run-bpytop.py &&
+    exec su user -c "python3 /run-bpytop.py"'
