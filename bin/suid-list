@@ -365,7 +365,10 @@ TRUSTED_SUID_FILES = [
     # http://cgit.freedesktop.org/polkit/
     SuidFile('/bin/pkexec'),
     SuidFile('/lib/policykit-1/polkit-agent-helper-1'),
+    LinkToSuidFile('/lib/policykit-1/polkit-agent-helper-1',
+                   '/libexec/polkit-agent-helper-1'),
     SuidFile('/lib(exec)?/polkit-1/polkit-agent-helper-1'),
+    SuidFile('/libexec/polkit-agent-helper-1'),
 
     # procmail, http://www.procmail.org/
     SuidFile('/bin/lockfile', groups=('mail', )),
@@ -415,6 +418,7 @@ TRUSTED_SUID_FILES = [
     # spice-gtk3, http://spice-space.org
     SuidFile('/bin/spice-client-glib-usb-acl-helper'),
     SuidFile('/lib/spice-gtk/spice-client-glib-usb-acl-helper'),
+    SuidFile('/libexec/spice-client-glib-usb-acl-helper'),
 
     # sssd, https://pagure.io/SSSD/sssd
     # https://github.com/SSSD/sssd
@@ -437,9 +441,16 @@ TRUSTED_SUID_FILES = [
     SuidFile('/s?bin/uuidd', owners=('libuuid', ), groups=('libuuid', )),
     SuidFile('/bin/wall', groups=('tty', )),
     SuidFile('/bin/write', groups=('tty', )),
+    LinkToSuidFile('/bin/write', '/bin/write.ul', groups=('tty', )),
+    SuidFile('/bin/write.ul', groups=('tty', )),
+    LinkToSuidFile('/etc/alternatives/write', '/bin/write.ul', groups=('tty', )),
 
     # virtualbox, https://www.virtualbox.org/
     # https://www.virtualbox.org/browser/vbox/trunk
+    LinkToSuidFile('/bin/VirtualBoxVM', '/lib/virtualbox/VirtualBoxVM',
+                   owners=('root', ), groups=('root', )),
+    LinkToSuidFile('/bin/virtualboxvm', '/lib/virtualbox/VirtualBoxVM',
+                   owners=('root', ), groups=('root', )),
     SuidFile('/lib/virtualbox/VBoxHeadless'),
     SuidFile('/lib/virtualbox/VBoxHeadless', owners=('root', ), groups=('root', )),
     SuidFile('/lib/virtualbox/VBoxNetAdpCtl'),
@@ -774,6 +785,8 @@ TRUSTED_CAPS_FILES = [
     CapsFile('/bin/ping6', '= cap_net_admin,cap_net_raw+ep'),
     LinkToCapsFile('/bin/ping[46]', '/bin/ping',
                    '= cap_net_raw+ep'),
+    LinkToCapsFile('/bin/ping[46]', '/bin/ping',
+                   'cap_net_raw=ep'),
     LinkToCapsFile('/s?bin/ping[46]?', '/bin/ping',
                    '= cap_net_admin,cap_net_raw+p'),
     LinkToCapsFile('/sbin/ping6', '/bin/ping6',
