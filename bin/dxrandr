@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2015-2020 Nicolas Iooss
@@ -27,7 +27,8 @@ Inspired by unxrandr code (from ARandR)
 @author: Nicolas Iooss
 @license: MIT
 """
-import optparse
+import argparse
+import sys
 
 # Use ARandR screenlayout python library
 import screenlayout.auxiliary
@@ -52,13 +53,41 @@ def get_primary_width_name(xrandr):
     return (0, '')
 
 
+def get_common_resolution(xrandr):
+    """Get the maximal resolution which is shared by all screens"""
+    common_resolutions = None
+    for name in xrandr.outputs:
+        if not xrandr.configuration.outputs[name].active:
+            continue
+        state = xrandr.state.outputs[name]
+        if not state.connected:
+            continue
+        width_height_pairs = set((m[0], m[1]) for m in state.modes)
+        if common_resolutions is None:
+            common_resolutions = width_height_pairs
+        else:
+            common_resolutions &= width_height_pairs
+    if not common_resolutions:
+        print("Error: unable to find a common resolution", file=sys.stderr)
+        return None
+    return max(common_resolutions)
+
+
 def main(argv=None):
-    parser = optparse.OptionParser(description=__doc__, usage="%prog")
-    parser.parse_args(argv)
+    parser = argparse.ArgumentParser(description="Reset XRandR configuration to a known state")
+    parser.add_argument('-s', '--same', action='store_true',
+                        help="superpose all screens as the same virtual screen")
+    args = parser.parse_args(argv)
 
     xrandr = screenlayout.xrandr.XRandR()
     xrandr.load_from_x()
-    primary_width, primary_name = get_primary_width_name(xrandr)
+    if args.same:
+        common_mode = get_common_resolution(xrandr)
+        primary_name = None
+        print("Using common resolution {0[0]}x{0[1]}".format(common_mode))
+    else:
+        primary_width, primary_name = get_primary_width_name(xrandr)
+        common_mode = None
 
     has_change = False
     for name in xrandr.outputs:
@@ -74,7 +103,8 @@ def main(argv=None):
             continue
 
         # normal X position
-        pos_x = 0 if name == primary_name else primary_width
+        is_screen_primary = primary_name is None or name == primary_name
+        pos_x = 0 if is_screen_primary else primary_width
 
         if not config.active:
             print("Output {} is connected but not active. Activate!".format(name))
@@ -84,7 +114,7 @@ def main(argv=None):
             config.rotation = screenlayout.auxiliary.NORMAL
             has_change = True
 
-        if name == primary_name:
+        if is_screen_primary:
             if config.position.left != 0 or config.position.top != 0:
                 print("Output {} is primary but not top-left. Move!".format(name))
                 config.position = screenlayout.auxiliary.Position((0, 0))
@@ -95,11 +125,21 @@ def main(argv=None):
                 config.position = screenlayout.auxiliary.Position((pos_x, 0))
                 has_change = True
 
-        best_mode = state.modes[0]
-        if list(config.mode) < list(best_mode):
-            print("Output {} has not maximal size. Maximize!".format(name))
-            config.mode = best_mode
-            has_change = True
+        if common_mode is None:
+            best_mode = state.modes[0]
+            if list(config.mode) < list(best_mode):
+                print("Output {} has not maximal size. Maximize!".format(name))
+                config.mode = best_mode
+                has_change = True
+        else:
+            if tuple(config.mode) != common_mode:
+                chosen_modes = [m for m in state.modes if tuple(m) == common_mode]
+                if not chosen_modes:
+                    print("Warning: Output {} has not common mode".format(name))
+                else:
+                    print("Output {} has not common resolution. Resize!".format(name))
+                    config.mode = chosen_modes[0]
+                    has_change = True
 
         if hasattr(config, 'rotation') and config.rotation.angle:
             print("Output {} is rotated. Rotate it back to normal".format(name))
