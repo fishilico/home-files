@@ -243,10 +243,10 @@ def test():
     basedir = os.path.join(os.path.dirname(__file__), os.path.pardir)
     for dirpath, _, files in os.walk(basedir):
         # Ignore files in .git directory
-        if '/.git' in dirpath:
+        if '/.git' in dirpath or '\\.git' in dirpath:
             continue
         # Ignore collected hardware data files
-        if '/specific/collected_hwdata' in dirpath:
+        if '/specific/collected_hwdata' in dirpath or '\\specific\\collected_hwdata' in dirpath:
             continue
 
         for filename in sorted(files):
@@ -262,10 +262,10 @@ def test():
                 elif ext == 'swp':
                     # Skip ViM swap files
                     pass
-                elif dirpath.endswith('/specific/irssi'):
+                elif dirpath.endswith(('/specific/irssi', '\\specific\\irssi')):
                     # irssi config are text files
                     pass
-                elif dirpath.endswith('/specific/irssi/scripts/autorun'):
+                elif dirpath.endswith(('/specific/irssi/scripts/autorun', '\\specific\\irssi\\scripts\\autorun')):
                     # Irssi scripts are perl scripts without shebang
                     pass
                 elif ext == 'pl':
@@ -274,16 +274,16 @@ def test():
                     verify_py(filepath)
                 elif ext == 'sh':
                     verify_sh(filepath)
-                elif dirpath.endswith('/bin') and not ext:
+                elif dirpath.endswith(('/bin', '\\bin')) and not ext:
                     # binary files can be of several types
                     verify_bin(filepath)
-                elif dirpath.endswith(('/dotfiles', '/dotfiles/cargo')):
+                elif dirpath.endswith(('/dotfiles', '/dotfiles/cargo', '\\dotfiles', '\\dotfiles\\cargo')):
                     # dotfiles contains text files
                     pass
-                elif dirpath.endswith('/dotfiles/shell'):
+                elif dirpath.endswith(('/dotfiles/shell', '\\dotfiles\\shell')):
                     # shell config files are shell files
                     verify_sh(filepath)
-                elif dirpath.endswith('/dotfiles/urxvt/ext'):
+                elif dirpath.endswith(('/dotfiles/urxvt/ext', '\\dotfiles\\urxvt\\ext')):
                     # urxvt extensions are perl files
                     verify_pl(filepath)
                 else:
