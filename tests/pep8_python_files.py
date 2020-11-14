@@ -100,12 +100,12 @@ def test():
             # If there is no extension, the first line is used to find
             # python scripts
             if '.' not in filename:
-                with open(filepath, 'r') as cur_file:
+                with open(filepath, 'rb') as cur_file:
                     firstline = cur_file.readline().rstrip()
-                if 'python' not in firstline:
+                if b'python' not in firstline:
                     continue
                 # Skip Python3-only files when running Python2
-                if 'python3' in firstline and sys.version_info < (3, ):
+                if b'python3' in firstline and sys.version_info < (3, ):
                     continue
                 # If there are incompatibilities, list them here
                 if filename in BIN_REQUIRING_PY36 and dirpath.endswith('bin'):
