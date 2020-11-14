@@ -134,6 +134,22 @@ export MANSECT='2:3:1:8:0:5:4:6:7:9:n:l'
 # * colorize directories in bold blue
 export EXA_COLORS='ur=0:uw=0:ux=0:ue=0:gr=0:gw=0:gx=0:ge=0:tr=0:tw=0:tx=0:te=0:xa=38;5;8:sn=0:sb=0:uu=33:gu=33:da=35:di=1;34'
 
+# Enable colors on macOS
+# By default, the colors are LSCOLORS=exfxcxdxbxegedabagacad, giving the
+# foreground and background colors of:
+# * directory   (e x = blue foreground)
+# * symbolic    (f x = magenta foreground)
+# * socket      (c x = green foreground)
+# * pipe        (d x = brown foreground)
+# * executable  (b x = red foreground)
+# * block       (e g = blue foreground on cyan background)
+# * character   (e d = blue foreground on brown background)
+# * executable  (a b = black foreground on red background)
+# * executable  (a g = black foreground on cyan background)
+# * directory   (a c = black foreground on green background)
+# * directory   (a d = black foreground on brown background)
+export CLICOLOR=1
+
 # Force using GPG agent for SSH, if the agent is launched and there is not a
 # SSH session already (in order to allow ssh -o ForwardAgent=yes)
 if [ -z "${SSH_CLIENT:-}" ] ; then

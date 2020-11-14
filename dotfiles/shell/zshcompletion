@@ -86,7 +86,8 @@ zstyle ':completion:*:files' ignored-patterns '*?.o' '*?~' '*?.dvi' '*?.aux' '*?
 zstyle ':completion:*:complete:-command-::*' ignored-patterns '*\~'
 
 # Put color everywhere, using LS_COLORS
-eval "$(dircolors -b || :)"
+# On macOS, coreutils does not provide dircolors but "ls" can be colorized using CLICOLOR
+eval "$(dircolors -b 2> /dev/null || :)"
 if [ -n "${LS_COLORS:-}" ] ; then
     zstyle ':completion:*' list-colors ''
     zstyle ':completion:*:default' list-colors "${(s.:.)LS_COLORS}"
