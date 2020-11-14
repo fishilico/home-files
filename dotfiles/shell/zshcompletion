@@ -119,19 +119,22 @@ zstyle ':completion:*:manuals' separate-sections true
 zstyle ':completion:*:manuals.(^1*)' insert-sections true
 
 autoload -Uz compinit
-compinit
+# compinit may fail on macOS GitHub Actions:
+#    not interactive and can't open terminal
+#    compinit: initialization aborted
+if compinit ; then
+    # Complete some programs which don't have proper compdef
+    compdef ping6=ping
+    compdef _gnu_generic curl file head mv shred touch watch wc zsh
 
-# Complete some programs which don't have proper compdef
-compdef ping6=ping
-compdef _gnu_generic curl file head mv shred touch watch wc zsh
-
-# Complete some functions defined in "functions" file
-compdef cl=cd
-compdef dnssort=sort
-compdef mcd=mkdir
-#compdef postless=postcat
-compdef read_pass=read
-#compdef ltail=tail
+    # Complete some functions defined in "functions" file
+    compdef cl=cd
+    compdef dnssort=sort
+    compdef mcd=mkdir
+    #compdef postless=postcat
+    compdef read_pass=read
+    #compdef ltail=tail
+fi
 
 # Reload completion
 compreload() {
