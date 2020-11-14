@@ -1,0 +1,87 @@
+# Documentation on GitHub Actions:
+# * Workflow syntax for GitHub Actions
+#   https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions
+# * Building and testing Python
+#   https://docs.github.com/en/free-pro-team@latest/actions/guides/building-and-testing-python
+
+name: Run tests
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, pypy2, pypy3]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pycodestyle
+
+    - name: Install macOS dependencies
+      if: ${{ startsWith(matrix.os, 'macos-') }}
+      run: brew install coreutils
+
+    - name: Display versions
+      run: |
+        echo "Python:"
+        python -c "import sys; print(sys.version)"
+        echo "pycodestyle:"
+        pycodestyle --version
+        echo "shellcheck:"
+        shellcheck --version || :
+      shell: bash
+
+    - name: Run tests
+      run: |
+        if [[ "${{ matrix.os }}" =~ ^windows- ]] ; then
+            ./tests/pep8_python_files.py && \
+            echo "[ OK ] tests/pep8_python_files.py on Windows" && \
+            ./tests/verify_script_headers.py && \
+            echo "[ OK ] tests/verify_script_headers.py on Windows" && \
+            echo "[ OK ] All tests OK on Windows"
+        else
+            echo "Running ./run_tests.sh"
+            ./run_tests.sh
+        fi
+      env:
+        TERM: vt100
+      shell: bash
+
+    - name: Install home files
+      if: ${{ !startsWith(matrix.os, 'windows-') }}
+      run: |
+        if [[ "${{ matrix.os }}" =~ ^macos- ]] ; then
+          # Remove conflicting local files
+          cat ~/.gitconfig
+          rm -v ~/.bash_profile ~/.bashrc ~/.gitconfig
+        fi
+        ./install.sh
+      shell: bash
+
+    - name: Update branch master
+      if: ${{ !startsWith(matrix.os, 'windows-') }}
+      run: |
+        git remote set-branches origin master
+        git fetch origin
+        BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD)"
+        test "${BRANCH_NAME}" = "master" || git checkout origin/master -b master
+        git checkout "${BRANCH_NAME}"
+        ./update.sh
+      shell: bash
+
+    - name: Dump the configuration
+      run: bin/config-summary
+      shell: bash
