@@ -1206,6 +1206,7 @@ KNOWN_ACPI_DEVICES = {
     'INT33D2': 'Intel GPIO Buttons',
     'INT33D3': 'Intel GPIO Buttons',
     'INT33D4': 'Intel GPIO Buttons',
+    'INT33D5': 'Intel HID Event Filter',  # Seen as \_SB_.HIDD
     'INT33D6': 'Intel Virtual Buttons Device',
     # Seen as \_SB_.PCI0.UA00.BTH0 and \_SB_.PCI0.UA01.BTH1
     'INT33E0': 'Intel Bluetooth Serial Bus Driver over UART Bus Enumerator',
@@ -1243,9 +1244,11 @@ KNOWN_ACPI_DEVICES = {
     'INT3449': 'Intel Serial IO UART Host Controller',  # Seen as \_SB_.PCI0.UA01
     'INT344A': 'Intel Serial IO UART Host Controller',  # Seen as \_SB_.PCI0.UA02
     'INT344B': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
+    'INT3450': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
     'INT3451': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PC00.GPI0
     'INT3453': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.GPO1
     'INT345D': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
+    'INT346F': 'Intel Control Logic',  # Seen as \_SB_.PCI0.I2C2.PMIC and \_SB_.PCI0.DSC0
     'INT3470': 'Intel AVStream Camera 2500',  # Seen as \_SB_.SKC0
     'INT3471': 'Intel Camera Sensor IMX135',  # Seen as \_SB_.PCI0.LNK0 and \_SB_.PCI0.LNK2
     'INT3472': 'TPS68470 Power Management IC (PMIC-CRDG)',
@@ -1374,6 +1377,10 @@ KNOWN_ACPI_DEVICES = {
     'NXP5472': 'NXP NFC',
     'NXP6020': 'NXP NFC',
     'NXP6022': 'NXP NFC',
+
+    'OVTI8856': 'Camera Sensor ov8856',  # Seen as \_SB_.PCI0.LNK2
+    'OVTI9234': 'Camera Sensor ov9234',  # Seen as \_SB_.PCI0.LNK1 and \_SB_.PCI0.LNK3
+    'OVTIF860': 'Camera Sensor ovF860',  # Seen as \_SB_.PCI0.LNK0, Linux driver IPU3 (Image Processing Unit 3)
 
     # PNP0xxx are system devices
     'PNP0000': 'Programmable Interrupt Controller (ISA 8259 PIC)',
@@ -1904,7 +1911,12 @@ KNOWN_ACPI_DEVICES = {
 
     'VMBUS': 'Microsoft Hyper-V Virtual Machine Bus',
 
+    # Wacom
     'WCOM508E': 'Wacom Touch panel',  # Seen as \_SB_.PCI0.I2C7.TPL1
+
+    # Winbond
+    'WEC0001': 'Winbond LED',  # Seen as \_SB_.PCI0.LPCB.WPCN.LD15
+    'WEC1022': 'Winbond CIR Transceiver',  # Seen as \_SB_.PCI0.LPCB.WPCN.ECIR
 }
 
 # ACPI device IDs that have been seen but are not known
