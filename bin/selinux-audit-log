@@ -152,6 +152,7 @@ AUDIT_TYPES: Mapping[int, str] = {
     1332: 'TIME_INJOFFSET',
     1333: 'TIME_ADJNTPVAL',
     1334: 'BPF',
+    1335: 'AUDIT_EVENT_LISTENER',
 
     # 1400 - 1499 SELinux use
     1400: 'AVC',
