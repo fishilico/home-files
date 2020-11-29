@@ -906,7 +906,7 @@ class SELinuxAuditLogAnalyzer:
         group.add_argument('-j', '--journal', action='store_true',
                            help="use systemd's journal to get the audit logs")
         group.add_argument('--stdin', action='store_true',
-                           help="show audit logs from the standard input (default is it is a TTY)")
+                           help="show audit logs from the standard input (default when it is not a TTY)")
         group.add_argument('-t', '--today', action='store_true',
                            help="show audit logs of today (using ausearch --start today)")
 
@@ -999,6 +999,7 @@ class SELinuxAuditLogAnalyzer:
                 if args.logfiles:
                     parser.error("Option --stdin is mutually exclusive with log files")
                 logfiles = ['/dev/stdin']
+                self.forward_stdin = True
             elif args.logfiles:
                 logfiles = args.logfiles
             elif os.isatty(sys.stdin.fileno()):
@@ -1007,6 +1008,7 @@ class SELinuxAuditLogAnalyzer:
             else:
                 # Use stdin input
                 logfiles = ['/dev/stdin']
+                self.forward_stdin = True
 
             if args.follow:
                 # Use "+0" to start at the beginning, if --num has not been used
