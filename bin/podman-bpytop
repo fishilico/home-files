@@ -1,15 +1,153 @@
-#!/bin/sh
+#!/bin/bash
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2020 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
 # Run https://github.com/aristocratos/bpytop in a podman container
 #
 # cf. https://twitter.com/HB9FXQ/status/1320114147691057155
 # and https://www.linuxtricks.fr/news/10-logiciels-libres/479-bpytop-un-moniteur-systeme-en-python-tres-reactif-et-qui-claque/
 
-exec podman run --rm --net=host -v /proc:/hostproc:ro -ti python:3.9-alpine sh -c \
-    'apk --no-cache --update add gcc linux-headers musl-dev &&
-    pip3 install bpytop &&
-    adduser -D user &&
-    echo "import psutil" > /run-bpytop.py &&
-    echo "psutil.PROCFS_PATH=\"/hostproc\"" >> /run-bpytop.py &&
-    echo "import bpytop" >> /run-bpytop.py &&
-    echo "bpytop.main()" >> /run-bpytop.py &&
-    exec su user -c "python3 /run-bpytop.py"'
+set -e
+
+build_container() {
+    # Build a container that runs bpytop, using the procfs instance mounted on /hostproc
+    podman build --no-cache -t localhost/bpytop -f /dev/stdin << EOF
+FROM python:3.9-alpine
+RUN apk --no-cache --update add gcc linux-headers musl-dev && \
+    rm -rf /var/cache/apk/* && \
+    pip3 install bpytop && \
+    adduser -D user && \
+    echo "import psutil" > /run-bpytop.py && \
+    echo "psutil.PROCFS_PATH=\"/hostproc\"" >> /run-bpytop.py && \
+    echo "import bpytop" >> /run-bpytop.py && \
+    echo "bpytop.main()" >> /run-bpytop.py
+EOF
+
+}
+
+# Option --update updates the container if it already exists
+if [ $# -ge 2 ] && [ "$1" = '--update' ] ; then
+    shift
+    mapfile -t OLD_IMAGES < <(podman image ls '--format={{.ID}}' localhost/bpytop)
+    build_container
+    if [ -n "${OLD_IMAGES[*]}" ] ; then
+        echo "Removing podman images ${OLD_IMAGES[*]}..."
+        podman image rm -- "${OLD_IMAGES[@]}"
+    fi
+elif ! podman image exists localhost/bpytop ; then
+    build_container
+fi
+
+# Use SCMP_ACT_LOG to record the denied syscalls
+SECCOMP_PROFILE='
+{
+    "defaultAction": "SCMP_ACT_ERRNO",
+    "syscalls": [
+        {
+            "names": [
+                "arch_prctl",
+                "bind",
+                "brk",
+                "capget",
+                "capset",
+                "chdir",
+                "clone",
+                "close",
+                "connect",
+                "dup",
+                "dup2",
+                "epoll_create1",
+                "epoll_ctl",
+                "epoll_pwait",
+                "execve",
+                "exit",
+                "exit_group",
+                "fchown",
+                "fcntl",
+                "fork",
+                "fstat",
+                "fstatfs",
+                "futex",
+                "getcwd",
+                "getdents64",
+                "getegid",
+                "geteuid",
+                "getgid",
+                "getpeername",
+                "getpid",
+                "getppid",
+                "getrandom",
+                "getsockname",
+                "getsockopt",
+                "gettid",
+                "getuid",
+                "ioctl",
+                "lseek",
+                "lstat",
+                "madvise",
+                "membarrier",
+                "mkdir",
+                "mmap",
+                "mprotect",
+                "munmap",
+                "nanosleep",
+                "newfstatat",
+                "open",
+                "openat",
+                "pipe2",
+                "poll",
+                "prctl",
+                "read",
+                "readlink",
+                "readv",
+                "recvfrom",
+                "rt_sigaction",
+                "rt_sigprocmask",
+                "rt_sigreturn",
+                "sched_getaffinity",
+                "select",
+                "sendfile",
+                "sendto",
+                "setgid",
+                "setgroups",
+                "setsockopt",
+                "set_tid_address",
+                "setuid",
+                "socket",
+                "stat",
+                "statfs",
+                "sysinfo",
+                "tgkill",
+                "uname",
+                "wait4",
+                "write"
+            ],
+            "action": "SCMP_ACT_ALLOW"
+        }
+    ]
+}'
+
+exec podman run --rm \
+    --net=host \
+    --volume /proc:/hostproc:ro \
+    --security-opt seccomp=<(printf %s "$SECCOMP_PROFILE") \
+    -ti localhost/bpytop su user -c "python3 /run-bpytop.py"
