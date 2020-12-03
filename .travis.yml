@@ -122,7 +122,6 @@ addons:
     - busybox
     - cabal-install
     - ghc
-    - python-pip
     - tcpdump
     - zsh
 
