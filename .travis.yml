@@ -4,6 +4,28 @@ language: python
 
 matrix:
   include:
+    # Ubuntu 20.04 LTS (Focal Fossa)
+    - os: linux
+      dist: focal
+      python: "3.9"
+      env: BUILDENV=ubuntu2004-focal-python3.9
+    - os: linux
+      dist: focal
+      python: "3.8"
+      env: BUILDENV=ubuntu2004-focal-python3.8
+    - os: linux
+      dist: focal
+      python: "3.7"
+      env: BUILDENV=ubuntu2004-focal-python3.7
+    - os: linux
+      dist: focal
+      python: "3.6"
+      env: BUILDENV=ubuntu2004-focal-python3.6
+    - os: linux
+      dist: focal
+      python: "2.7"
+      env: BUILDENV=ubuntu2004-focal-python2.7
+
     # Ubuntu 18.04 LTS (Bionic Beaver)
     - os: linux
       dist: bionic
