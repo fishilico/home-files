@@ -155,7 +155,12 @@ install:
 
 script:
 # Run automated tests
+# Make sure that /bin is before /usr/bin, otherwise on Ubuntu 20.04 it fails with:
+# "dpkg-query: no path found matching pattern /usr/bin/grep"
+  - |
+    echo 'PATH="$REAL_HOME/bin:/bin:$PATH" # MARKER For Travis-CI' >> dotfiles/shell/environment
   - ./run_tests.sh
+  - sed '/MARKER For Travis-CI/d' -i dotfiles/shell/environment
 # Install the files after removing conflicting local files
   - rm -f ~/.bash_profile ~/.bash_logout ~/.bashrc ~/.gitconfig ~/.gnupg/gpg.conf ~/.profile ~/.zshrc
   - ./install.sh
