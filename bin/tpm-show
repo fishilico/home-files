@@ -584,6 +584,11 @@ TPM12_NV_ATTRIBUTES_DESC: Tuple[Tuple[int, str], ...] = (
 
 
 # Reserved NV indexes in TPM 1.2
+# and in Intel TXT (Trusted Execution Technology) Appendix I
+# (https://www.intel.com/content/www/us/en/software-developers/intel-txt-software-development-guide.html)
+# and Intel TXT Revision 013 Appendix J
+# (https://usermanual.wiki/Document/inteltxtsoftwaredevelopmentguide.1721028921/view)
+# and tboot (http://hg.code.sf.net/p/tboot/code/file/v2.0.0/tboot/common/tpm_12.c#l1828)
 TPM12_RESERVED_NV_INDEXES_DESC: Mapping[int, str] = {
     0x0000f000: 'EK Certificate',
     0x0000f001: 'TPM CC',
@@ -596,6 +601,13 @@ TPM12_RESERVED_NV_INDEXES_DESC: Mapping[int, str] = {
     0x00011400: 'Mobile Base',
     0x00011500: 'Peripheral Base',
     0x10000001: 'DIR[0]',  # Compatibility with older TPM versions
+    0x20000001: 'Policy for Verified Launch (Intel TXT)',
+    0x20000002: 'Launch error (Intel TXT)',
+    0x40000001: 'LCP Structure for Platform Owner (Intel TXT "PO")',  # LCP = Launch Control Policies
+    0x50000001: 'LCP Platform Supplier (Intel TXT "PS")',
+    0x50000002: 'Launch Auxiliary during IVB and before platforms (Intel TXT "AUX")',  # IVB = Ivy Bridge
+    0x50000003: 'new Launch Auxiliary (Intel TXT "AUX")',
+    0x50000004: 'SGX Software Version Number (Intel TXT "SGX SVN")',  # SGX = Software Guard Extensions
     0xffffffff: 'Lock',
 }
 
@@ -1068,7 +1080,31 @@ class Tpm20HandleType(enum.IntEnum):
 
 @enum.unique
 class Tpm20Handle(enum.IntEnum):
-    """TPM_HANDLE / TPM_HC: Handles Values Constants in TPM 2.0"""
+    """TPM_HANDLE / TPM_HC: Handles Values Constants in TPM 2.0
+
+    Some reserved handles are defined by TCG in
+    "Registry of reserved TPM 2.0 handles and localities"
+    https://trustedcomputinggroup.org/wp-content/uploads/131011-Registry-of-reserved-TPM2-handles-and-localities.pdf
+    https://trustedcomputinggroup.org/wp-content/uploads/RegistryOfReservedTPM2HandlesAndLocalities_v1p1_pub.pdf
+
+    For the Endorsement: "TCG EK Credential Profile For TPM Family 2.0"
+    https://trustedcomputinggroup.org/wp-content/uploads/TCG_IWG_EKCredentialProfile_v2p3_r2_pub.pdf
+
+    For Intel TXT: "Intel Trusted Execution Technology", Appendix I
+    https://www.intel.com/content/www/us/en/software-developers/intel-txt-software-development-guide.html
+    and Intel TXT Version 013, Appendix J
+    https://usermanual.wiki/Document/inteltxtsoftwaredevelopmentguide.1721028921/view
+    (which explains that:
+        Initially TXT used index handles selected from 0x180_xxxx and 0x140_xxxx ranges based on early version of TCG
+        "Registry of reserved TPM 2.0 handles and localities" and TXT legacy. Later revision of TCG registry repurposed
+        the above ranges creating mismatch between TXT practice and normative TCG document. Moreover, selection of TXT
+        related NV index handles from the ranges assigned to OEMs and Users does not guarantee its conflict free usage.
+        In order to address both issues Intel requested TCG to assign "Intel Reserved" range of indices 0x1C1_0100 -
+        0x1C1_013F for TXT and other purposes out of range 0x1C1_xxxx reserved for component vendors.
+    )
+    and tboot: http://hg.code.sf.net/p/tboot/code/file/v2.0.0/tboot/common/tpm_20.c#l2722
+    """
+    # 0x00000000-0x00ffffff: Platform Control Register indices
     # PCR_FIRST = 0
     TPM_HC_PCR0 = 0x00000000
     TPM_HC_PCR1 = 0x00000001
@@ -1095,7 +1131,42 @@ class Tpm20Handle(enum.IntEnum):
     TPM_HC_PCR22 = 0x00000016
     TPM_HC_PCR23 = 0x00000017
     # Reserved Handles in Non-Volatile storage index
-    TPM_RESERVED_HANDLE_EK_CERT = 0x01c00002  # EK Certificate
+    # 0x01000000-0x013fffff: NV indexes defined by TPM Manufacturer
+    # 0x01400000-0x017fffff: NV indexes defined by Platform Manufacturer
+    # 0x01800000-0x01bfffff: NV indexes defined by Owner
+    # 0x01c00000-0x01ffffff: NV indexes defined by TCG
+    #   0x01c00000-0x01c07fff: Endorsement certificates, key templates, etc.
+    #     0x01c00000-0x01c000ff: EK Certificates
+    #     0x01c00100-0x01c001ff: EK Certificate Chains
+    #     0x01c07f00-0x01c07fff: EK Policies (cf. TCG EK Credential Profile)
+    #   0x01c08000-0x01c0ffff: Platform certificates, key templates, etc.
+    #   0x01c10000-0x01c1ffff: Component OEM
+    #     0x01c10100-0x01c1013f: Registered to Intel (and used by Intel TXT)
+    #   0x01c20000-0x01c2ffff: TPM OEM
+    #   0x01c30000-0x01c3ffff: Platform OEM
+    #   0x01c40000-0x01c4ffff: PC-Client workgroup
+    #   0x01c50000-0x01c5ffff: Server workgroup
+    #   0x01c60000-0x01c6ffff: Virtualized Platform workgroup
+    #   0x01c70000-0x01c7ffff: MPWG
+    #   0x01c80000-0x01c8ffff: Embedded workgroup
+    TPM_OLD_NV_INTEL_TXT_LAUNCH_POLICY = 0x01200001  # Policy for Verified Launch (Intel TXT, old)
+    TPM_OLD_NV_INTEL_TXT_LAUNCH_ERROR = 0x01200002  # Launch error (Intel TXT, old)
+    TPM_OLD_NV_INTEL_TXT_PLATFORM_OWNER = 0x01400001  # LCP Platform Owner (Intel TXT "PO", old)
+    TPM_OLD_NV_INTEL_TXT_PLATFORM_SUPPLIER = 0x01800001  # LCP Platform Supplier (Intel TXT "PS", old)
+    TPM_OLD_NV_INTEL_TXT_LAUNCH_AUXILIARY = 0x01800003  # Launch Auxiliary (Intel TXT "AUX", old)
+    TPM_OLD_NV_INTEL_TXT_SGX_SVN = 0x01800004  # SGX Software Version Number (Intel TXT "SGX", old)
+    TPM_RESERVED_HANDLE_RSA2048_EK_CERT = 0x01c00002  # RSA 2048 EK Certificate
+    TPM_RESERVED_HANDLE_RSA2048_EK_NONCE = 0x01c00003  # RSA 2048 EK Nonce
+    TPM_RESERVED_HANDLE_RSA2048_EK_TEMPLATE = 0x01c00004  # RSA 2048 EK Template
+    TPM_RESERVED_HANDLE_ECCP256_EK_CERT = 0x01c0000a  # ECC NIST P256 EK Certificate
+    TPM_RESERVED_HANDLE_ECCP256_EK_NONCE = 0x01c0000b  # ECC NIST P256 EK Nonce
+    TPM_RESERVED_HANDLE_ECCP256_EK_TEMPLATE = 0x01c0000c  # ECC NIST P256 EK Template
+    TPM_NV_INTEL_TXT_LAUNCH_AUXILIARY = 0x01c10102  # Launch Auxiliary (Intel TXT "AUX")
+    TPM_NV_INTEL_TXT_PLATFORM_SUPPLIER = 0x01c10103  # LCP Structure for Platform Supplier (Intel TXT "PS")
+    TPM_NV_INTEL_TXT_SGX_SVN = 0x01c10104  # SGX Software Version Number (Intel TXT "SGX")
+    TPM_NV_INTEL_TXT_PLATFORM_OWNER = 0x01c10106  # LCP Platform Owner (Intel TXT "PO")
+    TPM_NV_INTEL_TXT_LAUNCH_POLICY = 0x01c10131  # Policy for Verified Launch (Intel TXT)
+    TPM_NV_INTEL_TXT_LAUNCH_ERROR = 0x01c10132  # Launch error (Intel TXT)
     TPM_RESERVED_HANDLE_IDEVID_CERT = 0x01c90000  # IDevID Certificate
     # TPM_RH: Resource Handle
     TPM_RH_SRK = 0x40000000  # SRK = Storage Root Key
@@ -1112,21 +1183,29 @@ class Tpm20Handle(enum.IntEnum):
     TPM_RH_ENDORSEMENT = 0x4000000b  # references the Endorsement Primary Seed (EPS), endorsementAuth, and endorsementPolicy  # noqa
     TPM_RH_PLATFORM = 0x4000000c  # references the Platform Primary Seed (PPS), platformAuth, and platformPolicy  # noqa
     TPM_RH_PLATFORM_NV = 0x4000000d  # for phEnableNV
-    TPM_RH_AUTH_00 = 0x40000010  # Start of a range of authorization values that are vendorspecific. A TPM may support any of the values in this range as are needed for vendor-specific purposes  # noqa
+    #   0x40000010-0x4000010f: range of authorization values that are vendor specific.
+    #     A TPM may support any of the values in this range as are needed for vendor-specific purposes.
+    #     For example used in tboot: http://hg.code.sf.net/p/tboot/code/file/v2.0.0/tboot/common/policy.c#l160
+    TPM_RH_AUTH_00 = 0x40000010
     TPM_RH_AUTH_FF = 0x4000010f
-    TPM_RH_ACT_0 = 0x40000110  # Start of the range of authenticated timers
+    #   0x40000110-0x4000011f: range of authenticated timers
+    TPM_RH_ACT_0 = 0x40000110
     TPM_RH_ACT_F = 0x4000011f
     # Reserved Handles in persistent objects
-    # cf. Registry of reserved TPM 2.0 handles and localities
-    # https://trustedcomputinggroup.org/wp-content/uploads/131011-Registry-of-reserved-TPM2-handles-and-localities.pdf
-    # 0x81000000-0x8100ffff: Storage primary keys
-    TPM_RESERVED_HANDLE_SRK = 0x81000001
+    # 0x81000000-0x817fffff: persistent objects with auth TPM_RH_OWNER
+    #   0x81000000-0x8100ffff: Storage primary keys
+    TPM_RESERVED_HANDLE_SRK_0 = 0x81000000
+    TPM_RESERVED_HANDLE_SRK_1 = 0x81000001
     TPM_RESERVED_HANDLE_SRK_2 = 0x81000002
-    # 0x81010000-0x8101ffff: Endorsement primary keys
+    TPM_RESERVED_HANDLE_SRK_3 = 0x81000003
+    TPM_RESERVED_HANDLE_SRK_4 = 0x81000004
+    #   0x81010000-0x8101ffff: Endorsement primary keys
     TPM_RESERVED_HANDLE_EK = 0x81010001
     TPM_RESERVED_HANDLE_IDEVID_KEY = 0x81020000  # IDevID Key
-    # 0x81800000-0x8180ffff: Platforms primary keys
-    TPM_RESERVED_HANDLE_PLATFORM_KEY = 0x81800001
+    # 0x81800000-0x81ffffff: persistent objects with auth TPM_RH_PLATFORM
+    #   0x81800000-0x8180ffff: Platforms primary keys
+    TPM_RESERVED_HANDLE_PLATFORM_KEY_0 = 0x81800000
+    TPM_RESERVED_HANDLE_PLATFORM_KEY_1 = 0x81800001
 
 
 class Tpm20PublicStruct:
@@ -2866,7 +2945,16 @@ def main(argv: Optional[Sequence[str]] = None):
                     try:
                         handle_name = Tpm20Handle(handle).name
                     except ValueError:
-                        handle_name = f"<unknown handle {handle:#x}>"
+                        if 0x01000000 <= handle <= 0x013fffff:
+                            handle_name = f"<unknown handle {handle:#x} for NV index defined by TPM Manufacturer>"
+                        elif 0x01400000 <= handle <= 0x017fffff:
+                            handle_name = f"<unknown handle {handle:#x} for NV index defined by Platform Manufacturer>"
+                        elif 0x01800000 <= handle <= 0x01bfffff:
+                            handle_name = f"<unknown handle {handle:#x} for NV index defined by Owner>"
+                        elif 0x01c00000 <= handle <= 0x01ffffff:
+                            handle_name = f"<unknown handle {handle:#x} for NV index defined by TCG>"
+                        else:
+                            handle_name = f"<unknown handle {handle:#x}>"
                     if handle == auth_session.session_handle:
                         handle_name += " (handle to the active session)"
                     print(f"    [{handle:#010x}] {handle_name}")
