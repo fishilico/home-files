@@ -29,31 +29,43 @@
 set -e
 
 build_container() {
+    # Update the base image
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/python:3.9-alpine)
+    podman pull docker.io/library/python:3.9-alpine
+    for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman base image ${OLD_BASE_IMAGE}"
+            podman image rm -- "${OLD_BASE_IMAGE}"
+        fi
+    done
+
     # Build a container that runs bpytop, using the procfs instance mounted on /hostproc
-    podman build --no-cache -t localhost/bpytop -f /dev/stdin << EOF
-FROM python:3.9-alpine
+    podman build --no-cache -t localhost/podman-bpytop -f /dev/stdin << EOF
+FROM docker.io/library/python:3.9-alpine
 RUN apk --no-cache --update add gcc linux-headers musl-dev && \
     rm -rf /var/cache/apk/* && \
     pip3 install bpytop && \
     adduser -D user && \
-    echo "import psutil" > /run-bpytop.py && \
-    echo "psutil.PROCFS_PATH=\"/hostproc\"" >> /run-bpytop.py && \
-    echo "import bpytop" >> /run-bpytop.py && \
-    echo "bpytop.main()" >> /run-bpytop.py
+    echo 'import psutil' > /run-bpytop.py && \
+    echo 'psutil.PROCFS_PATH="/hostproc"' >> /run-bpytop.py && \
+    echo 'import bpytop' >> /run-bpytop.py && \
+    echo 'bpytop.main()' >> /run-bpytop.py
 EOF
 
 }
 
 # Option --update updates the container if it already exists
-if [ $# -ge 2 ] && [ "$1" = '--update' ] ; then
+if [ $# -ge 1 ] && [ "$1" = '--update' ] ; then
     shift
-    mapfile -t OLD_IMAGES < <(podman image ls '--format={{.ID}}' localhost/bpytop)
+    mapfile -t OLD_IMAGES < <(podman image list '--format={{.Id}}' localhost/podman-bpytop)
     build_container
-    if [ -n "${OLD_IMAGES[*]}" ] ; then
-        echo "Removing podman images ${OLD_IMAGES[*]}..."
-        podman image rm -- "${OLD_IMAGES[@]}"
-    fi
-elif ! podman image exists localhost/bpytop ; then
+    for OLD_IMAGE in "${OLD_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman image ${OLD_IMAGE}"
+            podman image rm -- "${OLD_IMAGE}"
+        fi
+    done
+elif ! podman image exists localhost/podman-bpytop ; then
     build_container
 fi
 
@@ -150,4 +162,4 @@ exec podman run --rm \
     --net=host \
     --volume /proc:/hostproc:ro \
     --security-opt seccomp=<(printf %s "$SECCOMP_PROFILE") \
-    -ti localhost/bpytop su user -c "python3 /run-bpytop.py"
+    -ti localhost/podman-bpytop su user -c "python3 /run-bpytop.py"
