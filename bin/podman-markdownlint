@@ -29,7 +29,17 @@
 set -e
 
 build_container() {
-    podman build --no-cache -t localhost/markdownlint -f /dev/stdin << EOF
+    # Update the base image
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/ruby:slim)
+    podman pull docker.io/library/ruby:slim
+    for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman base image ${OLD_BASE_IMAGE}"
+            podman image rm -- "${OLD_BASE_IMAGE}"
+        fi
+    done
+
+    podman build --no-cache -t localhost/podman-markdownlint -f /dev/stdin << EOF
 FROM ruby:slim
 RUN gem install mdl
 EOF
@@ -37,15 +47,17 @@ EOF
 }
 
 # Option --update updates the container if it already exists
-if [ $# -ge 2 ] && [ "$1" = '--update' ] ; then
+if [ $# -ge 1 ] && [ "$1" = '--update' ] ; then
     shift
-    mapfile -t OLD_IMAGES < <(podman image ls '--format={{.ID}}' localhost/markdownlint)
+    mapfile -t OLD_IMAGES < <(podman image list '--format={{.Id}}' localhost/podman-markdownlint)
     build_container
-    if [ -n "${OLD_IMAGES[*]}" ] ; then
-        echo "Removing podman images ${OLD_IMAGES[*]}..."
-        podman image rm -- "${OLD_IMAGES[@]}"
-    fi
-elif ! podman image exists localhost/markdownlint ; then
+    for OLD_IMAGE in "${OLD_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman image ${OLD_IMAGE}"
+            podman image rm -- "${OLD_IMAGE}"
+        fi
+    done
+elif ! podman image exists localhost/podman-markdownlint ; then
     build_container
 fi
 
@@ -111,6 +123,7 @@ SECCOMP_PROFILE='
                 "tgkill",
                 "timer_create",
                 "timer_delete",
+                "timer_settime",
                 "write",
                 "writev"
             ],
@@ -125,4 +138,4 @@ exec podman run --rm \
     --volume "$CURDIR:$CURDIR" \
     --workdir "$CURDIR" \
     --security-opt seccomp=<(printf %s "$SECCOMP_PROFILE") \
-    -ti localhost/markdownlint mdl "$@"
+    -ti localhost/podman-markdownlint mdl "$@"
