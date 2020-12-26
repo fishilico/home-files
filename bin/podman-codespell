@@ -1,0 +1,133 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2020 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Run https://github.com/codespell-project/codespell in a podman container
+
+set -e
+
+build_container() {
+    # Update the base image
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/python:3.9-alpine)
+    podman pull docker.io/library/python:3.9-alpine
+    for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman base image ${OLD_BASE_IMAGE}"
+            podman image rm -- "${OLD_BASE_IMAGE}"
+        fi
+    done
+
+    # Build a container that runs codespell, using the latest dictionary from git master
+    podman build --no-cache -t localhost/podman-codespell -f /dev/stdin << EOF
+FROM docker.io/library/python:3.9-alpine
+RUN pip3 install codespell && \
+    wget -O/master-dictionary.txt https://raw.githubusercontent.com/codespell-project/codespell/master/codespell_lib/data/dictionary.txt
+EOF
+
+}
+
+# Option --update updates the container if it already exists
+if [ $# -ge 1 ] && [ "$1" = '--update' ] ; then
+    shift
+    mapfile -t OLD_IMAGES < <(podman image list '--format={{.Id}}' localhost/podman-codespell)
+    build_container
+    for OLD_IMAGE in "${OLD_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman image ${OLD_IMAGE}"
+            podman image rm -- "${OLD_IMAGE}"
+        fi
+    done
+elif ! podman image exists localhost/podman-codespell ; then
+    build_container
+fi
+
+# Use SCMP_ACT_LOG to record the denied syscalls
+SECCOMP_PROFILE='
+{
+    "defaultAction": "SCMP_ACT_ERRNO",
+    "syscalls": [
+        {
+            "names": [
+                "arch_prctl",
+                "brk",
+                "capget",
+                "capset",
+                "chdir",
+                "close",
+                "dup",
+                "epoll_ctl",
+                "epoll_pwait",
+                "execve",
+                "exit_group",
+                "fchown",
+                "fcntl",
+                "fstat",
+                "fstatfs",
+                "futex",
+                "getdents64",
+                "getegid",
+                "geteuid",
+                "getgid",
+                "getpid",
+                "getppid",
+                "getrandom",
+                "gettid",
+                "getuid",
+                "ioctl",
+                "kill",
+                "lseek",
+                "lstat",
+                "madvise",
+                "mmap",
+                "mprotect",
+                "munmap",
+                "nanosleep",
+                "newfstatat",
+                "open",
+                "openat",
+                "prctl",
+                "read",
+                "readlink",
+                "readv",
+                "rt_sigaction",
+                "rt_sigprocmask",
+                "rt_sigreturn",
+                "setgid",
+                "setgroups",
+                "set_tid_address",
+                "setuid",
+                "stat",
+                "tgkill",
+                "write"
+            ],
+            "action": "SCMP_ACT_ALLOW"
+        }
+    ]
+}'
+
+CURDIR="$(pwd)"
+exec podman run --rm \
+    --net=none \
+    --volume "$CURDIR:$CURDIR" \
+    --workdir "$CURDIR" \
+    --security-opt seccomp=<(printf %s "$SECCOMP_PROFILE") \
+    -ti localhost/podman-codespell codespell -D /master-dictionary.txt "$@"

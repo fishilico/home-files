@@ -286,6 +286,9 @@ if type alias > /dev/null 2>&1 ; then
     alias codespell-git='git ls-files | xargs codespell'
     # Ignore the recommandation about "mut"
     alias codespell-git-rust='git ls-files | xargs codespell --ignore-words-list=mut'
+    # Same aliases, with podman helper
+    alias podman-codespell-git='git ls-files | xargs podman-codespell'
+    alias podman-codespell-git-rust='git ls-files | xargs podman-codespell --ignore-words-list=mut'
 
     # vman = use vim as a pager
     alias vman="man -P \"/bin/sh -c \\\"col -b -p -x | \
