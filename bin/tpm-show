@@ -74,6 +74,11 @@ References and documentation:
 * https://github.com/tianocore/edk2/blob/edk2-stable202002/MdePkg/Include/IndustryStandard/Tpm20.h
   TPM 2.0 Specification data structures
   (Trusted Platform Module Library Specification, Family "2.0", Level 00, Revision 00.96)
+
+Other initiative to collect data about TPM:
+* https://twitter.com/CRoCS_MUNI/status/1337445979813982210 (2020-12-11)
+  https://crocs.fi.muni.cz/public/research/tpm_live
+  https://github.com/danzatt/tpm2-algtest/tree/7c03e5d20216a80ae633da72b8ae9729e6000e16 (to measure perf)
 """
 import argparse
 import binascii
