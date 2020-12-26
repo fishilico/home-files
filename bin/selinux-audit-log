@@ -279,6 +279,815 @@ AUDIT_TYPES_FOR_SELINUX: FrozenSet[str] = frozenset((
     'AVC',
     'SELINUX_ERR',
     'USER_AVC',
+    'USER_SELINUX_ERR',
+))
+
+AUDIT_DECIMAL_INTEGER_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
+    ('EXECVE', 'argc'),
+    ('CONFIG_CHANGE', 'audit_backlog_limit'),
+    ('CONFIG_CHANGE', 'audit_backlog_wait_time'),
+    ('CONFIG_CHANGE', 'audit_enabled'),
+    ('KERNEL', 'audit_enabled'),
+    ('CONFIG_CHANGE', 'audit_failure'),
+    ('CONFIG_CHANGE', 'audit_pid'),
+    ('ADD_GROUP', 'auid'),
+    ('ADD_USER', 'auid'),
+    ('ANOM_ABEND', 'auid'),
+    ('ANOM_PROMISCUOUS', 'auid'),
+    ('AUDIT_EVENT_LISTENER', 'auid'),
+    ('CONFIG_CHANGE', 'auid'),
+    ('CRED_ACQ', 'auid'),
+    ('CRED_DISP', 'auid'),
+    ('CRED_REFR', 'auid'),
+    ('CRYPTO_KEY_USER', 'auid'),
+    ('CRYPTO_SESSION', 'auid'),
+    ('DAEMON_END', 'auid'),
+    ('DAEMON_START', 'auid'),
+    ('FS_RELABEL', 'auid'),
+    ('LOGIN', 'auid'),
+    ('MAC_CALIPSO_ADD', 'auid'),
+    ('MAC_CALIPSO_DEL', 'auid'),
+    ('MAC_CIPSOV4_ADD', 'auid'),
+    ('MAC_CIPSOV4_DEL', 'auid'),
+    ('MAC_CONFIG_CHANGE', 'auid'),
+    ('MAC_IPSEC_EVENT', 'auid'),
+    ('MAC_MAP_ADD', 'auid'),
+    ('MAC_MAP_DEL', 'auid'),
+    ('MAC_POLICY_LOAD', 'auid'),
+    ('MAC_STATUS', 'auid'),
+    ('MAC_UNLBL_ALLOW', 'auid'),
+    ('MAC_UNLBL_STCADD', 'auid'),
+    ('MAC_UNLBL_STCDEL', 'auid'),
+    ('ROLE_ASSIGN', 'auid'),
+    ('SECCOMP', 'auid'),
+    ('SERVICE_START', 'auid'),
+    ('SERVICE_STOP', 'auid'),
+    ('SYSCALL', 'auid'),
+    ('SYSTEM_BOOT', 'auid'),
+    ('SYSTEM_RUNLEVEL', 'auid'),
+    ('SYSTEM_SHUTDOWN', 'auid'),
+    ('USER_ACCT', 'auid'),
+    ('USER_AUTH', 'auid'),
+    ('USER_AVC', 'auid'),
+    ('USER_CHAUTHTOK', 'auid'),
+    ('USER_CMD', 'auid'),
+    ('USER_END', 'auid'),
+    ('USER_ERR', 'auid'),
+    ('USER_LOGIN', 'auid'),
+    ('USER_LOGOUT', 'auid'),
+    ('USER_MAC_CONFIG_CHANGE', 'auid'),
+    ('USER_ROLE_CHANGE', 'auid'),
+    ('USER_SELINUX_ERR', 'auid'),
+    ('USER_START', 'auid'),
+    ('USYS_CONFIG', 'auid'),
+    ('VIRT_CONTROL', 'auid'),
+    ('VIRT_MACHINE_ID', 'auid'),
+    ('VIRT_RESOURCE', 'auid'),
+    ('MAC_MAP_ADD', 'calipso_doi'),
+    ('MAC_CALIPSO_ADD', 'calipso_doi'),
+    ('MAC_CALIPSO_DEL', 'calipso_doi'),
+    ('MAC_CIPSOV4_ADD', 'calipso_doi'),
+    ('MAC_CIPSOV4_DEL', 'calipso_doi'),
+    ('PATH', 'cap_fe'),
+    ('PATH', 'cap_fi'),
+    ('PATH', 'cap_fp'),
+    ('PATH', 'cap_frootid'),
+    ('PATH', 'cap_fver'),
+    ('CAPSET', 'cap_pa'),
+    ('CAPSET', 'cap_pe'),
+    ('CAPSET', 'cap_pi'),
+    ('CAPSET', 'cap_pp'),
+    ('AVC', 'capability'),
+    ('MAC_CIPSOV4_ADD', 'cipso_doi'),
+    ('MAC_CIPSOV4_DEL', 'cipso_doi'),
+    ('MAC_MAP_ADD', 'cipso_doi'),
+    ('SECCOMP', 'compat'),
+    ('AVC', 'dest'),
+    ('MAC_MAP_ADD', 'dst_prefixlen'),
+    ('SYSCALL', 'egid'),
+    ('MAC_STATUS', 'enabled'),
+    ('MAC_STATUS', 'enforcing'),
+    ('NETFILTER_CFG', 'entries'),
+    ('SYSCALL', 'euid'),
+    ('SYSCALL', 'exit'),
+    ('NETFILTER_CFG', 'family'),
+    ('AVC', 'fport'),
+    ('SYSCALL', 'fsgid'),
+    ('AVC', 'fsuid'),
+    ('SYSCALL', 'fsuid'),
+    ('ANOM_ABEND', 'gid'),
+    ('ANOM_PROMISCUOUS', 'gid'),
+    ('SECCOMP', 'gid'),
+    ('SYSCALL', 'gid'),
+    ('USER_AVC', 'gid'),
+    ('ADD_GROUP', 'id'),
+    ('ADD_USER', 'id'),
+    ('USER_CHAUTHTOK', 'id'),
+    ('USER_END', 'id'),
+    ('USER_LOGIN', 'id'),
+    ('USER_LOGOUT', 'id'),
+    ('USER_START', 'id'),
+    ('USYS_CONFIG', 'ifindex'),
+    ('AVC', 'ino'),
+    ('PATH', 'inode'),
+    ('PATH', 'item'),
+    ('SYSCALL', 'items'),
+    ('AVC', 'key'),
+    ('CRYPTO_SESSION', 'ksize'),
+    ('CONFIG_CHANGE', 'list'),
+    ('AVC', 'lport'),
+    ('CRYPTO_KEY_USER', 'lport'),
+    ('CRYPTO_SESSION', 'lport'),
+    ('VIRT_RESOURCE', 'maj'),
+    ('TIME_ADJNTPVAL', 'new'),
+    ('SYSTEM_RUNLEVEL', 'new-level'),
+    ('VIRT_RESOURCE', 'new-mem'),
+    ('VIRT_RESOURCE', 'new-vcpu'),
+    ('AUDIT_EVENT_LISTENER', 'nl-mcgrp'),
+    ('TIME_INJOFFSET', 'nsec'),
+    ('PATH', 'ogid'),
+    ('CONFIG_CHANGE', 'old'),
+    ('MAC_UNLBL_ALLOW', 'old'),
+    ('TIME_ADJNTPVAL', 'old'),
+    ('LOGIN', 'old-auid'),
+    ('MAC_STATUS', 'old-enabled'),
+    ('VIRT_RESOURCE', 'old-mem'),
+    ('LOGIN', 'old-ses'),
+    ('VIRT_RESOURCE', 'old-vcpu'),
+    ('MAC_STATUS', 'old_enforcing'),
+    ('ANOM_PROMISCUOUS', 'old_prom'),
+    ('MAC_CONFIG_CHANGE', 'old_val'),
+    ('AVC', 'ouid'),
+    ('PATH', 'ouid'),
+    ('USER_AVC', 'peer_pid'),
+    ('AVC', 'permissive'),
+    ('USER_AVC', 'permissive'),
+    ('ADD_GROUP', 'pid'),
+    ('ADD_USER', 'pid'),
+    ('ANOM_ABEND', 'pid'),
+    ('AUDIT_EVENT_LISTENER', 'pid'),
+    ('AVC', 'pid'),
+    ('CAPSET', 'pid'),
+    ('CRED_ACQ', 'pid'),
+    ('CRED_DISP', 'pid'),
+    ('CRED_REFR', 'pid'),
+    ('CRYPTO_KEY_USER', 'pid'),
+    ('CRYPTO_SESSION', 'pid'),
+    ('DAEMON_END', 'pid'),
+    ('DAEMON_START', 'pid'),
+    ('FS_RELABEL', 'pid'),
+    ('LOGIN', 'pid'),
+    ('NETFILTER_CFG', 'pid'),
+    ('ROLE_ASSIGN', 'pid'),
+    ('SECCOMP', 'pid'),
+    ('USER_ACCT', 'pid'),
+    ('USER_AUTH', 'pid'),
+    ('USER_AVC', 'pid'),
+    ('USER_CHAUTHTOK', 'pid'),
+    ('USER_CMD', 'pid'),
+    ('USER_END', 'pid'),
+    ('USER_ERR', 'pid'),
+    ('USER_LOGIN', 'pid'),
+    ('USER_LOGOUT', 'pid'),
+    ('USER_MAC_CONFIG_CHANGE', 'pid'),
+    ('USER_ROLE_CHANGE', 'pid'),
+    ('USER_SELINUX_ERR', 'pid'),
+    ('USER_START', 'pid'),
+    ('SERVICE_START', 'pid'),
+    ('SERVICE_STOP', 'pid'),
+    ('SYSCALL', 'pid'),
+    ('SYSTEM_BOOT', 'pid'),
+    ('SYSTEM_RUNLEVEL', 'pid'),
+    ('SYSTEM_SHUTDOWN', 'pid'),
+    ('USYS_CONFIG', 'pid'),
+    ('VIRT_CONTROL', 'pid'),
+    ('VIRT_MACHINE_ID', 'pid'),
+    ('VIRT_RESOURCE', 'pid'),
+    ('SYSCALL', 'ppid'),
+    ('BPF', 'prog-id'),
+    ('ANOM_PROMISCUOUS', 'prom'),
+    ('ANOM_ABEND', 'res'),
+    ('AUDIT_EVENT_LISTENER', 'res'),
+    ('CONFIG_CHANGE', 'res'),
+    ('KERNEL', 'res'),
+    ('LOGIN', 'res'),
+    ('MAC_CALIPSO_ADD', 'res'),
+    ('MAC_CALIPSO_DEL', 'res'),
+    ('MAC_CIPSOV4_ADD', 'res'),
+    ('MAC_CIPSOV4_DEL', 'res'),
+    ('MAC_IPSEC_EVENT', 'res'),
+    ('MAC_MAP_ADD', 'res'),
+    ('MAC_MAP_DEL', 'res'),
+    ('MAC_POLICY_LOAD', 'res'),
+    ('MAC_STATUS', 'res'),
+    ('MAC_UNLBL_STCADD', 'res'),
+    ('MAC_UNLBL_STCDEL', 'res'),
+    ('USER_ACCT', 'reset'),
+    ('CRYPTO_KEY_USER', 'rport'),
+    ('CRYPTO_SESSION', 'rport'),
+    ('USER_AVC', 'sauid'),
+    ('USER_SELINUX_ERR', 'sauid'),
+    ('TIME_INJOFFSET', 'sec'),
+    ('MAC_IPSEC_EVENT', 'sec_alg'),
+    ('MAC_IPSEC_EVENT', 'sec_doi'),
+    ('ADD_GROUP', 'ses'),
+    ('ADD_USER', 'ses'),
+    ('ANOM_ABEND', 'ses'),
+    ('ANOM_PROMISCUOUS', 'ses'),
+    ('AUDIT_EVENT_LISTENER', 'ses'),
+    ('CONFIG_CHANGE', 'ses'),
+    ('CRED_ACQ', 'ses'),
+    ('CRED_DISP', 'ses'),
+    ('CRED_REFR', 'ses'),
+    ('CONFIG_CHANGE', 'ses'),
+    ('CRYPTO_KEY_USER', 'ses'),
+    ('CRYPTO_SESSION', 'ses'),
+    ('DAEMON_END', 'ses'),
+    ('DAEMON_START', 'ses'),
+    ('FS_RELABEL', 'ses'),
+    ('LOGIN', 'ses'),
+    ('MAC_CALIPSO_ADD', 'ses'),
+    ('MAC_CALIPSO_DEL', 'ses'),
+    ('MAC_CIPSOV4_ADD', 'ses'),
+    ('MAC_CIPSOV4_DEL', 'ses'),
+    ('MAC_CONFIG_CHANGE', 'ses'),
+    ('MAC_IPSEC_EVENT', 'ses'),
+    ('MAC_MAP_DEL', 'ses'),
+    ('MAC_MAP_ADD', 'ses'),
+    ('MAC_POLICY_LOAD', 'ses'),
+    ('MAC_UNLBL_ALLOW', 'ses'),
+    ('MAC_UNLBL_STCADD', 'ses'),
+    ('MAC_UNLBL_STCDEL', 'ses'),
+    ('MAC_STATUS', 'ses'),
+    ('ROLE_ASSIGN', 'ses'),
+    ('SECCOMP', 'ses'),
+    ('SERVICE_START', 'ses'),
+    ('SERVICE_STOP', 'ses'),
+    ('SYSCALL', 'ses'),
+    ('SYSTEM_BOOT', 'ses'),
+    ('SYSTEM_RUNLEVEL', 'ses'),
+    ('SYSTEM_SHUTDOWN', 'ses'),
+    ('USER_ACCT', 'ses'),
+    ('USER_AUTH', 'ses'),
+    ('USER_AVC', 'ses'),
+    ('USER_CHAUTHTOK', 'ses'),
+    ('USER_CMD', 'ses'),
+    ('USER_END', 'ses'),
+    ('USER_ERR', 'ses'),
+    ('USER_LOGIN', 'ses'),
+    ('USER_LOGOUT', 'ses'),
+    ('USER_MAC_CONFIG_CHANGE', 'ses'),
+    ('USER_ROLE_CHANGE', 'ses'),
+    ('USER_SELINUX_ERR', 'ses'),
+    ('USER_START', 'ses'),
+    ('USYS_CONFIG', 'ses'),
+    ('VIRT_CONTROL', 'ses'),
+    ('VIRT_MACHINE_ID', 'ses'),
+    ('VIRT_RESOURCE', 'ses'),
+    ('SYSCALL', 'sgid'),
+    ('ANOM_ABEND', 'sig'),
+    ('SECCOMP', 'sig'),
+    ('CRYPTO_KEY_USER', 'spid'),
+    ('CRYPTO_SESSION', 'spid'),
+    ('USER_AVC', 'spid'),
+    ('AVC', 'src'),
+    ('MAC_UNLBL_STCADD', 'src_prefixlen'),
+    ('MAC_UNLBL_STCDEL', 'src_prefixlen'),
+    ('CRYPTO_KEY_USER', 'suid'),
+    ('CRYPTO_SESSION', 'suid'),
+    ('SYSCALL', 'suid'),
+    ('USER_AVC', 'tpid'),
+    ('ADD_GROUP', 'uid'),
+    ('ADD_USER', 'uid'),
+    ('ANOM_ABEND', 'uid'),
+    ('ANOM_PROMISCUOUS', 'uid'),
+    ('AUDIT_EVENT_LISTENER', 'uid'),
+    ('CRED_ACQ', 'uid'),
+    ('CRED_DISP', 'uid'),
+    ('CRED_REFR', 'uid'),
+    ('CRYPTO_KEY_USER', 'uid'),
+    ('CRYPTO_SESSION', 'uid'),
+    ('DAEMON_END', 'uid'),
+    ('DAEMON_START', 'uid'),
+    ('FS_RELABEL', 'uid'),
+    ('LOGIN', 'uid'),
+    ('ROLE_ASSIGN', 'uid'),
+    ('SECCOMP', 'uid'),
+    ('SYSCALL', 'uid'),
+    ('USER_ACCT', 'uid'),
+    ('USER_AUTH', 'uid'),
+    ('USER_AVC', 'uid'),
+    ('USER_CHAUTHTOK', 'uid'),
+    ('USER_CMD', 'uid'),
+    ('USER_END', 'uid'),
+    ('USER_ERR', 'uid'),
+    ('USER_LOGIN', 'uid'),
+    ('USER_LOGOUT', 'uid'),
+    ('USER_MAC_CONFIG_CHANGE', 'uid'),
+    ('USER_ROLE_CHANGE', 'uid'),
+    ('USER_SELINUX_ERR', 'uid'),
+    ('USER_START', 'uid'),
+    ('USYS_CONFIG', 'uid'),
+    ('SERVICE_START', 'uid'),
+    ('SERVICE_STOP', 'uid'),
+    ('SYSTEM_BOOT', 'uid'),
+    ('SYSTEM_RUNLEVEL', 'uid'),
+    ('SYSTEM_SHUTDOWN', 'uid'),
+    ('VIRT_CONTROL', 'uid'),
+    ('VIRT_MACHINE_ID', 'uid'),
+    ('VIRT_RESOURCE', 'uid'),
+    ('MAC_UNLBL_ALLOW', 'unlbl_accept'),
+    ('MAC_CONFIG_CHANGE', 'val'),
+    ('VIRT_CONTROL', 'vm-pid'),
+))
+
+AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
+    ('ANOM_ABEND', 'AUID'),
+    ('CONFIG_CHANGE', 'AUID'),
+    ('CRED_ACQ', 'AUID'),
+    ('CRED_DISP', 'AUID'),
+    ('CRED_REFR', 'AUID'),
+    ('CRYPTO_KEY_USER', 'AUID'),
+    ('CRYPTO_SESSION', 'AUID'),
+    ('DAEMON_START', 'AUID'),
+    ('DAEMON_STOP', 'AUID'),
+    ('LOGIN', 'AUID'),
+    ('MAC_CALIPSO_ADD', 'AUID'),
+    ('MAC_CALIPSO_DEL', 'AUID'),
+    ('MAC_CIPSOV4_ADD', 'AUID'),
+    ('MAC_CIPSOV4_DEL', 'AUID'),
+    ('MAC_CONFIG_CHANGE', 'AUID'),
+    ('MAC_IPSEC_EVENT', 'AUID'),
+    ('MAC_MAP_ADD', 'AUID'),
+    ('MAC_MAP_DEL', 'AUID'),
+    ('MAC_POLICY_LOAD', 'AUID'),
+    ('MAC_STATUS', 'AUID'),
+    ('MAC_UNLBL_STCADD', 'AUID'),
+    ('MAC_UNLBL_STCDEL', 'AUID'),
+    ('SERVICE_START', 'AUID'),
+    ('SERVICE_STOP', 'AUID'),
+    ('SYSTEM_BOOT', 'AUID'),
+    ('SYSTEM_RUNLEVEL', 'AUID'),
+    ('USER_ACCT', 'AUID'),
+    ('USER_AUTH', 'AUID'),
+    ('USER_CMD', 'AUID'),
+    ('USER_START', 'AUID'),
+    ('USER_END', 'AUID'),
+    ('USER_LOGIN', 'AUID'),
+    ('USER_LOGOUT', 'AUID'),
+    ('USER_ROLE_CHANGE', 'AUID'),
+    ('USER_START', 'AUID'),
+    ('USER_STOP', 'AUID'),
+    ('ANOM_ABEND', 'GID'),
+    ('USER_END', 'ID'),
+    ('USER_LOGIN', 'ID'),
+    ('USER_LOGOUT', 'ID'),
+    ('USER_START', 'ID'),
+    ('LOGIN', 'OLD-AUID'),
+    ('CRYPTO_KEY_USER', 'SUID'),
+    ('CRYPTO_SESSION', 'SUID'),
+    ('ANOM_ABEND', 'UID'),
+    ('CRED_ACQ', 'UID'),
+    ('CRED_DISP', 'UID'),
+    ('CRED_REFR', 'UID'),
+    ('CRYPTO_KEY_USER', 'UID'),
+    ('CRYPTO_SESSION', 'UID'),
+    ('DAEMON_START', 'UID'),
+    ('LOGIN', 'UID'),
+    ('USER_ACCT', 'UID'),
+    ('USER_AUTH', 'UID'),
+    ('USER_CMD', 'UID'),
+    ('USER_END', 'UID'),
+    ('USER_LOGIN', 'UID'),
+    ('USER_LOGOUT', 'UID'),
+    ('USER_ROLE_CHANGE', 'UID'),
+    ('USER_START', 'UID'),
+    ('SERVICE_START', 'UID'),
+    ('SERVICE_STOP', 'UID'),
+    ('SYSTEM_BOOT', 'UID'),
+    ('SYSTEM_RUNLEVEL', 'UID'),
+    ('CRED_ACQ', 'acct'),
+    ('CRED_DISP', 'acct'),
+    ('CRED_REFR', 'acct'),
+    ('ROLE_ASSIGN', 'acct'),
+    ('USER_ACCT', 'acct'),
+    ('USER_AUTH', 'acct'),
+    ('USER_CHAUTHTOK', 'acct'),
+    ('USER_END', 'acct'),
+    ('USER_ERR', 'acct'),
+    ('USER_LOGIN', 'acct'),
+    ('USER_START', 'acct'),
+    ('AVC', 'apparmor'),
+    ('USER_AVC', 'apparmor'),
+    ('USYS_CONFIG', 'arg'),
+    ('USER_AVC', 'bus'),
+    ('AVC', 'capname'),
+    ('VIRT_RESOURCE', 'cgroup'),
+    ('USER_CMD', 'cmd'),
+    ('ANOM_ABEND', 'comm'),
+    ('AUDIT_EVENT_LISTENER', 'comm'),
+    ('AVC', 'comm'),
+    ('DAEMON_END', 'comm'),
+    ('NETFILTER_CFG', 'comm'),
+    ('USER_MAC_CONFIG_CHANGE', 'comm'),
+    ('SECCOMP', 'comm'),
+    ('SERVICE_START', 'comm'),
+    ('SERVICE_STOP', 'comm'),
+    ('SYSCALL', 'comm'),
+    ('SYSTEM_BOOT', 'comm'),
+    ('SYSTEM_RUNLEVEL', 'comm'),
+    ('SYSTEM_SHUTDOWN', 'comm'),
+    ('CWD', 'cwd'),
+    ('USER_CMD', 'cwd'),
+    ('AVC', 'denied_mask'),
+    ('AVC', 'dev'),
+    ('ADD_GROUP', 'exe'),
+    ('ADD_USER', 'exe'),
+    ('ANOM_ABEND', 'exe'),
+    ('AUDIT_EVENT_LISTENER', 'exe'),
+    ('CRED_ACQ', 'exe'),
+    ('CRED_DISP', 'exe'),
+    ('CRED_REFR', 'exe'),
+    ('CRYPTO_KEY_USER', 'exe'),
+    ('CRYPTO_SESSION', 'exe'),
+    ('DAEMON_END', 'exe'),
+    ('FS_RELABEL', 'exe'),
+    ('ROLE_ASSIGN', 'exe'),
+    ('SECCOMP', 'exe'),
+    ('SERVICE_START', 'exe'),
+    ('SERVICE_STOP', 'exe'),
+    ('USER_ACCT', 'exe'),
+    ('USER_AUTH', 'exe'),
+    ('USER_AVC', 'exe'),
+    ('USER_CHAUTHTOK', 'exe'),
+    ('USER_CMD', 'exe'),
+    ('USER_END', 'exe'),
+    ('USER_ERR', 'exe'),
+    ('USER_LOGIN', 'exe'),
+    ('USER_MAC_CONFIG_CHANGE', 'exe'),
+    ('USER_ROLE_CHANGE', 'exe'),
+    ('USER_SELINUX_ERR', 'exe'),
+    ('USER_START', 'exe'),
+    ('USYS_CONFIG', 'exe'),
+    ('SYSCALL', 'exe'),
+    ('SYSTEM_BOOT', 'exe'),
+    ('SYSTEM_RUNLEVEL', 'exe'),
+    ('SYSTEM_SHUTDOWN', 'exe'),
+    ('USER_LOGOUT', 'exe'),
+    ('VIRT_CONTROL', 'exe'),
+    ('VIRT_MACHINE_ID', 'exe'),
+    ('VIRT_RESOURCE', 'exe'),
+    ('USER_AVC', 'interface'),
+    ('USYS_CONFIG', 'interface'),
+    ('SELINUX_ERR', 'invalid_context'),
+    ('AVC', 'kmod'),
+    ('USER_AVC', 'label'),
+    ('USER_AVC', 'mask'),
+    ('USER_AVC', 'member'),
+    ('AVC', 'name'),
+    ('PATH', 'name'),
+    ('USER_AVC', 'name'),
+    ('USYS_CONFIG', 'name'),
+    ('VIRT_RESOURCE', 'new-chardev'),
+    ('VIRT_RESOURCE', 'new-disk'),
+    ('VIRT_RESOURCE', 'new-fs'),
+    ('VIRT_RESOURCE', 'new-net'),
+    ('VIRT_RESOURCE', 'old-chardev'),
+    ('VIRT_RESOURCE', 'old-disk'),
+    ('VIRT_RESOURCE', 'old-fs'),
+    ('VIRT_RESOURCE', 'old-net'),
+    ('AVC', 'operation'),
+    ('USER_AVC', 'operation'),
+    ('AVC', 'path'),
+    ('USER_AVC', 'path'),
+    ('VIRT_RESOURCE', 'path'),
+    ('USER_AVC', 'peer_label'),
+    ('PROCTITLE', 'proctitle'),
+    ('AVC', 'profile'),
+    ('AVC', 'requested_mask'),
+    ('AVC', 'srawcon'),
+    ('USER_MAC_CONFIG_CHANGE', 'tglob'),
+    ('AVC', 'trawcon'),
+    ('VIRT_CONTROL', 'vm'),
+    ('VIRT_MACHINE_ID', 'vm'),
+    ('VIRT_RESOURCE', 'vm'),
+))
+
+AUDIT_UNQUOTED_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
+    ('VIRT_RESOURCE', 'acl'),
+    ('USYS_CONFIG', 'args'),
+    ('ANOM_PROMISCUOUS', 'dev'),
+    ('ADD_GROUP', 'addr'),
+    ('ADD_USER', 'addr'),
+    ('CRED_ACQ', 'addr'),
+    ('CRED_DISP', 'addr'),
+    ('CRED_REFR', 'addr'),
+    ('CRYPTO_KEY_USER', 'addr'),
+    ('CRYPTO_SESSION', 'addr'),
+    ('DAEMON_END', 'addr'),
+    ('FS_RELABEL', 'addr'),
+    ('ROLE_ASSIGN', 'addr'),
+    ('SERVICE_START', 'addr'),
+    ('SERVICE_STOP', 'addr'),
+    ('SYSTEM_BOOT', 'addr'),
+    ('SYSTEM_RUNLEVEL', 'addr'),
+    ('SYSTEM_SHUTDOWN', 'addr'),
+    ('USER_ACCT', 'addr'),
+    ('USER_AUTH', 'addr'),
+    ('USER_AVC', 'addr'),
+    ('USER_CHAUTHTOK', 'addr'),
+    ('USER_END', 'addr'),
+    ('USER_ERR', 'addr'),
+    ('USER_LOGIN', 'addr'),
+    ('USER_LOGOUT', 'addr'),
+    ('USER_MAC_CONFIG_CHANGE', 'addr'),
+    ('USER_ROLE_CHANGE', 'addr'),
+    ('USER_SELINUX_ERR', 'addr'),
+    ('USER_START', 'addr'),
+    ('USYS_CONFIG', 'addr'),
+    ('VIRT_CONTROL', 'addr'),
+    ('VIRT_MACHINE_ID', 'addr'),
+    ('VIRT_RESOURCE', 'addr'),
+    ('MAC_CONFIG_CHANGE', 'bool'),
+    ('MAC_CALIPSO_ADD', 'calipso_type'),
+    ('VIRT_RESOURCE', 'category'),
+    ('CRYPTO_SESSION', 'cipher'),
+    ('MAC_CIPSOV4_ADD', 'cipso_type'),
+    ('VIRT_RESOURCE', 'class'),
+    ('SECCOMP', 'code'),
+    ('AVC', 'daddr'),
+    ('USER_ROLE_CHANGE', 'default-context'),
+    ('USER_AVC', 'dest'),
+    ('PATH', 'dev'),
+    ('CRYPTO_KEY_USER', 'direction'),
+    ('CRYPTO_SESSION', 'direction'),
+    ('MAC_IPSEC_EVENT', 'dst'),
+    ('MAC_MAP_ADD', 'dst'),
+    ('USER_AVC', 'error_name'),
+    ('AVC', 'faddr'),
+    ('SOCKADDR', 'fam'),
+    ('DAEMON_START', 'format'),
+    ('CRYPTO_KEY_USER', 'fp'),
+    ('USER_MAC_CONFIG_CHANGE', 'ftype'),
+    ('CRED_ACQ', 'grantors'),
+    ('CRED_DISP', 'grantors'),
+    ('CRED_REFR', 'grantors'),
+    ('USER_ACCT', 'grantors'),
+    ('USER_AUTH', 'grantors'),
+    ('USER_END', 'grantors'),
+    ('USER_ERR', 'grantors'),
+    ('USER_START', 'grantors'),
+    ('ADD_GROUP', 'hostname'),
+    ('ADD_USER', 'hostname'),
+    ('CRED_ACQ', 'hostname'),
+    ('CRED_DISP', 'hostname'),
+    ('CRED_REFR', 'hostname'),
+    ('CRYPTO_KEY_USER', 'hostname'),
+    ('CRYPTO_SESSION', 'hostname'),
+    ('DAEMON_END', 'hostname'),
+    ('FS_RELABEL', 'hostname'),
+    ('ROLE_ASSIGN', 'hostname'),
+    ('SERVICE_START', 'hostname'),
+    ('SERVICE_STOP', 'hostname'),
+    ('SYSTEM_RUNLEVEL', 'hostname'),
+    ('SYSTEM_SHUTDOWN', 'hostname'),
+    ('USER_ACCT', 'hostname'),
+    ('USER_AUTH', 'hostname'),
+    ('USER_AVC', 'hostname'),
+    ('USER_CHAUTHTOK', 'hostname'),
+    ('USER_END', 'hostname'),
+    ('USER_ERR', 'hostname'),
+    ('USER_LOGIN', 'hostname'),
+    ('USER_LOGOUT', 'hostname'),
+    ('USER_MAC_CONFIG_CHANGE', 'hostname'),
+    ('USER_ROLE_CHANGE', 'hostname'),
+    ('USER_SELINUX_ERR', 'hostname'),
+    ('USER_START', 'hostname'),
+    ('USYS_CONFIG', 'hostname'),
+    ('VIRT_CONTROL', 'hostname'),
+    ('VIRT_MACHINE_ID', 'hostname'),
+    ('VIRT_RESOURCE', 'hostname'),
+    ('SYSTEM_BOOT', 'hostname'),
+    ('SYSTEM_RUNLEVEL', 'hostname'),
+    ('SYSTEM_SHUTDOWN', 'hostname'),
+    ('VIRT_MACHINE_ID', 'img-ctx'),
+    ('DAEMON_START', 'kernel'),
+    ('CONFIG_CHANGE', 'key'),
+    ('SYSCALL', 'key'),
+    ('CRYPTO_KEY_USER', 'kind'),
+    ('SECCOMP', 'ip'),
+    ('AVC', 'laddr'),
+    ('CRYPTO_KEY_USER', 'laddr'),
+    ('CRYPTO_SESSION', 'laddr'),
+    ('MAC_POLICY_LOAD', 'lsm'),
+    ('MAC_STATUS', 'lsm'),
+    ('CRYPTO_SESSION', 'mac'),
+    ('VIRT_MACHINE_ID', 'model'),
+    ('USER_AVC', 'msgtype'),
+    ('PATH', 'nametype'),
+    ('VIRT_RESOURCE', 'net'),
+    ('AVC', 'netif'),
+    ('MAC_UNLBL_STCADD', 'netif'),
+    ('MAC_UNLBL_STCDEL', 'netif'),
+    ('ROLE_ASSIGN', 'new-range'),
+    ('ROLE_ASSIGN', 'new-role'),
+    ('ROLE_ASSIGN', 'new-seuser'),
+    ('SELINUX_ERR', 'newcontext'),
+    ('MAC_MAP_ADD', 'nlbl_domain'),
+    ('MAC_MAP_DEL', 'nlbl_domain'),
+    ('MAC_MAP_ADD', 'nlbl_protocol'),
+    ('PATH', 'obj'),
+    ('SYSTEM_RUNLEVEL', 'old-level'),
+    ('ROLE_ASSIGN', 'old-range'),
+    ('ROLE_ASSIGN', 'old-role'),
+    ('ROLE_ASSIGN', 'old-seuser'),
+    ('SELINUX_ERR', 'oldcontext'),
+    ('ADD_GROUP', 'op'),
+    ('AUDIT_EVENT_LISTENER', 'op'),
+    ('BPF', 'op'),
+    ('CONFIG_CHANGE', 'op'),
+    ('CRED_ACQ', 'op'),
+    ('CRED_DISP', 'op'),
+    ('CRED_REFR', 'op'),
+    ('CRYPTO_KEY_USER', 'op'),
+    ('CRYPTO_SESSION', 'op'),
+    ('DAEMON_END', 'op'),
+    ('DAEMON_START', 'op'),
+    ('MAC_IPSEC_EVENT', 'op'),
+    ('NETFILTER_CFG', 'op'),
+    ('ROLE_ASSIGN', 'op'),
+    ('SELINUX_ERR', 'op'),
+    ('TIME_ADJNTPVAL', 'op'),
+    ('USER_ACCT', 'op'),
+    ('USER_AUTH', 'op'),
+    ('USER_END', 'op'),
+    ('USER_ERR', 'op'),
+    ('USER_LOGIN', 'op'),
+    ('USER_LOGOUT', 'op'),
+    ('USER_MAC_CONFIG_CHANGE', 'op'),
+    ('USER_START', 'op'),
+    ('USYS_CONFIG', 'op'),
+    ('VIRT_CONTROL', 'op'),
+    ('SELINUX_ERR', 'perms'),
+    ('CRYPTO_SESSION', 'pfs'),
+    ('PATH', 'rdev'),
+    ('VIRT_RESOURCE', 'rdev'),
+    ('SELINUX_ERR', 'reason'),
+    ('VIRT_CONTROL', 'reason'),
+    ('VIRT_RESOURCE', 'reason'),
+    ('ADD_GROUP', 'res'),
+    ('ADD_USER', 'res'),
+    ('CRED_ACQ', 'res'),
+    ('CRED_DISP', 'res'),
+    ('CRED_REFR', 'res'),
+    ('CRYPTO_KEY_USER', 'res'),
+    ('CRYPTO_SESSION', 'res'),
+    ('DAEMON_END', 'res'),
+    ('DAEMON_START', 'res'),
+    ('FS_RELABEL', 'res'),
+    ('ROLE_ASSIGN', 'res'),
+    ('SERVICE_START', 'res'),
+    ('SERVICE_STOP', 'res'),
+    ('SYSTEM_BOOT', 'res'),
+    ('SYSTEM_RUNLEVEL', 'res'),
+    ('SYSTEM_SHUTDOWN', 'res'),
+    ('USER_ACCT', 'res'),
+    ('USER_AUTH', 'res'),
+    ('USER_CHAUTHTOK', 'res'),
+    ('USER_CMD', 'res'),
+    ('USER_END', 'res'),
+    ('USER_ERR', 'res'),
+    ('USER_LOGIN', 'res'),
+    ('USER_LOGOUT', 'res'),
+    ('USER_MAC_CONFIG_CHANGE', 'res'),
+    ('USER_ROLE_CHANGE', 'res'),
+    ('USER_START', 'res'),
+    ('USYS_CONFIG', 'res'),
+    ('VIRT_CONTROL', 'res'),
+    ('VIRT_MACHINE_ID', 'res'),
+    ('VIRT_RESOURCE', 'res'),
+    ('USER_MAC_CONFIG_CHANGE', 'resrc'),
+    ('VIRT_RESOURCE', 'resrc'),
+    ('USYS_CONFIG', 'result'),
+    ('AVC', 'saddr'),
+    ('AVC', 'scontext'),
+    ('SELINUX_ERR', 'scontext'),
+    ('USER_AVC', 'scontext'),
+    ('MAC_IPSEC_EVENT', 'sec_obj'),
+    ('MAC_UNLBL_STCADD', 'sec_obj'),
+    ('MAC_UNLBL_STCDEL', 'sec_obj'),
+    ('USER_ROLE_CHANGE', 'selected-context'),
+    ('SELINUX_ERR', 'seresult'),
+    ('MAC_IPSEC_EVENT', 'spi'),
+    ('MAC_IPSEC_EVENT', 'src'),
+    ('MAC_UNLBL_STCADD', 'src'),
+    ('MAC_UNLBL_STCDEL', 'src'),
+    ('KERNEL', 'state'),
+    ('ADD_GROUP', 'subj'),
+    ('ANOM_ABEND', 'subj'),
+    ('AUDIT_EVENT_LISTENER', 'subj'),
+    ('CONFIG_CHANGE', 'subj'),
+    ('CRED_ACQ', 'subj'),
+    ('CRED_DISP', 'subj'),
+    ('CRED_REFR', 'subj'),
+    ('CRYPTO_KEY_USER', 'subj'),
+    ('CRYPTO_SESSION', 'subj'),
+    ('DAEMON_END', 'subj'),
+    ('DAEMON_START', 'subj'),
+    ('FS_RELABEL', 'subj'),
+    ('USER_ACCT', 'subj'),
+    ('USER_END', 'subj'),
+    ('USER_MAC_CONFIG_CHANGE', 'subj'),
+    ('LOGIN', 'subj'),
+    ('MAC_CALIPSO_ADD', 'subj'),
+    ('MAC_CALIPSO_DEL', 'subj'),
+    ('MAC_CIPSOV4_ADD', 'subj'),
+    ('MAC_CIPSOV4_DEL', 'subj'),
+    ('MAC_IPSEC_EVENT', 'subj'),
+    ('MAC_MAP_ADD', 'subj'),
+    ('MAC_MAP_DEL', 'subj'),
+    ('MAC_UNLBL_ALLOW', 'subj'),
+    ('MAC_UNLBL_STCADD', 'subj'),
+    ('MAC_UNLBL_STCDEL', 'subj'),
+    ('NETFILTER_CFG', 'subj'),
+    ('ROLE_ASSIGN', 'subj'),
+    ('SECCOMP', 'subj'),
+    ('SERVICE_START', 'subj'),
+    ('SERVICE_STOP', 'subj'),
+    ('SYSCALL', 'subj'),
+    ('SYSTEM_BOOT', 'subj'),
+    ('SYSTEM_RUNLEVEL', 'subj'),
+    ('SYSTEM_SHUTDOWN', 'subj'),
+    ('USER_AUTH', 'subj'),
+    ('USER_AVC', 'subj'),
+    ('USER_CHAUTHTOK', 'subj'),
+    ('USER_CMD', 'subj'),
+    ('USER_ERR', 'subj'),
+    ('USER_LOGIN', 'subj'),
+    ('USER_LOGOUT', 'subj'),
+    ('USER_ROLE_CHANGE', 'subj'),
+    ('USER_SELINUX_ERR', 'subj'),
+    ('USER_START', 'subj'),
+    ('USYS_CONFIG', 'subj'),
+    ('VIRT_CONTROL', 'subj'),
+    ('VIRT_MACHINE_ID', 'subj'),
+    ('VIRT_RESOURCE', 'subj'),
+    ('SYSCALL', 'success'),
+    ('NETFILTER_CFG', 'table'),
+    ('AVC', 'tclass'),
+    ('SELINUX_ERR', 'tclass'),
+    ('USER_AVC', 'tclass'),
+    ('AVC', 'tcontext'),
+    ('SELINUX_ERR', 'tcontext'),
+    ('USER_AVC', 'tcontext'),
+    ('USER_MAC_CONFIG_CHANGE', 'tcontext'),
+    ('ADD_GROUP', 'terminal'),
+    ('ADD_USER', 'terminal'),
+    ('CRED_ACQ', 'terminal'),
+    ('CRED_DISP', 'terminal'),
+    ('CRED_REFR', 'terminal'),
+    ('CRYPTO_KEY_USER', 'terminal'),
+    ('CRYPTO_SESSION', 'terminal'),
+    ('DAEMON_END', 'terminal'),
+    ('FS_RELABEL', 'terminal'),
+    ('ROLE_ASSIGN', 'terminal'),
+    ('SERVICE_START', 'terminal'),
+    ('SERVICE_STOP', 'terminal'),
+    ('SYSTEM_BOOT', 'terminal'),
+    ('SYSTEM_RUNLEVEL', 'terminal'),
+    ('SYSTEM_SHUTDOWN', 'terminal'),
+    ('USER_ACCT', 'terminal'),
+    ('USER_AUTH', 'terminal'),
+    ('USER_AVC', 'terminal'),
+    ('USER_CHAUTHTOK', 'terminal'),
+    ('USER_CMD', 'terminal'),
+    ('USER_END', 'terminal'),
+    ('USER_ERR', 'terminal'),
+    ('USER_LOGIN', 'terminal'),
+    ('USER_LOGOUT', 'terminal'),
+    ('USER_MAC_CONFIG_CHANGE', 'terminal'),
+    ('USER_ROLE_CHANGE', 'terminal'),
+    ('USER_SELINUX_ERR', 'terminal'),
+    ('USER_START', 'terminal'),
+    ('USYS_CONFIG', 'terminal'),
+    ('VIRT_CONTROL', 'terminal'),
+    ('VIRT_MACHINE_ID', 'terminal'),
+    ('VIRT_RESOURCE', 'terminal'),
+    ('AUDIT_EVENT_LISTENER', 'tty'),
+    ('LOGIN', 'tty'),
+    ('SYSCALL', 'tty'),
+    ('DAEMON_END', 'unit'),
+    ('SERVICE_START', 'unit'),
+    ('SERVICE_STOP', 'unit'),
+    ('USYS_CONFIG', 'uuid'),
+    ('VIRT_CONTROL', 'uuid'),
+    ('VIRT_MACHINE_ID', 'uuid'),
+    ('VIRT_RESOURCE', 'uuid'),
+    ('DAEMON_START', 'ver'),
+    ('VIRT_CONTROL', 'virt'),
+    ('VIRT_MACHINE_ID', 'virt'),
+    ('VIRT_RESOURCE', 'virt'),
+    ('VIRT_MACHINE_ID', 'vm-ctx'),
 ))
 
 
@@ -344,13 +1153,31 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         0: 'read',
         1: 'write',
         2: 'open',
+        3: 'close',
         4: 'stat',
         5: 'fstat',
         6: 'lstat',
+        7: 'poll',
+        8: 'lseek',
         9: 'mmap',
         10: 'mprotect',
+        11: 'munmap',
+        12: 'brk',
+        13: 'rt_sigaction',
+        14: 'rt_sigprocmask',
+        15: 'rt_sigreturn',
         16: 'ioctl',
+        19: 'readv',
+        20: 'writev',
         21: 'access',
+        23: 'select',
+        28: 'madvise',
+        31: 'shmctl',
+        32: 'dup',
+        33: 'dup2',
+        35: 'nanosleep',
+        39: 'getpid',
+        40: 'sendfile',
         41: 'socket',
         42: 'connect',
         44: 'sendto',
@@ -359,10 +1186,17 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         47: 'recvmsg',
         49: 'bind',
         50: 'listen',
+        51: 'getsockname',
+        52: 'getpeername',
         54: 'setsockopt',
         55: 'getsockopt',
+        56: 'clone',
+        57: 'fork',
         59: 'execve',
+        60: 'exit',
+        61: 'wait4',
         62: 'kill',
+        63: 'uname',
         64: 'semget',
         68: 'msgget',
         69: 'msgsnd',
@@ -370,6 +1204,7 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         72: 'fcntl',
         73: 'flock',
         77: 'ftruncate',
+        79: 'getcwd',
         80: 'chdir',
         81: 'fchdir',
         82: 'rename',
@@ -383,25 +1218,53 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         92: 'chown',
         93: 'fchown',
         94: 'lchown',
+        99: 'sysinfo',
         101: 'ptrace',
+        102: 'getuid',
+        104: 'getgid',
+        105: 'setuid',
+        106: 'setgid',
+        107: 'geteuid',
+        108: 'getegid',
         109: 'setpgid',
+        110: 'getppid',
+        116: 'setgroups',
         117: 'setresuid',
         121: 'getpgid',
+        125: 'capget',
+        126: 'capset',
+        131: 'sigaltstack',
         133: 'mknod',
         137: 'statfs',
         138: 'fstatfs',
         141: 'setpriority',
         143: 'sched_getparam',
+        157: 'prctl',
+        158: 'arch_prctl',
         161: 'chroot',
         165: 'mount',
         166: 'umount2',
+        186: 'gettid',
         189: 'lsetxattr',
         190: 'fsetxattr',
         191: 'getxattr',
         192: 'lgetxattr',
+        202: 'futex',
+        203: 'sched_setaffinity',
+        204: 'sched_getaffinity',
+        217: 'getdents64',
+        218: 'set_tid_address',
         220: 'semtimedop',
+        222: 'timer_create',
+        223: 'timer_settime',
+        226: 'timer_delete',
+        228: 'clock_gettime',
+        231: 'exit_group',
+        233: 'epoll_ctl',
+        234: 'tgkill',
         249: 'request_key',
         250: 'keyctl',
+        251: 'ioprio_set',
         254: 'inotify_add_watch',
         257: 'openat',
         258: 'mkdirat',
@@ -413,10 +1276,19 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         267: 'readlinkat',
         268: 'fchmodat',
         269: 'faccessat',
+        273: 'set_robust_list',
         280: 'utimensat',
+        281: 'epoll_pwait',
         288: 'accept4',
+        290: 'eventfd2',
+        291: 'epoll_create1',
+        293: 'pipe2',
         302: 'prlimit64',
+        312: 'kcmp',
+        314: 'sched_setattr',
+        318: 'getrandom',
         321: 'bpf',
+        324: 'membarrier',
     },
 }
 
@@ -520,7 +1392,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
     # Fields may be separated with GS=\x1d (group separator) too
     for remaining in remaining.split('\x1d'):
         # Parse 'avc:  denied  { map } for  pid=5183 comm="id" path="/usr/bin/id" ...'
-        if remaining.startswith('avc: '):
+        if type_name in ('AVC', 'USER_SELINUX_ERR', 'USER_AVC') and remaining.startswith('avc: '):
             if remaining.startswith('avc:  received policyload notice'):
                 matches = re.match(r'avc:  received policyload notice \(seqno=([0-9]+)\)(.*)$', remaining)
                 if not matches:
@@ -541,6 +1413,13 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                 enforcing_str, remaining = matches.groups()
                 result[prefix + 'avc/notice'] = 'setenforce'
                 result[prefix + 'avc/setenforce/enforcing'] = enforcing_str != '0'
+            elif remaining.startswith('avc:  netlink recvfrom: error '):
+                # Parse 'avc:  netlink recvfrom: error 9  exe="/usr/lib/systemd/systemd" ...'
+                matches = re.match(r'avc:  netlink recvfrom: error ([0-9]+)  (.*)$', remaining)
+                if not matches:
+                    raise ValueError(f"Unable to parse AVC netlink recvfrom error line: {line!r}")
+                nl_rf_error, remaining = matches.groups()
+                result[prefix + 'netlink_recvfrom_error'] = int(nl_rf_error)
             else:
                 matches = re.match(r'avc:  (denied|granted)  \{([0-9a-z_ ]+)\} for +(.*)$', remaining)
                 if not matches:
@@ -550,15 +1429,85 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
             result.update(split_audit_fields(type_name, remaining, prefix=prefix + 'avc/for/'))
             continue
 
-        if remaining.startswith('pam: '):
+        if type_name in (
+                'USER_ROLE_CHANGE',
+                ) and remaining.startswith('pam: '):
             result.update(split_audit_fields(type_name, remaining[5:], prefix=prefix + 'pam/'))
             continue
 
+        if type_name in (
+                'MAC_CALIPSO_ADD',
+                'MAC_CALIPSO_DEL',
+                'MAC_CIPSOV4_ADD',
+                'MAC_CIPSOV4_DEL',
+                'MAC_MAP_ADD',
+                'MAC_MAP_DEL',
+                'MAC_UNLBL_ALLOW',
+                'MAC_UNLBL_STCADD',
+                'MAC_UNLBL_STCDEL',
+                ) and remaining.startswith('netlabel: '):
+            # Parse 'netlabel: auid=1000 ...'
+            result.update(split_audit_fields(type_name, remaining[10:], prefix=prefix + 'netlabel/'))
+            continue
+
         while remaining:
-            if remaining.startswith('op=mass relabel '):
+            if type_name == 'FS_RELABEL' and remaining.startswith('op=mass relabel '):
                 # 'op=mass relabel' is not quoted :(
                 result[prefix + 'op'] = 'mass relabel'
                 remaining = remaining[len('op=mass relabel '):]
+                continue
+            if type_name == 'ADD_GROUP' and remaining.startswith('op=adding group to /etc/group '):
+                # 'op=adding group to /etc/group' is not quoted :(
+                result[prefix + 'op'] = 'adding group to /etc/group'
+                remaining = remaining[len('op=adding group to /etc/group '):]
+                continue
+            if type_name == 'ADD_GROUP' and remaining.startswith('op=adding group to /etc/gshadow '):
+                # 'op=adding group to /etc/gshadow' is not quoted :(
+                result[prefix + 'op'] = 'adding group to /etc/gshadow'
+                remaining = remaining[len('op=adding group to /etc/gshadow '):]
+                continue
+            if type_name == 'ADD_USER' and remaining.startswith('op=adding user id'):
+                # 'op=adding user id=...' is not quoted :(
+                result[prefix + 'op'] = 'adding user'
+                remaining = remaining[len('op=adding user '):]
+                continue
+            if type_name == 'USER_CHAUTHTOK' and remaining.startswith('op=adding user to group '):
+                # 'op=adding user to group' is not quoted :(
+                result[prefix + 'op'] = 'adding user to group'
+                remaining = remaining[len('op=adding user to group '):]
+                continue
+            if type_name == 'USER_CHAUTHTOK' and remaining.startswith('op=adding user to shadow group '):
+                # 'op=adding user to shadow group' is not quoted :(
+                result[prefix + 'op'] = 'adding user to shadow group'
+                remaining = remaining[len('op=adding user to shadow group '):]
+                continue
+            if type_name == 'USER_CHAUTHTOK' and remaining.startswith('op=change max age '):
+                # 'op=change max age' is not quoted :(
+                result[prefix + 'op'] = 'change max age'
+                remaining = remaining[len('op=change max age '):]
+                continue
+            if type_name == 'USER_CHAUTHTOK' and remaining.startswith('op=changing password '):
+                # 'op=changing password' is not quoted :(
+                result[prefix + 'op'] = 'changing password'
+                remaining = remaining[len('op=changing password '):]
+                continue
+
+            if type_name == 'USER_ACCT' and remaining.startswith('pam_tally2 '):
+                # "type=USER_ACCT ... msg='pam_tally2 ..." does not use key=value format
+                result[prefix + 'pam_tally2'] = True
+                remaining = remaining[len('pam_tally2 '):]
+                continue
+
+            if type_name == 'USER_ACCT':
+                matches = re.match(r'^op=(user [a-z0-9]+ added by root to group [a-z0-9]+) (.*)$', remaining)
+                if matches:
+                    # "type=USER_ACCT ... msg='op=user syslog added by root to group tty ..."
+                    result[prefix + 'op'], remaining = matches.groups()
+                    continue
+
+            if type_name == 'DAEMON_END' and remaining.startswith('UTC 2020 '):
+                # Sometimes, DAEMON_END logs 'op=terminate ... UTC 2020 res=success'
+                remaining = remaining[len('UTC 2020 '):]
                 continue
 
             matches = re.match(r'^ *([0-9A-Za-z_-]+)=([^ ]*)(.*)$', remaining)
@@ -566,13 +1515,13 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                 # Match ' a150[0]="argument_150"' in EXECVE records
                 matches = re.match(r'^ *([0-9A-Za-z_-]+\[[0-9]+\])=([^ ]*)(.*)$', remaining)
             if not matches:
-                raise ValueError(f"Unable to split audit fields: {remaining!r} in {line!r}")
+                raise ValueError(f"Unable to split audit fields in {type_name}: {remaining!r} in {line!r}")
             key, value, remaining = matches.groups()
 
             # Parse the value according to the key
 
             # Open a sub-section: 'SADDR={ fam=local path=/run/systemd/notify }
-            if key == 'SADDR' and value == '{':
+            if type_name == 'SOCKADDR' and key == 'SADDR' and value == '{':
                 parts = remaining.split('}', 1)
                 if len(parts) != 2:
                     raise ValueError(
@@ -582,7 +1531,40 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                 continue
 
             # Unescaped message in USER_AVC: 'msg=\'avc:  denied ...''
-            if key == 'msg' and value.startswith('\''):
+            if type_name in (
+                    'ADD_GROUP',
+                    'ADD_USER',
+                    'CRED_ACQ',
+                    'CRED_DISP',
+                    'CRED_REFR',
+                    'CRYPTO_KEY_USER',
+                    'CRYPTO_SESSION',
+                    'DAEMON_END',
+                    'FS_RELABEL',
+                    'ROLE_ASSIGN',
+                    'SERVICE_START',
+                    'SERVICE_STOP',
+                    'SYSTEM_BOOT',
+                    'SYSTEM_RUNLEVEL',
+                    'SYSTEM_SHUTDOWN',
+                    'USER_ACCT',
+                    'USER_AUTH',
+                    'USER_AVC',
+                    'USER_CHAUTHTOK',
+                    'USER_CMD',
+                    'USER_END',
+                    'USER_ERR',
+                    'USER_LOGIN',
+                    'USER_LOGOUT',
+                    'USER_MAC_CONFIG_CHANGE',
+                    'USER_ROLE_CHANGE',
+                    'USER_SELINUX_ERR',
+                    'USER_START',
+                    'USYS_CONFIG',
+                    'VIRT_CONTROL',
+                    'VIRT_MACHINE_ID',
+                    'VIRT_RESOURCE',
+                    ) and key == 'msg' and value.startswith('\''):
                 if len(value) >= 2 and value.endswith('\''):
                     value = value[1:-1]
                 else:
@@ -605,7 +1587,11 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
 
             # Unescaped command-line in USER_AVC: 'cmdline="/usr/bin/dbus-broker-launch --scope system --audit"'
             # Same for lockdown reason and AppArmor info
-            if key in ('cmdline', 'lockdown_reason', 'info') and value.startswith('"'):
+            if (type_name, key) in (
+                    ('USER_AVC', 'cmdline'),
+                    ('AVC', 'lockdown_reason'),
+                    ('AVC', 'info'),
+                    ) and value.startswith('"'):
                 if len(value) >= 2 and value.endswith('"'):
                     result[prefix + key] = value[1:-1]
                 else:
@@ -622,13 +1608,15 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                             f"Unable to parse quoted {key} in audit fields: {remaining!r} in {line!r}")
                 continue
 
-            if key in ('a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6') and re.match(r'^[0-9a-f]+$', value):
+            if type_name == 'SYSCALL' and \
+                    key in ('a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6') and \
+                    re.match(r'^[0-9a-f]+$', value):
                 # Syscall arguments are hexadecimal integers
                 sc_arg = int(value, 16)
                 result[prefix + key] = hex(sc_arg) if sc_arg > 100 else sc_arg
                 continue
 
-            if key == 'arch' and re.match(r'^[0-9a-f]+$', value):
+            if type_name in ('SECCOMP', 'SYSCALL') and key == 'arch' and re.match(r'^[0-9a-f]+$', value):
                 # Event SYSCALL with architecture
                 arch = int(value, 16)
                 arch_name = AUDIT_ARCHES.get(arch)
@@ -640,7 +1628,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     arch_syscalls = None
                 continue
 
-            if key == 'syscall' and re.match(r'^[0-9]+$', value):
+            if type_name in ('SECCOMP', 'SYSCALL') and key == 'syscall' and re.match(r'^[0-9]+$', value):
                 # Syscall number, which can be decoded with "arch"
                 syscall = int(value)
                 if arch_syscalls:
@@ -651,7 +1639,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                 result[prefix + key] = f"{syscall} (UNKNOWN!)"
                 continue
 
-            if key == 'per' and re.match(r'^[0-9a-f]+$', value):
+            if type_name == 'SYSCALL' and key == 'per' and re.match(r'^[0-9a-f]+$', value):
                 # Event SYSCALL with personality
                 personality = int(value, 16)
                 if personality == 0:
@@ -669,7 +1657,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                 result[prefix + key] = f"{personality:#x} ({joined_names})"
                 continue
 
-            if key == 'ioctlcmd' and re.match(r'^0x[0-9a-f]+$', value):
+            if type_name == 'AVC' and key == 'ioctlcmd' and re.match(r'^0x[0-9a-f]+$', value):
                 # ioctl command is written with 0x prefix
                 ioctl_cmd = int(value[2:], 16)
                 ioctl_name = IOCTL_NAMES.get(ioctl_cmd)
@@ -679,81 +1667,22 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     result[prefix + key] = f"{ioctl_cmd:#x}"
                 continue
 
-            if key == 'flags' and re.match(r'^0x[0-9a-f]+$', value):
-                # MMAP flags is  written with 0x prefix, keep it this way for now
+            if type_name == 'MMAP' and key == 'flags' and re.match(r'^0x[0-9a-f]+$', value):
+                # MMAP flags is written with 0x prefix, keep it this way for now
                 result[prefix + key] = value
                 continue
 
-            if key == 'mode' and re.match(r'^0[0-7]+$', value):
+            if type_name == 'PATH' and key == 'mode' and re.match(r'^0[0-7]+$', value):
                 # mode is octal
                 result[prefix + key] = int(value, 8)
                 continue
 
-            if key == 'saddr' and re.match(r'^([0-9A-F][0-9A-F])+$', value):
+            if type_name == 'SOCKADDR' and key == 'saddr' and re.match(r'^([0-9A-F][0-9A-F])+$', value):
                 # Decode in bytes SOCKADDR's 'saddr=01002F72756E2F73797374656D642F6E6F7469667900'
                 result[prefix + key] = binascii.unhexlify(value)
                 continue
 
-            if key in (
-                    'argc',
-                    'audit_enabled',
-                    'audit_pid',
-                    'auid',
-                    'cap_fe',
-                    'cap_fi',
-                    'cap_fp',
-                    'cap_frootid',
-                    'cap_fver',
-                    'capability',
-                    'egid',
-                    'enabled',
-                    'enforcing',
-                    'euid',
-                    'exit',
-                    'fd',
-                    'fport',
-                    'fsgid',
-                    'fsuid',
-                    'gid',
-                    'id',
-                    'ino',
-                    'inode',
-                    'item',
-                    'items',
-                    'ksize',
-                    'list',
-                    'lport',
-                    'new',
-                    'new-level',
-                    'nsec',
-                    'ogid',
-                    'old',
-                    'old-auid',
-                    'old-enabled',
-                    'old-level',
-                    'old-ses',
-                    'old_enforcing',
-                    'old_val',
-                    'ouid',
-                    'peer_pid',
-                    'permissive',
-                    'pid',
-                    'ppid',
-                    'prog-id',
-                    'res',
-                    'rport',
-                    'sauid',
-                    'sec',
-                    'seqno',
-                    'ses',
-                    'sgid',
-                    'spid',
-                    'src',
-                    'suid',
-                    'tpid',
-                    'uid',
-                    'val',
-                    ):
+            if (type_name, key) in AUDIT_DECIMAL_INTEGER_FIELDS:
                 if re.match(r'^(-?)[0-9]+$', value):
                     # Decimal integers
                     result[prefix + key] = int(value)
@@ -763,49 +1692,8 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                     result[prefix + key] = None
                     continue
 
-            if key in (
-                    'AUID',
-                    'EGID',
-                    'EUID',
-                    'FSGID',
-                    'FSUID',
-                    'GID',
-                    'ID',
-                    'OGID',
-                    'OLD-AUID',
-                    'OUID',
-                    'SAUID',
-                    'SGID',
-                    'SUID',
-                    'UID',
-                    'acct',
-                    'apparmor',
-                    'bus',
-                    'capname',
-                    'cmd',
-                    'comm',
-                    'cwd',
-                    'denied_mask',
-                    'dev',
-                    'exe',
-                    'interface',
-                    'invalid_context',
-                    'kmod',
-                    'label',
-                    'mask',
-                    'member',
-                    'name',
-                    'old-level',
-                    'operation',
-                    'path',
-                    'peer_label',
-                    'proctitle',
-                    'profile',
-                    'requested_mask',
-                    'srawcon',
-                    'tglob',
-                    'trawcon',
-                    ) or re.match(r'^a[0-9]+', key):
+            if (type_name, key) in AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS or \
+                    (type_name == 'EXECVE' and re.match(r'^a[0-9]+', key)):
                 # Quoted or hex-escaped strings
                 if len(value) >= 2 and value[0] == '"' == value[-1]:
                     result[prefix + key] = value[1:-1]
@@ -813,70 +1701,22 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                 if re.match(r'^([0-9A-F][0-9A-F])+$', value):
                     result[prefix + key] = binascii.unhexlify(value).decode('utf-8', 'replace')
                     continue
-                if key in ('interface', 'member', 'path'):
+                if type_name == 'PATH' and key == 'name' and value == '(null)':
+                    result[prefix + key] = None
+                    continue
+                if (type_name, key) in (
+                        ('ROLE_ASSIGN', 'exe'),
+                        ('SELINUX_ERR', 'invalid_context'),
+                        ('USER_AVC', 'interface'),
+                        ('USER_AVC', 'member'),
+                        ):
                     # The value may be directly written too!
                     result[prefix + key] = value
                     continue
                 logger.warning("Quoted %s%s was unquoted in audit fields: %r in %s, %r",
                                prefix, key, value, type_name, line)
 
-            if key in (
-                    'ARCH',
-                    'SYSCALL',
-                    'addr',
-                    'bool',
-                    'cipher',
-                    'daddr',
-                    'default-context',
-                    'dest',
-                    'direction',
-                    'error_name',
-                    'faddr',
-                    'fam',
-                    'format',
-                    'fp',
-                    'ftype',
-                    'grantors',
-                    'hostname',
-                    'kernel',
-                    'key',
-                    'kind',
-                    'laddr',
-                    'lsm',
-                    'mac',
-                    'msgtype',
-                    'nametype',
-                    'netif',
-                    'new-range',
-                    'new-role',
-                    'new-seuser',
-                    'newcontext',
-                    'obj',
-                    'old-range',
-                    'old-role',
-                    'old-seuser',
-                    'oldcontext',
-                    'op',
-                    'perms',
-                    'pfs',
-                    'rdev',
-                    'reason',
-                    'res',
-                    'resrc',
-                    'saddr',
-                    'scontext',
-                    'selected-context',
-                    'seresult',
-                    'service',
-                    'subj',
-                    'success',
-                    'tclass',
-                    'tcontext',
-                    'terminal',
-                    'tty',
-                    'unit',
-                    'ver',
-                    ):
+            if (type_name, key) in AUDIT_UNQUOTED_STRING_FIELDS:
                 # Unquoted identifiers
                 if len(value) >= 2 and value[0] == '"' == value[-1]:
                     # Warn that an unquoted identifier has been seen quoted
@@ -923,6 +1763,8 @@ class SELinuxAuditLogAnalyzer:
                             help="use sudo to become root")
         parser.add_argument('-S', '--show-other', action='store_true',
                             help="show audit logs from other types that SELinux-focused ones")
+        group.add_argument('--seccomp', action='store_true',
+                           help="show AUDIT_SECCOMP entries in audit logs too")
         parser.add_argument('-V', '--vagrant', action='store_true',
                             help="ssh into a vagrant virtual machine here to grab its audit log")
         parser.add_argument('-M', '--machine', type=str,
@@ -936,6 +1778,7 @@ class SELinuxAuditLogAnalyzer:
 
         self.from_dmesg: bool = args.dmesg or args.dmesg_busybox
         self.show_other: bool = args.show_other
+        self.show_seccomp: bool = args.seccomp
         self.last_show_evt_idx: Optional[int] = None
         self.forward_stdin: bool = args.forward_stdin
 
@@ -1145,7 +1988,15 @@ class SELinuxAuditLogAnalyzer:
 
         # Keep the event if its index matches the previous one
         related_to_previous = evt_idx is not None and evt_idx == self.last_show_evt_idx
-        if not related_to_previous and not self.show_other and type_name not in AUDIT_TYPES_FOR_SELINUX:
+        if related_to_previous:
+            pass
+        if self.show_other:
+            pass
+        elif type_name in AUDIT_TYPES_FOR_SELINUX:
+            pass
+        elif self.show_seccomp and type_name == 'SECCOMP':
+            pass
+        else:
             # logger.debug("Skipping audit %r from %s: %r", type_name, entry_time, remaining)
             self.last_show_evt_idx = None
             return
@@ -1574,6 +2425,57 @@ class SELinuxAuditLogAnalyzer:
                         ):
                     continue
                 if value in ('?', '', None):
+                    continue
+                print(f"    - {key} = {value!r}", end='\r\n')
+        elif type_name == 'SECCOMP':
+            # Format Seccomp action SCMP_ACT_LOG (https://man7.org/linux/man-pages/man3/seccomp_rule_add.3.html)
+            seccomp_syscall = parsed_record['syscall']
+            seccomp_desc = f"{type_name} syscall={self.color_boldred}{seccomp_syscall}{self.color_norm}"
+            seccomp_desc += f" exe={self.color_cyan}{parsed_record['exe']!r}{self.color_norm}"
+            seccomp_desc += f" comm={self.color_cyan}{parsed_record['comm']!r}{self.color_norm}"
+            seccomp_desc += f" pid={parsed_record['pid']!r}"
+            seccomp_uid = parsed_record['uid']
+            assert isinstance(seccomp_uid, int)
+            seccomp_desc += f" uid={seccomp_uid}"
+            with suppress(KeyError):
+                seccomp_auid = parsed_record['auid']
+                assert isinstance(seccomp_auid, int)
+                if seccomp_auid != seccomp_uid:
+                    if seccomp_auid == 0xffffffff:
+                        seccomp_desc += " auid=-1"
+                    else:
+                        seccomp_desc += f" auid={seccomp_auid}"
+            seccomp_desc += f" gid={parsed_record['gid']!r}"
+            with suppress(KeyError):
+                seccomp_desc += f" subj={parsed_record['subj']}"
+            seccomp_desc += f" code={parsed_record['code']}"
+            seccomp_desc += f" ip={parsed_record['ip']}"
+            seccomp_sig = parsed_record['sig']
+            assert isinstance(seccomp_sig, int)
+            if seccomp_sig != 0:
+                seccomp_desc += f" sig={seccomp_sig}"
+            seccomp_compat = parsed_record['compat']
+            assert isinstance(seccomp_compat, int)
+            if seccomp_compat != 0:
+                seccomp_desc += f" compat={seccomp_compat}"
+            print(f"[{entry_formated_time}] {seccomp_desc}", end='\r\n')
+            for key, value in parsed_record.items():
+                if key in (
+                        'arch',
+                        'auid',
+                        'code',
+                        'comm',
+                        'compat',
+                        'exe',
+                        'gid',
+                        'ip',
+                        'pid',
+                        'uid',
+                        'ses',
+                        'sig',
+                        'subj',
+                        'syscall',
+                        ):
                     continue
                 print(f"    - {key} = {value!r}", end='\r\n')
         else:
