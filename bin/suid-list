@@ -273,6 +273,7 @@ TRUSTED_SUID_FILES = [
     # gstreamer, https://gstreamer.freedesktop.org/
     # https://cgit.freedesktop.org/gstreamer/gstreamer/tree/
     SuidFile('/libexec/gstreamer-1.0/gst-ptp-helper'),
+    SuidFile('/lib32/gstreamer-1.0/gst-ptp-helper'),
 
     # inn2, https://www.eyrie.org/~eagle/software/inn/
     # https://inn.eyrie.org/trac/browser/trunk
