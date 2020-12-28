@@ -1172,7 +1172,7 @@ class Tpm20Handle(enum.IntEnum):
     TPM_NV_INTEL_TXT_PLATFORM_OWNER = 0x01c10106  # LCP Platform Owner (Intel TXT "PO")
     TPM_NV_INTEL_TXT_LAUNCH_POLICY = 0x01c10131  # Policy for Verified Launch (Intel TXT)
     TPM_NV_INTEL_TXT_LAUNCH_ERROR = 0x01c10132  # Launch error (Intel TXT)
-    TPM_RESERVED_HANDLE_IDEVID_CERT = 0x01c90000  # IDevID Certificate
+    TPM_RESERVED_HANDLE_IDEVID_CERT = 0x01c90000  # IDevID Certificate (Initial Device Identifier)
     # TPM_RH: Resource Handle
     TPM_RH_SRK = 0x40000000  # SRK = Storage Root Key
     TPM_RH_OWNER = 0x40000001  # handle references the Storage Primary Seed (SPS), the ownerAuth, and the ownerPolicy
@@ -1206,7 +1206,7 @@ class Tpm20Handle(enum.IntEnum):
     TPM_RESERVED_HANDLE_SRK_4 = 0x81000004
     #   0x81010000-0x8101ffff: Endorsement primary keys
     TPM_RESERVED_HANDLE_EK = 0x81010001
-    TPM_RESERVED_HANDLE_IDEVID_KEY = 0x81020000  # IDevID Key
+    TPM_RESERVED_HANDLE_IDEVID_KEY = 0x81020000  # IDevID Key (Initial Device Identifier)
     # 0x81800000-0x81ffffff: persistent objects with auth TPM_RH_PLATFORM
     #   0x81800000-0x8180ffff: Platforms primary keys
     TPM_RESERVED_HANDLE_PLATFORM_KEY_0 = 0x81800000
