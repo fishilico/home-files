@@ -1261,6 +1261,37 @@ class Tpm20Handle(enum.IntEnum):
     TPM_RESERVED_HANDLE_PLATFORM_KEY_1 = 0x81800001
 
 
+# Well-known Enhanced Authorization policy digests in TPM 2.0
+# From https://github.com/fishilico/shared/blob/master/python/crypto/tpm_ea_policy.py
+WELL_KNOWN_EA_POLICIES: Mapping[str, str] = {
+    '8fcd2169ab92694e0c633f1ab772842b8241bbc20288981fc7ac1eddc1fddb0e': 'PolicyAuthValue()',
+    '1d2dc485e177ddd0a40a344913ceeb420caa093c42587d2e1b132b157ccb5db0': 'PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial)',  # noqa
+    'ddee6af14bf3c4e8127ced87bcf9a57e1c0c8ddb5e67735c8505f96f07b8dbb8': 'PolicyLocality(ONE)',
+    '07039b45baf2cc169b0d84af7c53fd1622b033df0a5dcda66360aa99e54947cd': 'PolicyLocality(THREE, FOUR)',
+    '3c326323670e28ad37bd57f63b4cc34d26ab205ef22f275c58d47fab2485466e': 'PolicyNvWritten(NO)',
+    'f7887d158ae8d38be0ac5319f37a9e07618bf54885453c7a54ddb0c6a6193beb': 'PolicyNvWritten(YES)',
+    '84b506c91f205e06abd6f83f269d8d8011d495e09214a40fe32b4660301dda09': 'PolicyPCR(0,1,2,3 ZEROS)',
+    '0d7c6747b1b9facbba03492097aa9d5af792e5efc07346e05f9daa8b3d9e13b5': 'PolicyPhysicalPresence()',
+    '0d84f55daf6e43ac97966e62c9bb989d3397777d25c5f749868055d65394f952': 'PolicySecret(RH_OWNER)',
+    'a0cab3762662675a14347a87504584a08e1002525d91371c3289224bea3ff4af': 'PolicySecret(RH_LOCKOUT)',
+    '837197674484b3f81a90cc8d46a5d724fd52d76e06520b64f2a1da1b331469aa': 'PolicySecret(RH_ENDORSEMENT)',
+    'c8b1292eff2ce7a3fa0fb1aed9ad254fb03fc01c9abc2dd1985161ba6811bdc7': 'PolicySecret(RH_PLATFORM)',
+    '0c8df0cf0169c38828c8fa4c0ff37a548c23c041aeecd2a12ca740d501d620b7': 'PolicySecret(RH_LOCKOUT) OR PolicyNvWritten(YES)',  # noqa
+    'db41c13534033fadb50e75c0300e11e8a43b3c96b5d659f0f72f2f667f67ac77': 'PolicySecret(RH_ENDORSEMENT) OR PolicyAuthorizeNV(0x01c07f01)',  # noqa
+    '06c7d805ad3bec1106502a44c6b2e3b36d157750e8efca1fff998c874a7664c5': 'PolicyLocality(THREE, FOUR) AND PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial)',  # noqa
+    'ef9a26fc22d1ae8cecff59e9481ac1ec533dbe228bec6d17930f4cb2cc5b9724': 'PolicyLocality(THREE, FOUR) OR (PolicyLocality(THREE, FOUR) AND PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial))',  # noqa
+    'dffdb6c8eafcbe691e358882b18703121eab40de2386f7a8e7b4a06591e1f0ee': '(PolicyLocality(THREE, FOUR) AND PolicyCommandCode(TPM2_CC_NV_Write)) OR (PolicyLocality(THREE, FOUR) AND PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial))',  # noqa
+    '98cbaba62e682c148a202acad533d9d63f85a68392fe1b66648d1c491aef1b3a': 'PolicyAuthValue() AND PolicyCommandCode(TPM2_CC_ObjectChangeAuth)',  # noqa
+    '363ac945b6457c47c31f3355dba0db27de8db213d6250c6bf79685003f9fe7ab': 'PolicyAuthValue() AND PolicyCommandCode(TPM2_CC_NV_ChangeAuth)',  # noqa
+    'a13eb52d274deb81431f5adc2e40f7e7c4094abba5d325da741e7afc4117901f': 'PolicyCommandCode(TPM2_CC_NV_Read) OR PolicyNvWritten(NO)',  # noqa
+    '3355408f64a7ebe10ac90dab8a4405eef7c8f164eaa9034220c961edf1dbb680': 'PolicyCommandCode(TPM2_CC_NV_Write) AND PolicyAuthValue()',  # noqa
+    'c1ef6962e6e15b2fda5026efca791ae9272bd87338c6fcacdf2ccca45d03d7be': 'PolicyCommandCode(TPM2_CC_NV_Read) OR (PolicyCommandCode(TPM2_CC_NV_Write) AND PolicyAuthValue())',  # noqa
+    '9dffcbf36c383ae699fb9868dc6dcb89d7153884be2803922c124158bfad22ae': 'Unknown (SRK_2=0x81000002 policy)',
+    '1169a46a813a8ccdd0f3066785207bb9b67afd3a6cd6dfe5c5aee120867a96df': 'Unknown (used by Intel TXT for LCP Platform Supplier and SGX SVN)',  # noqa
+    'b75ce1946f78df8baa426918db09318017e6b38d048c954e05c2c4f34bd44060': 'Unknown (used by Intel TXT for LCP Platform Supplier and SGX SVN)',  # noqa
+}
+
+
 class Tpm20PublicStruct:
     """Represent a TPMT_PUBLIC in TPM 2.0
 
@@ -3090,7 +3121,9 @@ def main(argv: Optional[Sequence[str]] = None):
                             print(f"        - name alg ({obj_pubdata.name_alg.value:#x}): {obj_pubdata.name_alg.name}")  # noqa
                             print(f"        - attributes ({obj_pubdata.attributes:#010x}): {obj_pubdata.attr_desc()}")
                             if obj_pubdata.auth_policy:
-                                print(f"        - auth policy: {binascii.hexlify(obj_pubdata.auth_policy).decode('ascii')}")  # noqa
+                                hex_auth_policy = binascii.hexlify(obj_pubdata.auth_policy).decode('ascii')
+                                desc_auth_policy = WELL_KNOWN_EA_POLICIES.get(hex_auth_policy, 'unknown')
+                                print(f"        - auth policy: {hex_auth_policy} = {desc_auth_policy}")
                             else:
                                 print("        - auth policy empty")
                             print("        - parameters:")
@@ -3112,7 +3145,9 @@ def main(argv: Optional[Sequence[str]] = None):
                         print(f"        - name alg ({pub_data.name_alg.value:#x}): {pub_data.name_alg.name}")
                         print(f"        - attributes ({pub_data.attributes:#010x}): {pub_data.attr_desc()}")
                         if pub_data.auth_policy:
-                            print(f"        - auth policy: {binascii.hexlify(pub_data.auth_policy).decode('ascii')}")
+                            hex_auth_policy = binascii.hexlify(pub_data.auth_policy).decode('ascii')
+                            desc_auth_policy = WELL_KNOWN_EA_POLICIES.get(hex_auth_policy, 'unknown')
+                            print(f"        - auth policy: {hex_auth_policy} = {desc_auth_policy}")
                         else:
                             print("        - auth policy empty")
                         print(f"        - data size: {pub_data.data_size:#x} = {pub_data.data_size}")
