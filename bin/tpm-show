@@ -642,10 +642,17 @@ class Tpm20Tag(enum.IntEnum):
 
 @enum.unique
 class Tpm20CommandCode(enum.IntEnum):
-    """TPM_CC: command codes in TPM 2.0"""
+    """TPM_CC: command codes in TPM 2.0
+
+    From https://github.com/microsoft/ms-tpm-20-ref/blob/master/TPMCmd/tpm/include/TpmTypes.h
+    """
+    TPM2_CC_ACT_SetTimeout = 0x00000198
+    TPM2_CC_AC_GetCapability = 0x00000194
+    TPM2_CC_AC_Send = 0x00000195
     TPM2_CC_ActivateCredential = 0x00000147
     TPM2_CC_Certify = 0x00000148
     TPM2_CC_CertifyCreation = 0x0000014a
+    TPM2_CC_CertifyX509 = 0x00000197
     TPM2_CC_ChangeEPS = 0x00000124
     TPM2_CC_ChangePPS = 0x00000125
     TPM2_CC_Clear = 0x00000126
@@ -661,6 +668,8 @@ class Tpm20CommandCode(enum.IntEnum):
     TPM2_CC_DictionaryAttackLockReset = 0x00000139
     TPM2_CC_DictionaryAttackParameters = 0x0000013a
     TPM2_CC_Duplicate = 0x0000014b
+    TPM2_CC_ECC_Decrypt = 0x0000019a
+    TPM2_CC_ECC_Encrypt = 0x00000199
     TPM2_CC_ECC_Parameters = 0x00000178
     TPM2_CC_ECDH_KeyGen = 0x00000163
     TPM2_CC_ECDH_ZGen = 0x00000154
@@ -734,6 +743,7 @@ class Tpm20CommandCode(enum.IntEnum):
     TPM2_CC_PolicySigned = 0x00000160
     TPM2_CC_PolicyTemplate = 0x00000190
     TPM2_CC_PolicyTicket = 0x00000172
+    TPM2_CC_Policy_AC_SendSelect = 0x00000196
     TPM2_CC_Quote = 0x00000158
     TPM2_CC_RSA_Decrypt = 0x00000159
     TPM2_CC_RSA_Encrypt = 0x00000174
@@ -753,7 +763,7 @@ class Tpm20CommandCode(enum.IntEnum):
     TPM2_CC_StirRandom = 0x00000146
     TPM2_CC_TestParms = 0x0000018a
     TPM2_CC_Unseal = 0x0000015e
-    TPM2_CC_VEND = 0x20000000
+    TPM2_CC_Vendor_TCG_Test = 0x20000000
     TPM2_CC_VerifySignature = 0x00000177
     TPM2_CC_ZGen_2Phase = 0x0000018d
 
@@ -1202,6 +1212,20 @@ class Tpm20Handle(enum.IntEnum):
     TPM_RH_AUTH_FF = 0x4000010f
     #   0x40000110-0x4000011f: range of authenticated timers
     TPM_RH_ACT_0 = 0x40000110
+    TPM_RH_ACT_1 = 0x40000111
+    TPM_RH_ACT_2 = 0x40000112
+    TPM_RH_ACT_3 = 0x40000113
+    TPM_RH_ACT_4 = 0x40000114
+    TPM_RH_ACT_5 = 0x40000115
+    TPM_RH_ACT_6 = 0x40000116
+    TPM_RH_ACT_7 = 0x40000117
+    TPM_RH_ACT_8 = 0x40000118
+    TPM_RH_ACT_9 = 0x40000119
+    TPM_RH_ACT_A = 0x4000011a
+    TPM_RH_ACT_B = 0x4000011b
+    TPM_RH_ACT_C = 0x4000011c
+    TPM_RH_ACT_D = 0x4000011d
+    TPM_RH_ACT_E = 0x4000011e
     TPM_RH_ACT_F = 0x4000011f
     # Reserved Handles in persistent objects
     # 0x81000000-0x817fffff: persistent objects with auth TPM_RH_OWNER
@@ -1689,22 +1713,25 @@ class IsNotTpm20Error(Exception):
 
 
 class TpmDevice:
-    def __init__(self, dev: BinaryIO, name: str):
+    def __init__(self, dev: BinaryIO, name: str, use_mssim: bool = False):
         self.dev = dev
         self.name = name
+        self.use_mssim = use_mssim
 
     @staticmethod
     @contextmanager
-    def open(dev_path: Optional[Path], tpm_host: Optional[str], tpm_port: Optional[int]
+    def open(dev_path: Optional[Path], tpm_host: Optional[str], tpm_port: Optional[int], use_mssim: bool = False
              ) -> Generator['TpmDevice', None, None]:
         """Open the specified device, to be used in a with block"""
         if dev_path is not None:
             with dev_path.open('r+b', buffering=0) as dev:
-                yield TpmDevice(dev, str(dev_path))
+                yield TpmDevice(dev, str(dev_path), use_mssim=use_mssim)
         elif tpm_port is not None:
             host = '127.0.0.1' if tpm_host is None else tpm_host
+            proto = 'tcp+mssim' if use_mssim else 'tcp'
             sock = socket.create_connection((host, tpm_port))
-            yield TpmDevice(sock.makefile(mode='rwb', buffering=0), f"tcp://{host}:{tpm_port}")
+            sockfile = sock.makefile(mode='rwb', buffering=0)
+            yield TpmDevice(sockfile, f"{proto}://{host}:{tpm_port}", use_mssim=use_mssim)
             sock.close()
         else:
             raise ValueError("No device path nor TCP connection info provided")
@@ -1730,10 +1757,28 @@ class TpmDevice:
             cmd = struct.pack('>HII', tag, 10 + len(params), code) + params
         else:
             cmd = struct.pack('>HII', tag, 10, code)
+
+        if self.use_mssim:
+            # Add a 9-byte command header:
+            # - uint32 MS_SIM_TPM_SEND_COMMAND = 8
+            # - uint8 locality = 0
+            # - uint32 size
+            cmd = struct.pack('>IBI', 8, 0, len(cmd)) + cmd
+
         written = self.dev.write(cmd)
         if written != len(cmd):
             raise RuntimeError(
                 f"Fail to write the whole command to TPM device: {written} != {len(cmd)}")
+
+    def _read_exact(self, size: int) -> bytes:
+        chunks = []
+        while size > 0:
+            new_data = self.dev.read(size)
+            if not new_data:
+                raise RuntimeError(f"Reached EOF while expecting {size} bytes")
+            chunks.append(new_data)
+            size -= len(new_data)
+        return b''.join(chunks)
 
     def receive_response(self) -> Tuple[int, int, bytes]:
         """Receive a response from the TPM device
@@ -1752,8 +1797,22 @@ class TpmDevice:
                 TPM_RC responseCode; // UINT32
             }
         """
-        # On Linux, TPM_BUFSIZE = 4096
-        response = self.dev.read(4096)
+        if self.use_mssim:
+            # Receive a 4-byte response size
+            response_size, = struct.unpack('>I', self._read_exact(4))
+            if response_size == 0:
+                raise RuntimeError("Received zero as response size")
+            if response_size > 4096:
+                raise RuntimeError(f"Received response size too large: {response_size!r}")
+            response = self._read_exact(response_size)
+            # Receive the appended four bytes of 0's
+            last_zeros = self._read_exact(4)
+            if last_zeros != b'\0\0\0\0':
+                raise RuntimeError(f"Unexpected MSSIM trailer: {last_zeros.hex()}")
+        else:
+            # On Linux, TPM_BUFSIZE = 4096
+            response = self.dev.read(4096)
+
         if len(response) < 10:
             raise RuntimeError(f"Received response too short: {response!r}")
         tag, param_size, code = struct.unpack('>HII', response[:10])
@@ -2661,6 +2720,8 @@ def main(argv: Optional[Sequence[str]] = None):
                         help="Connect to a TPM through a TCP host and port (127.0.0.1 by default)")
     parser.add_argument('-p', '--port', type=int,
                         help="Connect to a TPM through a TCP port (for example to use swtpm)")
+    parser.add_argument('--mssim', action='store_true',
+                        help="Use Microsoft Simulator protocol (used by mssim and ibm-sw-tpm2's tpm_server)")
     parser.add_argument('--quiet-if-not-found', action='store_true',
                         help="Do not show a message if no TPM is found")
     args = parser.parse_args(argv)
@@ -2680,7 +2741,7 @@ def main(argv: Optional[Sequence[str]] = None):
                 print("No TPM device found, exiting")
             return
 
-    with TpmDevice.open(dev_path=dev_path, tpm_host=tpm_host, tpm_port=tpm_port) as dev:
+    with TpmDevice.open(dev_path=dev_path, tpm_host=tpm_host, tpm_port=tpm_port, use_mssim=args.mssim) as dev:
         print(f"Device {dev.name} is TPM {dev.tpm_version()}")
 
         if dev.is_tpm12:
