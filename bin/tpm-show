@@ -44,7 +44,14 @@ https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=fd
 So use this device by default and fall back to /dev/tpm0 if it does not exist.
 
 Both devices use an API specified in "TCG TSS 2.0 TPM Command Transmission
-Interface (TCTI) API Specification".
+Interface (TCTI) API Specification". When uting tpm2-tools programs, it is
+possible to use a parameter such as "--tcti device:/dev/tpmrm0" or an
+environment variable such as "TPM2TOOLS_TCTI=device:/dev/tpmrm0". Other TCTI
+settings include:
+
+* swtpm:host=127.0.0.1,port=2321 for "swtpm socket --tpm2 --server port=2321"
+* mssim:host=127.0.0.1,port=2321 for "tpm_server -port 2321" (from ibm-sw-tpm2)
+* tabrmd:bus_type=system for "tpm2-abrmd" (a userspace resource manager)
 
 ------------------------------- IMPORTANT NOTICE -------------------------------
 This script is a Proof of Concept that should not be ever used in production.
