@@ -266,6 +266,29 @@ if type alias > /dev/null 2>&1 ; then
     alias gpg-sign='gpg --ask-cert-level --sign-key'
     alias gpg-resign-iknowwhatimdoing='gpg --ask-cert-level --expert --sign-key'
 
+    # Add helper aliases for tpm2-pkcs11
+    if [ -r '/usr/lib64/pkcs11/libtpm2_pkcs11.so' ] ; then
+        LIBTPM2_PKCS11_SO_PATH='/usr/lib64/pkcs11/libtpm2_pkcs11.so'
+    elif [ -r '/usr/lib/pkcs11/libtpm2_pkcs11.so' ] ; then
+        LIBTPM2_PKCS11_SO_PATH='/usr/lib/pkcs11/libtpm2_pkcs11.so'
+    else
+        case "$(uname -m)" in
+            x86_64)
+                if [ -r '/usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1' ] ; then
+                    LIBTPM2_PKCS11_SO_PATH='/usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1'
+                fi;;
+        esac
+    fi
+    if [ -n "${LIBTPM2_PKCS11_SO_PATH:-}" ] ; then
+        # shellcheck disable=SC2139
+        alias tpm2pkcs11-tool="pkcs11-tool --module ${LIBTPM2_PKCS11_SO_PATH}"
+        # shellcheck disable=SC2139
+        alias tpm2ssh="ssh -I ${LIBTPM2_PKCS11_SO_PATH}"
+        # shellcheck disable=SC2139
+        alias tpm2ssh-keygen="ssh-keygen -D ${LIBTPM2_PKCS11_SO_PATH}"
+        unset LIBTPM2_PKCS11_SO_PATH
+    fi
+
     # Colored diff
     if command -v colordiff > /dev/null 2>&1 ; then
         alias diff='colordiff -u'
