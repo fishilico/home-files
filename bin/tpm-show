@@ -91,6 +91,7 @@ import itertools
 from pathlib import Path
 import secrets
 import struct
+import socket
 import sys
 from typing import BinaryIO, Generator, List, Mapping, Optional, Sequence, Set, Tuple, TYPE_CHECKING, Union
 
@@ -900,6 +901,7 @@ class TpmAlgId(enum.IntEnum):
     """TPM_ALG_ID constants for TPM 2.0"""
     TPM_ALG_ERROR = 0x0000
     TPM_ALG_RSA = 0x0001
+    TPM_ALG_TDES = 0x0003
     TPM_ALG_SHA1 = 0x0004
     TPM_ALG_HMAC = 0x0005
     TPM_ALG_AES = 0x0006
@@ -927,6 +929,11 @@ class TpmAlgId(enum.IntEnum):
     TPM_ALG_KDF1_SP800_108 = 0x0022
     TPM_ALG_ECC = 0x0023
     TPM_ALG_SYMCIPHER = 0x0025
+    TPM_ALG_CAMELLIA = 0x0026
+    TPM_ALG_SHA3_256 = 0x0027
+    TPM_ALG_SHA3_384 = 0x0028
+    TPM_ALG_SHA3_512 = 0x0029
+    TPM_ALG_CMAC = 0x003f
     TPM_ALG_CTR = 0x0040
     TPM_ALG_OFB = 0x0041
     TPM_ALG_CBC = 0x0042
@@ -1682,15 +1689,25 @@ class IsNotTpm20Error(Exception):
 
 
 class TpmDevice:
-    def __init__(self, dev: BinaryIO):
+    def __init__(self, dev: BinaryIO, name: str):
         self.dev = dev
+        self.name = name
 
     @staticmethod
     @contextmanager
-    def open(dev_path: Path) -> Generator['TpmDevice', None, None]:
+    def open(dev_path: Optional[Path], tpm_host: Optional[str], tpm_port: Optional[int]
+             ) -> Generator['TpmDevice', None, None]:
         """Open the specified device, to be used in a with block"""
-        with dev_path.open('r+b', buffering=0) as dev:
-            yield TpmDevice(dev)
+        if dev_path is not None:
+            with dev_path.open('r+b', buffering=0) as dev:
+                yield TpmDevice(dev, str(dev_path))
+        elif tpm_port is not None:
+            host = '127.0.0.1' if tpm_host is None else tpm_host
+            sock = socket.create_connection((host, tpm_port))
+            yield TpmDevice(sock.makefile(mode='rwb', buffering=0), f"tcp://{host}:{tpm_port}")
+            sock.close()
+        else:
+            raise ValueError("No device path nor TCP connection info provided")
 
     def transmit_command(self, tag: int, code: int, params: Optional[bytes] = None):
         """Transmit a command to the TPM device
@@ -1749,11 +1766,12 @@ class TpmDevice:
         """Run a TPM 1.2 command"""
         self.transmit_command(tag.value, code.value, params)
         resp_tag, resp_code, response = self.receive_response()
-        if resp_tag == 0x8001 and resp_code == 0xb0143 and response == b'':
+        if resp_tag == 0x8001 and resp_code in (0x84, 0xb0143) and response == b'':
             # Linux driver forges a TPM2 response when the command is not implemented by the TPM:
             #     tag = TPM2_ST_NO_SESSIONS
-            #     code = TPM2_RC_COMMAND_CODE | TSS2_RESMGR_TPM_RC_LAYER
+            #     code = TPM2_RC_COMMAND_CODE | TSS2_RESMGR_TPM_RC_LAYER = 0xb0143
             #       (with TSS2_RESMGR_TPM_RC_LAYER = 11 << 16)
+            # swtpm returns code = TPM2_RC_VALUE = 0x84
             raise IsNotTpm12Error()
 
         if resp_tag == Tpm12Tag.TPM_TAG_RSP_COMMAND.value and resp_code == Tpm12ResponseCode.TPM_BADTAG:
@@ -2639,24 +2657,31 @@ def main(argv: Optional[Sequence[str]] = None):
     parser = argparse.ArgumentParser(description="Get various information from a TPM")
     parser.add_argument('-d', '--device', type=Path,
                         help="TPM device to use (/dev/tpmrm0 by default)")
+    parser.add_argument('-H', '--host', type=int,
+                        help="Connect to a TPM through a TCP host and port (127.0.0.1 by default)")
+    parser.add_argument('-p', '--port', type=int,
+                        help="Connect to a TPM through a TCP port (for example to use swtpm)")
     parser.add_argument('--quiet-if-not-found', action='store_true',
                         help="Do not show a message if no TPM is found")
     args = parser.parse_args(argv)
 
     dev_path: Optional[Path] = args.device
-    if dev_path is None:
-        for tried_dev in ('/dev/tpmrm0', '/dev/tpm0'):
-            tried_path = Path(tried_dev)
-            if tried_path.exists():
-                dev_path = tried_path
-                break
-    if dev_path is None:
-        if not args.quiet_if_not_found:
-            print("No TPM device found, exiting")
-        return
+    tpm_host: Optional[str] = args.host
+    tpm_port: Optional[int] = args.port
+    if tpm_port is None:
+        if dev_path is None:
+            for tried_dev in ('/dev/tpmrm0', '/dev/tpm0'):
+                tried_path = Path(tried_dev)
+                if tried_path.exists():
+                    dev_path = tried_path
+                    break
+        if dev_path is None:
+            if not args.quiet_if_not_found:
+                print("No TPM device found, exiting")
+            return
 
-    with TpmDevice.open(dev_path) as dev:
-        print(f"Device {dev_path}: TPM {dev.tpm_version()}")
+    with TpmDevice.open(dev_path=dev_path, tpm_host=tpm_host, tpm_port=tpm_port) as dev:
+        print(f"Device {dev.name} is TPM {dev.tpm_version()}")
 
         if dev.is_tpm12:
             print("TPM Capabilities:")
