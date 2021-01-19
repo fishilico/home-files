@@ -245,8 +245,10 @@ if type alias > /dev/null 2>&1 ; then
     alias isodatedot='date +"%Y.%m.%d"'
     alias isotimefile='date --utc +"%Y-%m-%d-%H%M%S"'
 
-    # Show progress with dd
-    alias ddprog='dd status=progress'
+    # Show progress with dd and report I/O errors (cf. https://abbbi.github.io/dd/)
+    alias ddprogress='dd status=progress'
+    alias ddprosync='dd status=progress conv=fsync'
+    alias ddsync='dd conv=fsync'
 
     # OpenSSL shortcuts
     # View a certificate request (add -verify to check it)
