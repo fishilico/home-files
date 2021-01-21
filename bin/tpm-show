@@ -1902,8 +1902,10 @@ class TpmDevice:
         """Run a TPM 2.0 command"""
         self.transmit_command(tag.value, code.value, params)
         resp_tag, resp_code, response = self.receive_response()
-        if resp_tag == 0x00c4 and resp_code == 0x000a and response == b'':
-            # Received a TPM1 response (tag=TPM_RSP_COMMAND, resp_code=TPM_BAD_ORDINAL)
+        if resp_tag == 0x00c4 and resp_code in (0x0009, 0x000a) and response == b'':
+            # Received a TPM1 response (tag=TPM_RSP_COMMAND) with
+            # * resp_code=TPM_FAIL=0x0009 (from swtpm)
+            # * resp_code=TPM_BAD_ORDINAL=0x000a (from a real TPM)
             raise IsNotTpm20Error()
         try:
             tpm20_tag = Tpm20Tag(resp_tag)
