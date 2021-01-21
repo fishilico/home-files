@@ -26,5 +26,5 @@
 set -o pipefail
 
 podman images | \
-    awk '{ if(NR > 1 && ($1 ~ /^gentoo\/stage3-/ || $1 ~ /^sabayon\/base-/ || $1 ~ /^archlinux\/base/ || $2 != "latest") && $2 != "<none>")print $1 ":" $2 }' | \
+    awk '{ if(NR > 1 && ($1 ~ /^docker\.io\/library\// || $2 != "latest") && $1 !~ /^localhost\// && $2 != "<none>")print $1 ":" $2 }' | \
     xargs -r -L1 podman pull
