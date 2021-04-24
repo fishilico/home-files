@@ -28,7 +28,7 @@ A TPM can be accessed using two devices on Linux:
 * /dev/tpm0
 * /dev/tpmrm0 (for "Trusted Platform Module Resource Manager")
 
-The second device has been introduce in Linux 4.12 with commit fdc915f7f719
+The second device has been introduced in Linux 4.12 with commit fdc915f7f719
 ("tpm: expose spaces via a device link /dev/tpmrm<n>")
 https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=fdc915f7f71939ad5a3dda3389b8d2d7a7c5ee66 :
 
@@ -52,6 +52,14 @@ settings include:
 * swtpm:host=127.0.0.1,port=2321 for "swtpm socket --tpm2 --server port=2321"
 * mssim:host=127.0.0.1,port=2321 for "tpm_server -port 2321" (from ibm-sw-tpm2)
 * tabrmd:bus_type=system for "tpm2-abrmd" (a userspace resource manager)
+
+This script does not use TCTI libraries but it implements their protocol:
+
+* To connect to a swtpm, use option "--host 127.0.0.1 --port 2321" (the protocol
+  simply consists in transmitting TPM packets over TCP).
+* To connect to a tpm_server, use option "--host 127.0.0.1 --port 2321 --mssim"
+  (there is a small encapsulation of TPM packets, over TCP).
+* Connecting to tpm2-abrmd's D-Bus service is not supported.
 
 ------------------------------- IMPORTANT NOTICE -------------------------------
 This script is a Proof of Concept that should not be ever used in production.
@@ -111,7 +119,7 @@ else:
 
 
 def hexdump(data: bytes, indent: str = ''):
-    """Show an hexdecimal dump of binary data"""
+    """Show a hexadecimal dump of binary data"""
     for iline in range(0, len(data), 16):
         hexline = ''
         ascline = ''
