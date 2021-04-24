@@ -509,7 +509,19 @@ if [ -x /usr/bin/which ] ; then
     elif [ -x /usr/bin/dpkg ] ; then
         # Debian
         whichpkg() {
-            /usr/bin/which "$@" | xargs dpkg --search
+            /usr/bin/which "$@" | while IFS= read -r FILEPATH ; do
+                if ! dpkg --search "$FILEPATH" ; then
+                    # On Ubuntu 20.04, /bin is a symlink to /usr/bin but
+                    # packages still install programs in /bin (such as grep)
+                    BINFILEPATH="$(printf %s "$FILEPATH" | sed -n 's:^/usr/bin/:/bin/:p')"
+                    if [ -L /bin ] && [ -n "$BINFILEPATH" ] && [ -e "$BINFILEPATH" ] ; then
+                        dpkg --search "$BINFILEPATH"
+                    else
+                        # Propagate the error to the caller
+                        false
+                    fi
+                fi
+            done
         }
     elif [ -x /usr/bin/qfile ] ; then
         # Gentoo

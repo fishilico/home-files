@@ -52,15 +52,6 @@ jobs:
             ./tests/verify_script_headers.py && \
             echo '[ OK ] tests/verify_script_headers.py on Windows' && \
             echo '[ OK ] All tests OK on Windows'
-        elif ${{ startsWith(matrix.os, 'ubuntu-') }} ; then
-            # On Ubuntu 20.04, "whichpkg grep" fails with:
-            #   dpkg-query: no path found matching pattern /usr/bin/grep
-            # because /usr/bin is before /bin in $PATH.
-            # Make sure that /bin is before /usr/bin.
-            echo 'PATH="$REAL_HOME/bin:/bin:$PATH" # MARKER For GitHub Actions' >> dotfiles/shell/environment
-            echo 'Running ./run_tests.sh with modified PATH'
-            ./run_tests.sh
-            sed '/MARKER For GitHub Actions/d' -i dotfiles/shell/environment
         else
             echo 'Running ./run_tests.sh'
             ./run_tests.sh
