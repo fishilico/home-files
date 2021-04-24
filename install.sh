@@ -23,6 +23,9 @@
 #
 # Install files in home directory
 
+# Allow using "local ..." globally, even though it is not supported by POSIX sh
+# shellcheck disable=SC3043
+
 INSTALL_DIR="$HOME"
 
 # Find our location

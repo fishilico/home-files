@@ -32,6 +32,7 @@
 
 # Convert something to an IPv6 link-local address, whenever possible
 param_to_ip6ll() {
+    # shellcheck disable=SC3043
     local IP4_PATTERN IP6_PATTERN IP6LL_PATTERN MAC_PATTERN OUT
 
     # These patterns are not strict at all but just allow to differentiate
@@ -77,6 +78,7 @@ param_to_ip6ll() {
 # Convert an IPv4 address to a (MAC, interface) tuple and
 # compute an IPv6 link-local address
 ip4_to_ip6ll() {
+    # shellcheck disable=SC3043
     local IFACE MAC OUT
     if command -v ip > /dev/null 2>&1
     then
@@ -114,6 +116,7 @@ ip4_to_ip6ll() {
 # Convert an IPv6 global address to a (MAC, interface) tuple and
 # compute an IPv6 link-local address
 ip6glob_to_ip6ll() {
+    # shellcheck disable=SC3043
     local IFACE MAC OUT
     OUT=$(ip -6 neigh show "$1")
     MAC=$(printf %s "$OUT" | sed -n 's/.*lladdr \([0-9a-fA-F:]\{17\}\).*/\1/p')
@@ -129,6 +132,7 @@ ip6glob_to_ip6ll() {
 
 # Convert a MAC address to an IPv6 link-local address
 mac_to_ip6ll() {
+    # shellcheck disable=SC3043
     local FIRST H2 SECOND TAIL IP6
     FIRST=$(printf %s "$1" | sed -n 's/^\([0-9a-fA-F]\).:.*/\1/p')
     SECOND=$(printf %s "$1" | sed -n 's/^.\([0-9a-fA-F]\):.*/\1/p')
@@ -155,6 +159,7 @@ mac_to_ip6ll() {
 
 # Add an interface scope to an IPv6 address, in needed
 ip6_to_ip6ll() {
+    # shellcheck disable=SC3043
     local IFACE
     if [ $# -ge 2 ] && [ -n "$2" ]
     then
@@ -222,7 +227,9 @@ shift
 # Since iputils s20150815 ping6 has been merged into ping
 if command -v ping6 > /dev/null 2>&1
 then
+    # shellcheck disable=SC2086
     exec ping6 $OPTIONS "$DEST" "$@"
 else
+    # shellcheck disable=SC2086
     exec ping -6 $OPTIONS "$DEST" "$@"
 fi

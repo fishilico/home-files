@@ -23,6 +23,8 @@
 #
 # Update pulled Docker images
 
+# shellcheck shell=dash
+
 set -o pipefail
 
 docker images | \

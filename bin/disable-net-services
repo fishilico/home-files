@@ -30,6 +30,7 @@ if [ -x /usr/bin/systemctl ] || command -v systemctl > /dev/null 2>&1
 then
     # Systemd
     disable_service() {
+        # shellcheck disable=SC3043
         local STATE
         STATE=$(systemctl is-active "$1")
         if [ $? = 0 ]

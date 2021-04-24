@@ -41,6 +41,7 @@ run_ipt_nomatch() {
 }
 
 ipt_stats() {
+    # shellcheck disable=SC3043
     local CURRENT_CHAIN IPT LINE PREFIX
     PREFIX=$1
     IPT=$2

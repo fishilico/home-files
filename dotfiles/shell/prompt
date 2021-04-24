@@ -95,7 +95,7 @@ elif [ -n "${ZSH_VERSION:-}" ]; then
     # Set window title too
     case "${TERM:-}" in
         xterm*|rxvt*)
-            # shellcheck disable=SC2039
+            # shellcheck disable=SC2039,SC3003
             PROMPT=$'%{\e]0;%n@%m: %~\a%}'"$PROMPT"
             ;;
     esac

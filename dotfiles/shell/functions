@@ -70,7 +70,7 @@ du2s() {
 # shells (Bash, Ash, ...) use -p option, so use echo to be compatible.
 # Dash fails with "read: Illegal option -s" as this is not POSIX-compliant.
 read_pass() {
-    # shellcheck disable=SC2039
+    # shellcheck disable=SC2039,SC3045
     printf >&2 'Password: ' && read -r -s "$@" && echo ''
 }
 
@@ -164,6 +164,7 @@ get_https_cert() {
          -showcerts | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'
 }
 get_https_cert_proxy() {
+    # shellcheck disable=SC3043
     local S_CLIENT_PROXY
     S_CLIENT_PROXY="$(
         printf %s\\n%s\\n%s\\n%s\\n \
@@ -192,6 +193,7 @@ check_https_dane() {
 
 # Combine postcat with less
 postless() {
+    # shellcheck disable=SC3043
     local DIR OUTPUT STATUS
     if [ $# -eq 1 ] && ! [ -e "$1" ] ; then
         # Find message by ID in Postfix spool
@@ -222,11 +224,13 @@ case $(grep --help 2> /dev/null) in
         if [ -n "${BASH_VERSION:-}" ] || [ -n "${ZSH_VERSION:-}" ] ; then
             # Modern shells support array substitution
             hl() {
+                # shellcheck disable=SC3060
                 \grep -E --color=always -e '' "${@/#/-e}"
             }
         else
             # Same function, with a temporary file
             hl() {
+                # shellcheck disable=SC3043
                 local FILE
                 FILE="$(mktemp)"
                 # shellcheck disable=SC2064
@@ -244,6 +248,7 @@ esac
 
 # Find a literal string in UTF-16 file (for example from Windows)
 utf16grep() {
+    # shellcheck disable=SC3043
     local PATTERN
     PATTERN="$(printf '%s' "$1" | iconv -f utf-8 -t utf-16le | hexdump -e '/1 "x%02x"' | sed 's/x/\\x/g')"
     shift
@@ -474,6 +479,7 @@ mplayer_webcam() {
 
 # Trace process executions
 strace_exec() {
+    # shellcheck disable=SC3043
     local SYSCALLS
     SYSCALLS='execve'
     # Trace execveat if it is known by strace
@@ -552,6 +558,7 @@ svn_editign() {
 
 # Create an archive from the current git repository to the given path
 gitarc() {
+    # shellcheck disable=SC3043
     local ARCPATH ARCFILE FORMAT
     ARCPATH="$1"
     if [ -z "$ARCPATH" ] ; then
@@ -591,6 +598,7 @@ gitarc() {
 # Override objdump to write stdin to a temporary file if no file is provided in
 # the arguments, because objdump only operated on regular files.
 objdump_wrapper() {
+    # shellcheck disable=SC3043
     local ARG RETVAL TARGET TEMPFILE
     TARGET="$1"
     shift

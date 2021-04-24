@@ -102,9 +102,9 @@ export PS1='$ '
 case "$2" in
     bash)
         [ -n "${BASH_VERSION:-}" ] || die "running bash without \$BASH_VERSION. This is not sane!"
-        # shellcheck disable=SC2039
+        # shellcheck disable=SC3044
         shopt -s expand_aliases
-        # shellcheck source=/dev/null
+        # shellcheck disable=SC3046,SC3051 source=/dev/null
         source "$ROOTDIR/dotfiles/bashrc"
         ;;
     zsh)
@@ -149,6 +149,7 @@ fi
 # On Debian, busybox dpkg does not support --search, so skip testing it
 if ! grep -e '^ID=debian$' -e '^ID_LIKE=debian$' /usr/lib/os-release > /dev/null 2>&1 || [ "$2" != busybox ] ; then
     PKGGREP="$(LANG=C whichpkg grep)"
+    # shellcheck disable=SC2181
     if [ $? != 0 ] ; then
         die "function whichpkg failed"
     fi

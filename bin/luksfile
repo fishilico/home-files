@@ -126,7 +126,8 @@ ask_umount() {
 }
 
 luksfile_file() {
-    local C LUKS_FILE DEVMAP_BLOCK DEVMAP_PATH MOUNTPOINT
+    # shellcheck disable=SC3043
+    local LUKS_FILE DEVMAP_BLOCK DEVMAP_PATH MOUNTPOINT LODEV
     LUKS_FILE="$1"
     DEVMAP_BLOCK="luksfile_$(basename "$LUKS_FILE")"
     DEVMAP_PATH="/dev/mapper/$DEVMAP_BLOCK"

@@ -28,6 +28,7 @@
 export LC_ALL=C
 
 dump_dconf_dir() {
+    # shellcheck disable=SC3043
     local ENTRIES ITEM
     ENTRIES="$(dconf list "$1")"
 

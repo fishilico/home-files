@@ -83,6 +83,7 @@ if type alias > /dev/null 2>&1 ; then
 
     # List files, using available ls options
     get_ls_parameters() {
+        # shellcheck disable=SC3043
         local LINE COLOR_OPT ESCAPE_OPT TIMESTYLE_OPT
         # CFh = columns, classify, human
         printf ' -CFh'
@@ -189,6 +190,7 @@ if type alias > /dev/null 2>&1 ; then
     # Do not use GREP_OPTIONS so that directly invoking grep does not enable
     # these options (for example with lgrep alias).
     get_grep_parameters() {
+        # shellcheck disable=SC3043
         local LINE COLOR_OPT EXCLUDE_DIR_OPT EXCLUDE_OPT
         grep --help 2> /dev/null | (
             COLOR_OPT=
@@ -211,7 +213,7 @@ if type alias > /dev/null 2>&1 ; then
             printf "$COLOR_OPT$EXCLUDE_DIR_OPT$EXCLUDE_OPT"
         )
     }
-    # shellcheck disable=SC2139
+    # shellcheck disable=SC2139,SC2262
     alias grep="grep$(get_grep_parameters)"
 
     # Find non-ascii characters

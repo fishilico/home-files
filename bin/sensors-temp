@@ -34,7 +34,7 @@ while read -r line
 do
     TITLE=${line%:*}
     TEMP=${line#*:}
-    TITLE=$(echo $TITLE | sed 's/^temp/pci/;s/^Physical id /phyid/')
+    TITLE=$(printf %s "$TITLE" | sed 's/^temp/T /;s/^Physical id /phyid/;s/^Package id /pkg /')
     TITLE=$(printf "%-$(printf %s "$TEMP" |wc -m)s" "$TITLE")
     TITLES="$TITLES $TITLE"
     TEMPS="$TEMPS $TEMP"

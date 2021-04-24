@@ -30,6 +30,7 @@ USE_ACS=false
 USE_LATIN1=false
 
 print_ascii() {
+    # shellcheck disable=SC3043
     local C L NUM
     # Print header
     printf '   '
