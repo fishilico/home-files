@@ -466,6 +466,7 @@ AUDIT_DECIMAL_INTEGER_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('SYSCALL', 'ppid'),
     ('BPF', 'prog-id'),
     ('ANOM_PROMISCUOUS', 'prom'),
+    ('AVC', 'protocol'),
     ('ANOM_ABEND', 'res'),
     ('AUDIT_EVENT_LISTENER', 'res'),
     ('CONFIG_CHANGE', 'res'),
@@ -602,6 +603,8 @@ AUDIT_DECIMAL_INTEGER_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
 ))
 
 AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
+    ('ADD_GROUP', 'AUID'),
+    ('ADD_USER', 'AUID'),
     ('ANOM_ABEND', 'AUID'),
     ('CONFIG_CHANGE', 'AUID'),
     ('CRED_ACQ', 'AUID'),
@@ -611,6 +614,7 @@ AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('CRYPTO_SESSION', 'AUID'),
     ('DAEMON_START', 'AUID'),
     ('DAEMON_STOP', 'AUID'),
+    ('DAEMON_END', 'AUID'),
     ('LOGIN', 'AUID'),
     ('MAC_CALIPSO_ADD', 'AUID'),
     ('MAC_CALIPSO_DEL', 'AUID'),
@@ -624,12 +628,17 @@ AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('MAC_STATUS', 'AUID'),
     ('MAC_UNLBL_STCADD', 'AUID'),
     ('MAC_UNLBL_STCDEL', 'AUID'),
+    ('SECCOMP', 'AUID'),
     ('SERVICE_START', 'AUID'),
     ('SERVICE_STOP', 'AUID'),
+    ('SYSCALL', 'AUID'),
     ('SYSTEM_BOOT', 'AUID'),
     ('SYSTEM_RUNLEVEL', 'AUID'),
+    ('SYSTEM_SHUTDOWN', 'AUID'),
     ('USER_ACCT', 'AUID'),
     ('USER_AUTH', 'AUID'),
+    ('USER_AVC', 'AUID'),
+    ('USER_CHAUTHTOK', 'AUID'),
     ('USER_CMD', 'AUID'),
     ('USER_START', 'AUID'),
     ('USER_END', 'AUID'),
@@ -638,14 +647,30 @@ AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('USER_ROLE_CHANGE', 'AUID'),
     ('USER_START', 'AUID'),
     ('USER_STOP', 'AUID'),
+    ('SYSCALL', 'EGID'),
+    ('SYSCALL', 'EUID'),
+    ('AVC', 'FSUID'),
+    ('SYSCALL', 'FSGID'),
+    ('SYSCALL', 'FSUID'),
     ('ANOM_ABEND', 'GID'),
+    ('SECCOMP', 'GID'),
+    ('SYSCALL', 'GID'),
+    ('ADD_GROUP', 'ID'),
+    ('ADD_USER', 'ID'),
+    ('USER_CHAUTHTOK', 'ID'),
     ('USER_END', 'ID'),
     ('USER_LOGIN', 'ID'),
     ('USER_LOGOUT', 'ID'),
     ('USER_START', 'ID'),
     ('LOGIN', 'OLD-AUID'),
+    ('AVC', 'OUID'),
+    ('USER_AVC', 'SAUID'),
+    ('SYSCALL', 'SGID'),
     ('CRYPTO_KEY_USER', 'SUID'),
     ('CRYPTO_SESSION', 'SUID'),
+    ('SYSCALL', 'SUID'),
+    ('ADD_GROUP', 'UID'),
+    ('ADD_USER', 'UID'),
     ('ANOM_ABEND', 'UID'),
     ('CRED_ACQ', 'UID'),
     ('CRED_DISP', 'UID'),
@@ -656,16 +681,21 @@ AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('LOGIN', 'UID'),
     ('USER_ACCT', 'UID'),
     ('USER_AUTH', 'UID'),
+    ('USER_AVC', 'UID'),
+    ('USER_CHAUTHTOK', 'UID'),
     ('USER_CMD', 'UID'),
     ('USER_END', 'UID'),
     ('USER_LOGIN', 'UID'),
     ('USER_LOGOUT', 'UID'),
     ('USER_ROLE_CHANGE', 'UID'),
     ('USER_START', 'UID'),
+    ('SECCOMP', 'UID'),
     ('SERVICE_START', 'UID'),
     ('SERVICE_STOP', 'UID'),
+    ('SYSCALL', 'UID'),
     ('SYSTEM_BOOT', 'UID'),
     ('SYSTEM_RUNLEVEL', 'UID'),
+    ('SYSTEM_SHUTDOWN', 'UID'),
     ('CRED_ACQ', 'acct'),
     ('CRED_DISP', 'acct'),
     ('CRED_REFR', 'acct'),
@@ -677,6 +707,7 @@ AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('USER_ERR', 'acct'),
     ('USER_LOGIN', 'acct'),
     ('USER_START', 'acct'),
+    ('AVC', 'addr'),
     ('AVC', 'apparmor'),
     ('USER_AVC', 'apparmor'),
     ('USYS_CONFIG', 'arg'),
@@ -701,6 +732,7 @@ AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('USER_CMD', 'cwd'),
     ('AVC', 'denied_mask'),
     ('AVC', 'dev'),
+    ('VIRT_RESOURCE', 'device'),
     ('ADD_GROUP', 'exe'),
     ('ADD_USER', 'exe'),
     ('ANOM_ABEND', 'exe'),
@@ -737,6 +769,7 @@ AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('VIRT_CONTROL', 'exe'),
     ('VIRT_MACHINE_ID', 'exe'),
     ('VIRT_RESOURCE', 'exe'),
+    ('AVC', 'family'),
     ('USER_AVC', 'interface'),
     ('USYS_CONFIG', 'interface'),
     ('SELINUX_ERR', 'invalid_context'),
@@ -761,10 +794,12 @@ AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('AVC', 'path'),
     ('USER_AVC', 'path'),
     ('VIRT_RESOURCE', 'path'),
+    ('AVC', 'peer'),
     ('USER_AVC', 'peer_label'),
     ('PROCTITLE', 'proctitle'),
     ('AVC', 'profile'),
     ('AVC', 'requested_mask'),
+    ('AVC', 'sock_type'),
     ('AVC', 'srawcon'),
     ('USER_MAC_CONFIG_CHANGE', 'tglob'),
     ('AVC', 'trawcon'),
@@ -774,6 +809,10 @@ AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
 ))
 
 AUDIT_UNQUOTED_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
+    ('SECCOMP', 'ARCH'),
+    ('SYSCALL', 'ARCH'),
+    ('SECCOMP', 'SYSCALL'),
+    ('SYSCALL', 'SYSCALL'),
     ('VIRT_RESOURCE', 'acl'),
     ('USYS_CONFIG', 'args'),
     ('ANOM_PROMISCUOUS', 'dev'),
@@ -983,6 +1022,7 @@ AUDIT_UNQUOTED_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('MAC_UNLBL_STCADD', 'src'),
     ('MAC_UNLBL_STCDEL', 'src'),
     ('KERNEL', 'state'),
+    ('ADD_USER', 'subj'),
     ('ADD_GROUP', 'subj'),
     ('ANOM_ABEND', 'subj'),
     ('AUDIT_EVENT_LISTENER', 'subj'),
@@ -2224,10 +2264,14 @@ class SELinuxAuditLogAnalyzer:
             used_keys.add('pid')
             with suppress(KeyError):
                 avc_desc += f" fsuid={parsed_record['fsuid']!r}"
+                avc_desc += f"({parsed_record['FSUID']!r})"
             used_keys.add('fsuid')
+            used_keys.add('FSUID')
             with suppress(KeyError):
                 avc_desc += f" ouid={parsed_record['ouid']!r}"
+                avc_desc += f"({parsed_record['OUID']!r})"
             used_keys.add('ouid')
+            used_keys.add('OUID')
             print(f"[{entry_formated_time}] {avc_desc}", end='\r\n')
             for key, value in parsed_record.items():
                 if key in used_keys:
@@ -2433,12 +2477,16 @@ class SELinuxAuditLogAnalyzer:
             # Format Seccomp action SCMP_ACT_LOG (https://man7.org/linux/man-pages/man3/seccomp_rule_add.3.html)
             seccomp_syscall = parsed_record['syscall']
             seccomp_desc = f"{type_name} syscall={self.color_boldred}{seccomp_syscall}{self.color_norm}"
+            if 'SYSCALL' in parsed_record and parsed_record['SYSCALL'] not in seccomp_syscall:
+                seccomp_desc += f" SYSCALL={parsed_record['SYSCALL']!r}"
             seccomp_desc += f" exe={self.color_cyan}{parsed_record['exe']!r}{self.color_norm}"
             seccomp_desc += f" comm={self.color_cyan}{parsed_record['comm']!r}{self.color_norm}"
             seccomp_desc += f" pid={parsed_record['pid']!r}"
             seccomp_uid = parsed_record['uid']
             assert isinstance(seccomp_uid, int)
             seccomp_desc += f" uid={seccomp_uid}"
+            with suppress(KeyError):
+                seccomp_desc += f"({parsed_record['UID']})"
             with suppress(KeyError):
                 seccomp_auid = parsed_record['auid']
                 assert isinstance(seccomp_auid, int)
@@ -2447,7 +2495,10 @@ class SELinuxAuditLogAnalyzer:
                         seccomp_desc += " auid=-1"
                     else:
                         seccomp_desc += f" auid={seccomp_auid}"
+                    seccomp_desc += f"({parsed_record['AUID']})"
             seccomp_desc += f" gid={parsed_record['gid']!r}"
+            with suppress(KeyError):
+                seccomp_desc += f"({parsed_record['GID']})"
             with suppress(KeyError):
                 seccomp_desc += f" subj={parsed_record['subj']}"
             seccomp_desc += f" code={parsed_record['code']}"
@@ -2463,6 +2514,11 @@ class SELinuxAuditLogAnalyzer:
             print(f"[{entry_formated_time}] {seccomp_desc}", end='\r\n')
             for key, value in parsed_record.items():
                 if key in (
+                        'ARCH',
+                        'AUID',
+                        'GID',
+                        'SYSCALL',
+                        'UID',
                         'arch',
                         'auid',
                         'code',
