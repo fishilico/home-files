@@ -265,6 +265,7 @@ TRUSTED_SUID_FILES = [
     # https://github.com/libfuse/libfuse
     SuidFile('/bin/fusermount'),
     SuidFile('/bin/fusermount3'),
+    LinkToSuidFile('/bin/fusermount', '/bin/fusermount3'),
 
     # glibc, http://www.gnu.org/software/libc/
     # https://sourceware.org/git/?p=glibc.git;a=tree
