@@ -1230,6 +1230,7 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         110: 'getppid',
         116: 'setgroups',
         117: 'setresuid',
+        119: 'setresgid',
         121: 'getpgid',
         125: 'capget',
         126: 'capset',
@@ -1289,6 +1290,7 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         318: 'getrandom',
         321: 'bpf',
         324: 'membarrier',
+        439: 'faccessat2',
     },
 }
 
