@@ -86,6 +86,9 @@
 	textconv = lzcat
 [diff "xz"]
 	textconv = xzcat
+# Compare binary files through hexdump, with ".bin diff=xxd" in .gitattributes
+[diff "xxd"]
+	textconv = xxd
 [grep]
 	lineNumber = true
 [help]
