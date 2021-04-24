@@ -141,6 +141,8 @@ SECCOMP_PROFILE='
                 "sendto",
                 "setgid",
                 "setgroups",
+                "setresgid",
+                "setresuid",
                 "setsockopt",
                 "set_tid_address",
                 "setuid",
