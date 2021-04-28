@@ -249,6 +249,11 @@ def gather_chipsec_pte(page_entries_parts):
     def browse_the_parts(parts):
         """Recursively browse the given parts"""
         for line, subparts in parts:
+            # Drop spaces before colon
+            matches = re.match(r'^(EPTP|PML4E|PDPTE|PDE|PTE) *(:.*)$', line)
+            if matches:
+                prefix, remaining = matches.groups()
+                line = prefix + remaining
             line_split = line.split()
             if len(line_split) == 2:
                 # Ensure there is only the address of the page table
@@ -330,6 +335,9 @@ def parse_chipsec_iommu_pt_output(stream, devices):
     # VT-d domains by physical address
     vtd_domains = {}
     for main_line, sublines in output_parts:
+        if sublines is None:
+            logger.debug("Ignoring empty %r", main_line)
+            continue
         logger.debug("Parsing %r", main_line)
 
         matches = re.match(r'^\[iommu\] Translation enabled *: (.*)$', main_line)
@@ -369,7 +377,17 @@ def parse_chipsec_iommu_pt_output(stream, devices):
             pass
 
         elif main_line.startswith('[iommu] total VTd domains:'):
+            look_for_pte_now = False
+            domain_addr = None
             for sub_line, subsublines in sublines:
+                if look_for_pte_now:
+                    if sub_line.startswith('EPTP '):
+                        # Indent EPTP one level...
+                        vtd_domains[domain_addr]['mapping'] = gather_chipsec_pte([(sub_line, subsublines)])
+                    else:
+                        logger.error("Unexpected continuation after Page Tables for domain...: %r", sub_line)
+                    look_for_pte_now = False
+
                 matches = re.match(r'^Page Tables for domain 0x([0-9a-fA-F]+):', sub_line)
                 if matches is None:
                     continue
@@ -378,7 +396,11 @@ def parse_chipsec_iommu_pt_output(stream, devices):
                 if domain_addr not in vtd_domains:
                     vtd_domains[domain_addr] = collections.OrderedDict()
 
-                # Parse page table entries
+                # Parse page table entries, which could come right after,
+                # because of chipsec_util indentation.
+                if subsublines is None:
+                    look_for_pte_now = True
+                    continue
                 vtd_domains[domain_addr]['mapping'] = gather_chipsec_pte(subsublines)
 
         elif sublines:
