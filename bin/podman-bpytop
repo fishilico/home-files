@@ -128,6 +128,7 @@ SECCOMP_PROFILE='
                 "pipe2",
                 "poll",
                 "prctl",
+                "pselect6",
                 "read",
                 "readlink",
                 "readv",

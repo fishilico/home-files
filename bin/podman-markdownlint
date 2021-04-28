@@ -107,6 +107,7 @@ SECCOMP_PROFILE='
                 "openat",
                 "prctl",
                 "prlimit64",
+                "pselect6",
                 "read",
                 "rt_sigaction",
                 "rt_sigprocmask",

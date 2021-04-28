@@ -105,6 +105,7 @@ SECCOMP_PROFILE='
                 "open",
                 "openat",
                 "prctl",
+                "pselect6",
                 "read",
                 "readlink",
                 "readv",
