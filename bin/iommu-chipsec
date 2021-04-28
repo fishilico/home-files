@@ -362,13 +362,23 @@ def parse_chipsec_iommu_pt_output(stream, devices):
                     bdf = bdf.lower()
                     domain_id = int(hexdid, 16)
                     domain_addr = int(slptptr, 16)
+                    bdf_desc = devices.describe(bdf)
                     logger.info("VT-d domain %d at %#x with device %s",
-                                domain_id, domain_addr, devices.describe(bdf))
+                                domain_id, domain_addr, bdf_desc)
                     if domain_addr not in vtd_domains:
                         vtd_domains[domain_addr] = collections.OrderedDict()
-                    vtd_domains[domain_addr]['bdf'] = bdf
-                    vtd_domains[domain_addr]['device'] = devices.describe(bdf)
-                    vtd_domains[domain_addr]['domain_id'] = domain_id
+                    if 'bdf' not in vtd_domains[domain_addr]:
+                        vtd_domains[domain_addr]['bdf'] = []
+                    vtd_domains[domain_addr]['bdf'].append(bdf)
+                    if bdf_desc != bdf:  # Only add the device description if there is one
+                        if 'devices' not in vtd_domains[domain_addr]:
+                            vtd_domains[domain_addr]['devices'] = []
+                        vtd_domains[domain_addr]['devices'].append(bdf_desc)
+                    if 'domain_id' not in vtd_domains[domain_addr]:
+                        vtd_domains[domain_addr]['domain_id'] = domain_id
+                    elif vtd_domains[domain_addr]['domain_id'] != domain_id:
+                        logger.warning("Unexpected domain configuration shared by DID %d and %d",
+                                       vtd_domains[domain_addr]['domain_id'], domain_id)
                     continue
                 logger.error("Unexpected VT-d context entry: %r", entry)
 
