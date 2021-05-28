@@ -14,16 +14,16 @@ The configuration of WeeChat lies in ``~/.weechat``.
       /set irc.server_default.realname "My real name"
       /set irc.server_default.nicks "mynick,mynick2,mynick3,mynick4,mynick5"
 
-* Add FreeNode IRC server::
+* Add Libera IRC server (successor of FreeNode), https://libera.chat/::
 
-      /server add freenode chat.freenode.net/7000
-      /set irc.server.freenode.ssl on
-      /set irc.server.freenode.autoconnect on
-      /set irc.server.freenode.autojoin "#help"
-      /connect freenode
+      /server add libera irc.libera.chat/6697
+      /set irc.server.libera.ssl on
+      /set irc.server.libera.autoconnect on
+      /set irc.server.libera.autojoin "#help"
+      /connect libera
 
       # To disconnect
-      /disconnect freenode
+      /disconnect libera
 
       # In WeeChat core buffer, switch with server buffers
       Ctrl+x
@@ -101,14 +101,14 @@ To change options related to IRC, ``/fset irc.*`` can help.
 Then, it is possible to encrypt the credential for IRC servers using a master passphrase, using command ``/secure``::
 
     /secure passphrase xxxxxxxxxx
-    /secure set freenode_username username
-    /secure set freenode_password xxxxxxxx
-    /set irc.server.freenode.sasl_username "${sec.data.freenode_username}"
-    /set irc.server.freenode.sasl_password "${sec.data.freenode_password}"
-    /set irc.server.freenode.sasl_mechanism PLAIN
+    /secure set libera_username username
+    /secure set libera_password xxxxxxxx
+    /set irc.server.libera.sasl_username "${sec.data.libera_username}"
+    /set irc.server.libera.sasl_password "${sec.data.libera_password}"
+    /set irc.server.libera.sasl_mechanism PLAIN
 
     # Or, with NickServ (the connect commands can be separated by semi-colon)
-    /set irc.server.freenode.command "/msg nickserv identify ${sec.data.freenode_password}"
+    /set irc.server.libera.command "/msg nickserv identify ${sec.data.libera_password}"
 
 The encrypted credentials will be kepts in ``~/.weechat/sec.conf``.
 
