@@ -69,6 +69,11 @@ elif ! podman image exists localhost/podman-bpytop ; then
     build_container
 fi
 
+# Option --no-start can be used to build the container without starting it
+if [ $# -ge 1 ] && [ "$1" = '--no-start' ] ; then
+    exit
+fi
+
 # Use SCMP_ACT_LOG to record the denied syscalls
 SECCOMP_PROFILE='
 {
