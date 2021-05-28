@@ -118,7 +118,7 @@ else:
     cached_property = property
 
 
-def hexdump(data: bytes, indent: str = ''):
+def hexdump(data: bytes, indent: str = '') -> None:
     """Show a hexadecimal dump of binary data"""
     for iline in range(0, len(data), 16):
         hexline = ''
@@ -454,7 +454,7 @@ class Tpm12Failure(Exception):
             print(f"Warning: unknown TPM 1.2 response code {self.code:#x}", file=sys.stderr)
             self.code_desc = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.code_desc:
             return repr(self.code_desc)
         return str(self.code)
@@ -915,7 +915,7 @@ class Tpm20Failure(Exception):
             print(f"Warning: unknown TPM 2.0 response code {self.code:#x}", file=sys.stderr)
             self.code_desc = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.code_desc:
             return repr(self.code_desc)
         return str(self.code)
@@ -1394,7 +1394,7 @@ class Tpm20PublicStruct:
         all_desc.append(hex(remaining))
         return '|'.join(all_desc)
 
-    def print_parameters(self, indent: str = ''):
+    def print_parameters(self, indent: str = '') -> None:
         """Describe the parameters"""
         if self.type_alg == TpmAlgId.TPM_ALG_RSA:
             """
@@ -1792,7 +1792,7 @@ class TpmDevice:
         else:
             raise ValueError("No device path nor TCP connection info provided")
 
-    def transmit_command(self, tag: int, code: int, params: Optional[bytes] = None):
+    def transmit_command(self, tag: int, code: int, params: Optional[bytes] = None) -> None:
         """Transmit a command to the TPM device
 
         Command header:
@@ -1996,6 +1996,8 @@ class TpmDevice:
         if resp in (b'\x00', b'\x01'):
             return resp != b'\x00'  # boolean
         if len(resp) == 4:
+            if TYPE_CHECKING:
+                return 0
             return struct.unpack('>I', resp)[0]
         raise RuntimeError(f"Unexpected response format for TPM_CAP_PROPERTY: {resp!r}")
 
@@ -2058,7 +2060,7 @@ class TpmDevice:
         resp = self.tpm12_get_capability_nosub(Tpm12CapabilityArea.TPM_CAP_NV_LIST)
         return struct.unpack('>' + 'I' * (len(resp) // 4), resp)
 
-    def tpm12_print_cap_version(self, indent: str = ''):
+    def tpm12_print_cap_version(self, indent: str = '') -> None:
         """Print TPM 1.2 capability TPM_CAP_VERSION
 
         Response: struct TPM_STRUCT_VER which is always 1, 1, 0, 0
@@ -2069,7 +2071,7 @@ class TpmDevice:
         if resp != b'\x01\x01\x00\x00':
             print(f"Warning: unexpected TPM_CAP_VERSION {resp!r}", file=sys.stderr)
 
-    def tpm12_print_cap_version_info(self, indent: str = ''):
+    def tpm12_print_cap_version_info(self, indent: str = '') -> None:
         """Print TPM 1.2 capability TPM_CAP_VERSION_VAL
 
         Response:
@@ -2111,7 +2113,7 @@ class TpmDevice:
             vend_spec_hex = binascii.hexlify(resp[0xf:]).decode('ascii')
             print(f"{indent}  - vendor specific information: {vend_spec_hex}")
 
-    def tpm12_print_cap_nv_index(self, nv_idx: int, indent: str = ''):
+    def tpm12_print_cap_nv_index(self, nv_idx: int, indent: str = '') -> None:
         """Print TPM 1.2 capability TPM_CAP_NV_INDEX
 
         struct TPM_NV_DATA_PUBLIC {
@@ -2380,7 +2382,7 @@ class TpmDevice:
             curves.append(Tpm20EccCurve(ecc_curve_id))
         return curves
 
-    def tpm20_get_cap_handles(self, bruteforce=False) -> Tpm20CapHandles:
+    def tpm20_get_cap_handles(self, bruteforce: bool = False) -> Tpm20CapHandles:
         """Get TPM 2.0 capability TPM_CAP_HANDLES
 
         "prop" is the starting handle.
@@ -2524,6 +2526,7 @@ class TpmDevice:
         if prop_id != prop.value:
             # Another property is returned when the property does not exist
             return None
+        assert isinstance(value, int)
         return value
 
     def tpm20_get_cap_pcr_properties(self) -> Tpm20CapPcrProperties:
@@ -2668,7 +2671,7 @@ class TpmDevice:
             raise RuntimeError(f"Unexpected response format for TPM2_CC_StartAuthSession: {resp!r}")
         return Tpm20AuthSessionContext(session_handle, TpmAlgId.TPM_ALG_SHA256, nonce_caller, nonce_tpm, b'')
 
-    def tpm20_flush_context(self, handle: int):
+    def tpm20_flush_context(self, handle: int) -> None:
         """Remove from the TPM memory the context associated with a loaded
         object, sequence object, or session, using TPM2_FlushContext.
         """
@@ -2770,7 +2773,7 @@ class TpmDevice:
         return data
 
 
-def main(argv: Optional[Sequence[str]] = None):
+def main(argv: Optional[Sequence[str]] = None) -> None:
     parser = argparse.ArgumentParser(description="Get various information from a TPM")
     parser.add_argument('-d', '--device', type=Path,
                         help="TPM device to use (/dev/tpmrm0 by default)")
