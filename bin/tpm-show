@@ -2773,6 +2773,395 @@ class TpmDevice:
         return data
 
 
+def show_tpm_dev(dev: TpmDevice) -> None:
+    print(f"Device {dev.name} is TPM {dev.tpm_version()}")
+
+    if dev.is_tpm12:
+        print("TPM Capabilities:")
+        dev.tpm12_print_cap_version("  ")
+        dev.tpm12_print_cap_version_info("  ")
+        print("  - Properties:")
+        prop_pcr = dev.tpm12_get_capability_prop(Tpm12CapabilityArea.TPM_CAP_PROP_PCR)
+        assert isinstance(prop_pcr, int)
+        print(f"    - Number of PCR: {prop_pcr}")
+        print(f"    - Number of DIR: {dev.tpm12_get_capability_prop(Tpm12CapabilityArea.TPM_CAP_PROP_DIR)}")
+        manuf = dev.tpm12_get_capability_prop(Tpm12CapabilityArea.TPM_CAP_PROP_MANUFACTURER)
+        bytes_manuf = struct.pack('>I', manuf).rstrip(b'\0')
+        try:
+            repr_manuf = repr(bytes_manuf.decode('ascii'))
+        except UnicodeDecodeError:
+            repr_manuf = repr(bytes_manuf)
+        print(f"    - Manufacturer: {repr_manuf} ({manuf:#x})")
+        for prop, desc in (
+                (Tpm12CapabilityArea.TPM_CAP_PROP_KEYS, 'Number of loadable RSA-2048 keys'),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_MIN_COUNTER, "Minimum 10ths of seconds between monotonic counter increments"),  # noqa
+                (Tpm12CapabilityArea.TPM_CAP_PROP_AUTHSESS, "Available authorization sessions"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_TRANSESS, "Available transport sessions"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_COUNTERS, "Available monotonic counters"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_AUTHSESS, "Maximum authorization sessions"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_TRANSESS, "Maximum transport sessions"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_COUNTERS, "Maximum monotonic counters"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_KEYS, "Maximum RSA-2048 keys"),  # without EK or SRK
+                (Tpm12CapabilityArea.TPM_CAP_PROP_OWNER, "Is an owner installed"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_CONTEXT, "Available saved session slots"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_CONTEXT, "Maximum saved session slots"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_FAMILYROWS, "Maximum rows in family table"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_TIS_TIMEOUT, "TIS timeouts"),  # timeouts for platform specific TPM Interface Specification.  # noqa
+                (Tpm12CapabilityArea.TPM_CAP_PROP_STARTUP_EFFECT, "Startup Effect"),  # TPM_STARTUP_EFFECTS = UINT32
+                (Tpm12CapabilityArea.TPM_CAP_PROP_DELEGATE_ROW, "Maximum size of the delegate table in rows"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_DAA_MAX, "Maximum DAA sessions"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_DAASESS, "Available DAA sessions"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_CONTEXT_DIST, "Maximum distance between count values"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_DAA_INTERRUPT, "Does accept any command while DAA Join or Sign"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_SESSIONS, "Available auth. and transp. sessions"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_SESSIONS, "Maximum sessions"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_CMK_RESTRICTION, "CMK restriction"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_DURATION, "Small, medium and long durations (µs)"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_ACTIVE_COUNTER, "Active counter ID"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_NV_AVAILABLE, "Maximum NV space"),
+                (Tpm12CapabilityArea.TPM_CAP_PROP_INPUT_BUFFER, "Maximum size of input/output buffers")):
+            prop_value = dev.tpm12_get_capability_prop(prop)
+            if prop == Tpm12CapabilityArea.TPM_CAP_PROP_ACTIVE_COUNTER:
+                print(f"    - {desc}: {prop_value:#x}")
+            else:
+                print(f"    - {desc}: {prop_value}")
+        print("")
+
+        print("  - Supported commands:")
+        # TODO when encountering a TPM 1.2, bruteforce all the possible commands
+        for ordinal in itertools.chain(range(0x100), range(0x20000000, 0x20000300), range(0x40000000, 0x40000100)):
+            if dev.tpm12_get_cap_ordinal(ordinal):
+                try:
+                    command_name = Tpm12CommandCode(ordinal).name
+                except ValueError:
+                    # If this is not a vendor command, this is fatal
+                    if ordinal < 0x10000:
+                        raise
+                    # Otherwise, it is a vendor command
+                    command_name = f"VendorCommand{ordinal}"
+                print(f"    [{ordinal:#10x}] {command_name}")
+        print("")
+
+        print("  - Supported algorithms:")
+        for algorithm in range(0x10):
+            if dev.tpm12_get_cap_algorithm(algorithm):
+                print(f"    [{algorithm:#4x}] {Tpm12AlgId(algorithm).name}")
+        print("")
+
+        print("  - Supported symmetric modes:")
+        for sym_mode in range(4):
+            if dev.tpm12_get_cap_sym_mode(sym_mode):
+                print(f"    [{sym_mode:#4x}] {Tpm12SymMode(sym_mode).name}")
+        print("")
+
+        print("  - Supported protocols:")
+        for protocol in range(0x10):
+            if dev.tpm12_get_cap_protocol(protocol):
+                print(f"    [{protocol:#4x}] {Tpm12ProtocolId(protocol).name}")
+        print("")
+
+        print("  - Permanent flags:")
+        permanent_flags = dev.tpm12_get_cap_flag(Tpm12CapabilityArea.TPM_CAP_FLAG_PERMANENT)
+        for flag_idx, flag_value in enumerate(permanent_flags):
+            if flag_idx < len(TPM12_PERMANENT_FLAGS_DESC):
+                print(f"    [{flag_idx:2d}] {TPM12_PERMANENT_FLAGS_DESC[flag_idx]} = {flag_value}")
+            else:
+                print(f"    [{flag_idx:2d}] Unknown? = {flag_value}")
+        print("")
+
+        print("  - Volatile (Startup Clear) flags:")
+        for flag_idx, flag_value in enumerate(dev.tpm12_get_cap_flag(Tpm12CapabilityArea.TPM_CAP_FLAG_VOLATILE)):
+            if flag_idx < len(TPM12_STCLEAR_FLAGS_DESC):
+                print(f"    [{flag_idx:2d}] {TPM12_STCLEAR_FLAGS_DESC[flag_idx]} = {flag_value}")
+            else:
+                print(f"    [{flag_idx:2d}] Unknown? = {flag_value}")
+        print("")
+
+        print("PCR:")
+        for pcr_idx in range(prop_pcr):
+            pcr_digest = dev.tpm12_pcr_read(pcr_idx)
+            pcr_digest_hex = binascii.hexlify(pcr_digest).decode('ascii')
+            print(f"  {pcr_idx:2d}: {pcr_digest_hex}")
+        print("")
+
+        print("Non Volatile memory:")
+        for nv_idx in dev.tpm12_get_cap_nv_list():
+            nv_desc = TPM12_RESERVED_NV_INDEXES_DESC.get(nv_idx)
+            if nv_desc:
+                print(f"  [{nv_idx:#010x}] {nv_desc}")
+            else:
+                print(f"  [{nv_idx:#010x}]")
+            dev.tpm12_print_cap_nv_index(nv_idx, indent="    ")
+        print("")
+
+        print("PubEK (Public Endorsement Key):")  # This is a privacy sentitive value, according to the spec.
+        try:
+            pubek = dev.tpm12_read_pubek()
+        except Tpm12Failure as exc:
+            if exc.code == Tpm12ResponseCode.TPM_DISABLED_CMD:
+                if not permanent_flags[3]:
+                    print("  Error TPM_DISABLED_CMD as expected (readPubek is false, an owner may exist)")
+                else:
+                    print("  Error TPM_DISABLED_CMD but readPubek is true, raise the exception")
+                    raise
+            else:
+                raise
+        else:
+            hexdump(pubek, indent="  ")
+            raise NotImplementedError("I did not implement PubEK parsing for TPM 1.2")
+
+    if dev.is_tpm20:
+        tpm_prop_group = None
+        for prop_id, prop_value in dev.tpm20_get_cap_tpm_properties():
+            if tpm_prop_group is None or prop_id >= tpm_prop_group + 0x100:
+                # Next group
+                tpm_prop_group = prop_id & ~0xff
+                if tpm_prop_group == 0x100:
+                    print("TPM fixed properties:")
+                elif tpm_prop_group == 0x200:
+                    print("TPM variable properties:")
+                else:
+                    print(f"TPM properties group {tpm_prop_group:#x} (UNKNOWN):")
+            try:
+                prop_name = Tpm20Property(prop_id).name
+            except ValueError:
+                prop_name = f"<UNKNOWN property {prop_id}>"
+            repr_prop_value = hex(prop_value)
+            if prop_id in (
+                    Tpm20Property.TPM2_PT_FAMILY_INDICATOR.value,
+                    Tpm20Property.TPM2_PT_MANUFACTURER.value,
+                    Tpm20Property.TPM2_PT_VENDOR_STRING_1.value,
+                    Tpm20Property.TPM2_PT_VENDOR_STRING_2.value,
+                    Tpm20Property.TPM2_PT_VENDOR_STRING_3.value,
+                    Tpm20Property.TPM2_PT_VENDOR_STRING_4.value):
+                # String property
+                bytes_value = struct.pack('>I', prop_value).rstrip(b'\0')
+                try:
+                    repr_prop_value = repr(bytes_value.decode('ascii'))
+                except UnicodeDecodeError:
+                    repr_prop_value = repr(bytes_value)
+            elif prop_id == Tpm20Property.TPM2_PT_REVISION.value:
+                # Version property
+                repr_prop_value = f"{prop_value // 100}.{prop_value % 100}"
+            elif prop_id in (
+                    Tpm20Property.TPM2_PT_FIRMWARE_VERSION_1,
+                    Tpm20Property.TPM2_PT_FIRMWARE_VERSION_2):
+                version_major = (prop_value >> 16) & 0xffff
+                version_minor = prop_value & 0xffff
+                repr_prop_value = f"{version_major}.{version_minor} ({prop_value:#x})"
+            elif prop_id in (
+                    Tpm20Property.TPM2_PT_DAY_OF_YEAR.value,
+                    Tpm20Property.TPM2_PT_YEAR.value,
+                    Tpm20Property.TPM2_PT_PCR_COUNT.value,
+                    Tpm20Property.TPM2_PT_CLOCK_UPDATE.value,
+                    Tpm20Property.TPM2_PT_LOCKOUT_INTERVAL.value,
+                    Tpm20Property.TPM2_PT_LOCKOUT_RECOVERY.value):
+                # Decimal property
+                repr_prop_value = str(prop_value)
+            print(f"  [{prop_id:#6x}] {prop_name} = {repr_prop_value}")
+
+        print("")
+
+        print("Supported algorithms:")
+        for alg_id, alg_properties in dev.tpm20_get_cap_algs():
+            desc_props = ""
+            if alg_properties & 1:
+                desc_props += " asymmetric"
+            if alg_properties & 2:
+                desc_props += " symmetric"
+            if alg_properties & 4:
+                desc_props += " hash"
+            if alg_properties & 8:
+                desc_props += " object"
+            if alg_properties & 0x100:
+                desc_props += " signing"
+            if alg_properties & 0x200:
+                desc_props += " encrypting"
+            if alg_properties & 0x400:
+                desc_props += " method"
+            remaining = alg_properties & ~0x70f
+            if remaining:
+                desc_props += f" ???({remaining:#x})"
+            print(f"  [{alg_id.value:#4x}] {alg_id.name}:{desc_props}")
+
+        print("")
+
+        print("Supported ECC curves:")
+        for ecc_curve in dev.tpm20_get_cap_ecc_curves():
+            print(f"  [{ecc_curve.value:#4x}] {ecc_curve.name}")
+
+        print("")
+
+        all_update_counters: Set[int] = set()
+        for bank_alg_id, bank_pcr_select in dev.tpm20_get_cap_pcrs():
+            print(f"PCR for bank {bank_alg_id.name}:")
+            for pcr_idx in bank_pcr_select:
+                pcr_digest, pcr_update_counter = dev.tpm20_pcr_read(pcr_idx, bank_alg_id)
+                all_update_counters.add(pcr_update_counter)
+                pcr_digest_hex = binascii.hexlify(pcr_digest).decode('ascii')
+                print(f"  {pcr_idx:2d}: {pcr_digest_hex}")
+        print(f"PCR update counter: {','.join(str(c) for c in sorted(all_update_counters))}")
+
+        print("")
+
+        print("PCR properties:")
+        for pcr_prop_id, pcr_select in dev.tpm20_get_cap_pcr_properties():
+            prop_name = Tpm20PcrProperty(pcr_prop_id).name
+            print(f"  [{pcr_prop_id:#4x}] {prop_name}: {','.join(str(pcr) for pcr in pcr_select)}")
+
+        print("")
+
+        cmd_list: Sequence[Tuple[str, Tpm20Capability]] = (
+            ("Normal commands", Tpm20Capability.TPM_CAP_COMMANDS),
+            # "... for confirmation of platform authorization"
+            ("Commands requiring Physical Presence", Tpm20Capability.TPM_CAP_PP_COMMANDS),
+            ("Audit commands", Tpm20Capability.TPM_CAP_AUDIT_COMMANDS),
+        )
+        for comm_category, comm_cap in cmd_list:
+            print(f"{comm_category}:")
+            for command_code, comm_attr in dev.tpm20_get_cap_commands(comm_cap):
+                try:
+                    command_name = Tpm20CommandCode(command_code).name
+                except ValueError:
+                    # If this is not a vendor command, this is fatal
+                    if (comm_attr & 0x2000) == 0:
+                        raise
+                    # Otherwise, it is a vendor command
+                    command_name = f"VendorCommand{command_code}"
+                desc_attr = ""
+                if comm_attr & 0x40:
+                    desc_attr += " nv"
+                if comm_attr & 0x80:
+                    desc_attr += " extensive"
+                if comm_attr & 0x100:
+                    desc_attr += " flushed"
+                if comm_attr & 0xe00:
+                    desc_attr += f" cHandles<{(comm_attr >> 9) & 7}>"
+                if comm_attr & 0x1000:
+                    desc_attr += " rHandle"
+                if comm_attr & 0x2000:
+                    desc_attr += " Vendor"
+                remaining = comm_attr & ~0x3fc0
+                if remaining:
+                    desc_attr += f" ???({remaining:#x})"
+                print(f"  [{command_code:#6x}] {command_name}:{desc_attr}")
+
+                if command_code == Tpm20CommandCode.TPM2_CC_FirmwareRead.value:
+                    # Terminate abruptely in order to investigate
+                    print("/!\\ The TPM firmware can be read /!\\", file=sys.stderr)
+                    sys.exit(1)
+
+        print("")
+
+        # Try opening a session with the TPM
+        auth_session = dev.tpm20_start_auth_session_hmac()
+        print(f"Started session with handle {auth_session.session_handle:#x}")
+        try:
+            print("Handles:")
+            previous_handle_type: Optional[int] = None
+            for handle in dev.tpm20_get_cap_handles():
+                handle_type = handle >> 24
+                if previous_handle_type != handle_type:
+                    handle_type_name = Tpm20HandleType(handle_type).name
+                    print(f"  [{handle_type:#04x}] Handle type {handle_type_name}")
+                    previous_handle_type = handle_type
+                try:
+                    handle_name = Tpm20Handle(handle).name
+                except ValueError:
+                    if 0x01000000 <= handle <= 0x013fffff:
+                        handle_name = f"<unknown handle {handle:#x} for NV index defined by TPM Manufacturer>"
+                    elif 0x01400000 <= handle <= 0x017fffff:
+                        handle_name = f"<unknown handle {handle:#x} for NV index defined by Platform Manufacturer>"
+                    elif 0x01800000 <= handle <= 0x01bfffff:
+                        handle_name = f"<unknown handle {handle:#x} for NV index defined by Owner>"
+                    elif 0x01c00000 <= handle <= 0x01ffffff:
+                        handle_name = f"<unknown handle {handle:#x} for NV index defined by TCG>"
+                    else:
+                        handle_name = f"<unknown handle {handle:#x}>"
+                if handle == auth_session.session_handle:
+                    handle_name += " (handle to the active session)"
+                print(f"    [{handle:#010x}] {handle_name}")
+
+                # Read the public area on objects
+                if handle_type not in (
+                        Tpm20HandleType.TPM_HT_PCR.value,
+                        Tpm20HandleType.TPM_HT_NV_INDEX.value,
+                        Tpm20HandleType.TPM_HT_HMAC_SESSION.value,
+                        Tpm20HandleType.TPM_HT_PERMANENT.value):
+                    try:
+                        obj_pubdata, obj_name, obj_qual_name = dev.tpm20_public_read(handle)
+                    except Tpm20Failure as exc:
+                        if exc.code == Tpm20ResponseCode.TPM2_Unknown_RC_from_Public_Read_0x184:
+                            print(f"      - Public object read: unknown error {exc.code:#x}")
+                        else:
+                            raise
+                    else:
+                        obj_name_hex = binascii.hexlify(obj_name).decode('ascii')
+                        obj_qual_name_hex = binascii.hexlify(obj_qual_name).decode('ascii')
+                        print(f"      - object name: {obj_name_hex}")
+                        print(f"      - object qualified name: {obj_qual_name_hex}")
+                        print("      - object public area:")
+                        print(f"        - type alg ({obj_pubdata.type_alg.value:#x}): {obj_pubdata.type_alg.name}")  # noqa
+                        print(f"        - name alg ({obj_pubdata.name_alg.value:#x}): {obj_pubdata.name_alg.name}")  # noqa
+                        print(f"        - attributes ({obj_pubdata.attributes:#010x}): {obj_pubdata.attr_desc()}")
+                        if obj_pubdata.auth_policy:
+                            hex_auth_policy = binascii.hexlify(obj_pubdata.auth_policy).decode('ascii')
+                            desc_auth_policy = WELL_KNOWN_EA_POLICIES.get(hex_auth_policy, 'unknown')
+                            print(f"        - auth policy: {hex_auth_policy} = {desc_auth_policy}")
+                        else:
+                            print("        - auth policy empty")
+                        print("        - parameters:")
+                        obj_pubdata.print_parameters(indent="          ")
+
+                        computed_obj_name = obj_pubdata.compute_name()
+                        if computed_obj_name != obj_name:
+                            computed_obj_name_hex = binascii.hexlify(computed_obj_name).decode('ascii')
+                            raise RuntimeError(
+                                f"Name of object {handle:#x} does not match its public area: {computed_obj_name_hex} != {obj_name_hex}")  # noqa
+
+                # Read non-volatile indexes
+                if handle_type == Tpm20HandleType.TPM_HT_NV_INDEX.value:
+                    pub_data, nv_name = dev.tpm20_nv_public_read(handle)
+                    nv_name_hex = binascii.hexlify(nv_name).decode('ascii')
+                    print(f"      - NV name: {nv_name_hex}")
+                    print("      - NV public area:")
+                    assert pub_data.nv_index == handle, f"Unexpected NV Index in public data: {pub_data}"
+                    print(f"        - name alg ({pub_data.name_alg.value:#x}): {pub_data.name_alg.name}")
+                    print(f"        - attributes ({pub_data.attributes:#010x}): {pub_data.attr_desc()}")
+                    if pub_data.auth_policy:
+                        hex_auth_policy = binascii.hexlify(pub_data.auth_policy).decode('ascii')
+                        desc_auth_policy = WELL_KNOWN_EA_POLICIES.get(hex_auth_policy, 'unknown')
+                        print(f"        - auth policy: {hex_auth_policy} = {desc_auth_policy}")
+                    else:
+                        print("        - auth policy empty")
+                    print(f"        - data size: {pub_data.data_size:#x} = {pub_data.data_size}")
+
+                    computed_nv_name = pub_data.compute_name()
+                    if computed_nv_name != nv_name:
+                        computed_nv_name_hex = binascii.hexlify(computed_nv_name).decode('ascii')
+                        raise RuntimeError(
+                            f"Name of NV Index {handle:#x} does not match its public area: {computed_nv_name_hex} != {nv_name_hex}")  # noqa
+
+                    try:
+                        # Try reading the handle, using the session
+                        handle_data = dev.tpm20_nv_read_all(
+                            handle, auth_session, nv_name, pub_data.data_size)
+                    except Tpm20Failure as exc:
+                        if exc.code == Tpm20ResponseCode.TPM2_RC_AUTH_UNAVAILABLE:
+                            print("      - NV data: error TPM2_RC_AUTH_UNAVAILABLE")
+                        elif exc.code == Tpm20ResponseCode.TPM2_RC_NV_UNINITIALIZED:
+                            print("      - NV data: error TPM2_RC_NV_UNINITIALIZED")
+                        elif exc.code == Tpm20ResponseCode.TPM2_Unknown_RC_from_NV_Read_0x9a2:
+                            print(f"      - NV data: unknown error {exc.code:#x}")
+                        else:
+                            raise
+                    else:
+                        print("      - NV data:")
+                        hexdump(handle_data, indent='        ')
+        finally:
+            dev.tpm20_flush_context(auth_session.session_handle)
+
+
 def main(argv: Optional[Sequence[str]] = None) -> None:
     parser = argparse.ArgumentParser(description="Get various information from a TPM")
     parser.add_argument('-d', '--device', type=Path,
@@ -2803,392 +3192,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             return
 
     with TpmDevice.open(dev_path=dev_path, tpm_host=tpm_host, tpm_port=tpm_port, use_mssim=args.mssim) as dev:
-        print(f"Device {dev.name} is TPM {dev.tpm_version()}")
-
-        if dev.is_tpm12:
-            print("TPM Capabilities:")
-            dev.tpm12_print_cap_version("  ")
-            dev.tpm12_print_cap_version_info("  ")
-            print("  - Properties:")
-            prop_pcr = dev.tpm12_get_capability_prop(Tpm12CapabilityArea.TPM_CAP_PROP_PCR)
-            assert isinstance(prop_pcr, int)
-            print(f"    - Number of PCR: {prop_pcr}")
-            print(f"    - Number of DIR: {dev.tpm12_get_capability_prop(Tpm12CapabilityArea.TPM_CAP_PROP_DIR)}")
-            manuf = dev.tpm12_get_capability_prop(Tpm12CapabilityArea.TPM_CAP_PROP_MANUFACTURER)
-            bytes_manuf = struct.pack('>I', manuf).rstrip(b'\0')
-            try:
-                repr_manuf = repr(bytes_manuf.decode('ascii'))
-            except UnicodeDecodeError:
-                repr_manuf = repr(bytes_manuf)
-            print(f"    - Manufacturer: {repr_manuf} ({manuf:#x})")
-            for prop, desc in (
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_KEYS, 'Number of loadable RSA-2048 keys'),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_MIN_COUNTER, "Minimum 10ths of seconds between monotonic counter increments"),  # noqa
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_AUTHSESS, "Available authorization sessions"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_TRANSESS, "Available transport sessions"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_COUNTERS, "Available monotonic counters"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_AUTHSESS, "Maximum authorization sessions"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_TRANSESS, "Maximum transport sessions"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_COUNTERS, "Maximum monotonic counters"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_KEYS, "Maximum RSA-2048 keys"),  # without EK or SRK
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_OWNER, "Is an owner installed"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_CONTEXT, "Available saved session slots"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_CONTEXT, "Maximum saved session slots"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_FAMILYROWS, "Maximum rows in family table"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_TIS_TIMEOUT, "TIS timeouts"),  # timeouts for platform specific TPM Interface Specification.  # noqa
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_STARTUP_EFFECT, "Startup Effect"),  # TPM_STARTUP_EFFECTS = UINT32
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_DELEGATE_ROW, "Maximum size of the delegate table in rows"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_DAA_MAX, "Maximum DAA sessions"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_DAASESS, "Available DAA sessions"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_CONTEXT_DIST, "Maximum distance between count values"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_DAA_INTERRUPT, "Does accept any command while DAA Join or Sign"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_SESSIONS, "Available auth. and transp. sessions"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_SESSIONS, "Maximum sessions"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_CMK_RESTRICTION, "CMK restriction"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_DURATION, "Small, medium and long durations (µs)"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_ACTIVE_COUNTER, "Active counter ID"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_MAX_NV_AVAILABLE, "Maximum NV space"),
-                    (Tpm12CapabilityArea.TPM_CAP_PROP_INPUT_BUFFER, "Maximum size of input/output buffers")):
-                prop_value = dev.tpm12_get_capability_prop(prop)
-                if prop == Tpm12CapabilityArea.TPM_CAP_PROP_ACTIVE_COUNTER:
-                    print(f"    - {desc}: {prop_value:#x}")
-                else:
-                    print(f"    - {desc}: {prop_value}")
-            print("")
-
-            print("  - Supported commands:")
-            # TODO when encountering a TPM 1.2, bruteforce all the possible commands
-            for ordinal in itertools.chain(range(0x100), range(0x20000000, 0x20000300), range(0x40000000, 0x40000100)):
-                if dev.tpm12_get_cap_ordinal(ordinal):
-                    try:
-                        command_name = Tpm12CommandCode(ordinal).name
-                    except ValueError:
-                        # If this is not a vendor command, this is fatal
-                        if ordinal < 0x10000:
-                            raise
-                        # Otherwise, it is a vendor command
-                        command_name = f"VendorCommand{ordinal}"
-                    print(f"    [{ordinal:#10x}] {command_name}")
-            print("")
-
-            print("  - Supported algorithms:")
-            for algorithm in range(0x10):
-                if dev.tpm12_get_cap_algorithm(algorithm):
-                    print(f"    [{algorithm:#4x}] {Tpm12AlgId(algorithm).name}")
-            print("")
-
-            print("  - Supported symmetric modes:")
-            for sym_mode in range(4):
-                if dev.tpm12_get_cap_sym_mode(sym_mode):
-                    print(f"    [{sym_mode:#4x}] {Tpm12SymMode(sym_mode).name}")
-            print("")
-
-            print("  - Supported protocols:")
-            for protocol in range(0x10):
-                if dev.tpm12_get_cap_protocol(protocol):
-                    print(f"    [{protocol:#4x}] {Tpm12ProtocolId(protocol).name}")
-            print("")
-
-            print("  - Permanent flags:")
-            permanent_flags = dev.tpm12_get_cap_flag(Tpm12CapabilityArea.TPM_CAP_FLAG_PERMANENT)
-            for flag_idx, flag_value in enumerate(permanent_flags):
-                if flag_idx < len(TPM12_PERMANENT_FLAGS_DESC):
-                    print(f"    [{flag_idx:2d}] {TPM12_PERMANENT_FLAGS_DESC[flag_idx]} = {flag_value}")
-                else:
-                    print(f"    [{flag_idx:2d}] Unknown? = {flag_value}")
-            print("")
-
-            print("  - Volatile (Startup Clear) flags:")
-            for flag_idx, flag_value in enumerate(dev.tpm12_get_cap_flag(Tpm12CapabilityArea.TPM_CAP_FLAG_VOLATILE)):
-                if flag_idx < len(TPM12_STCLEAR_FLAGS_DESC):
-                    print(f"    [{flag_idx:2d}] {TPM12_STCLEAR_FLAGS_DESC[flag_idx]} = {flag_value}")
-                else:
-                    print(f"    [{flag_idx:2d}] Unknown? = {flag_value}")
-            print("")
-
-            print("PCR:")
-            for pcr_idx in range(prop_pcr):
-                pcr_digest = dev.tpm12_pcr_read(pcr_idx)
-                pcr_digest_hex = binascii.hexlify(pcr_digest).decode('ascii')
-                print(f"  {pcr_idx:2d}: {pcr_digest_hex}")
-            print("")
-
-            print("Non Volatile memory:")
-            for nv_idx in dev.tpm12_get_cap_nv_list():
-                nv_desc = TPM12_RESERVED_NV_INDEXES_DESC.get(nv_idx)
-                if nv_desc:
-                    print(f"  [{nv_idx:#010x}] {nv_desc}")
-                else:
-                    print(f"  [{nv_idx:#010x}]")
-                dev.tpm12_print_cap_nv_index(nv_idx, indent="    ")
-            print("")
-
-            print("PubEK (Public Endorsement Key):")  # This is a privacy sentitive value, according to the spec.
-            try:
-                pubek = dev.tpm12_read_pubek()
-            except Tpm12Failure as exc:
-                if exc.code == Tpm12ResponseCode.TPM_DISABLED_CMD:
-                    if not permanent_flags[3]:
-                        print("  Error TPM_DISABLED_CMD as expected (readPubek is false, an owner may exist)")
-                    else:
-                        print("  Error TPM_DISABLED_CMD but readPubek is true, raise the exception")
-                        raise
-                else:
-                    raise
-            else:
-                hexdump(pubek, indent="  ")
-                raise NotImplementedError("I did not implement PubEK parsing for TPM 1.2")
-
-        if dev.is_tpm20:
-            tpm_prop_group = None
-            for prop_id, prop_value in dev.tpm20_get_cap_tpm_properties():
-                if tpm_prop_group is None or prop_id >= tpm_prop_group + 0x100:
-                    # Next group
-                    tpm_prop_group = prop_id & ~0xff
-                    if tpm_prop_group == 0x100:
-                        print("TPM fixed properties:")
-                    elif tpm_prop_group == 0x200:
-                        print("TPM variable properties:")
-                    else:
-                        print(f"TPM properties group {tpm_prop_group:#x} (UNKNOWN):")
-                try:
-                    prop_name = Tpm20Property(prop_id).name
-                except ValueError:
-                    prop_name = f"<UNKNOWN property {prop_id}>"
-                repr_prop_value = hex(prop_value)
-                if prop_id in (
-                        Tpm20Property.TPM2_PT_FAMILY_INDICATOR.value,
-                        Tpm20Property.TPM2_PT_MANUFACTURER.value,
-                        Tpm20Property.TPM2_PT_VENDOR_STRING_1.value,
-                        Tpm20Property.TPM2_PT_VENDOR_STRING_2.value,
-                        Tpm20Property.TPM2_PT_VENDOR_STRING_3.value,
-                        Tpm20Property.TPM2_PT_VENDOR_STRING_4.value):
-                    # String property
-                    bytes_value = struct.pack('>I', prop_value).rstrip(b'\0')
-                    try:
-                        repr_prop_value = repr(bytes_value.decode('ascii'))
-                    except UnicodeDecodeError:
-                        repr_prop_value = repr(bytes_value)
-                elif prop_id == Tpm20Property.TPM2_PT_REVISION.value:
-                    # Version property
-                    repr_prop_value = f"{prop_value // 100}.{prop_value % 100}"
-                elif prop_id in (
-                        Tpm20Property.TPM2_PT_FIRMWARE_VERSION_1,
-                        Tpm20Property.TPM2_PT_FIRMWARE_VERSION_2):
-                    version_major = (prop_value >> 16) & 0xffff
-                    version_minor = prop_value & 0xffff
-                    repr_prop_value = f"{version_major}.{version_minor} ({prop_value:#x})"
-                elif prop_id in (
-                        Tpm20Property.TPM2_PT_DAY_OF_YEAR.value,
-                        Tpm20Property.TPM2_PT_YEAR.value,
-                        Tpm20Property.TPM2_PT_PCR_COUNT.value,
-                        Tpm20Property.TPM2_PT_CLOCK_UPDATE.value,
-                        Tpm20Property.TPM2_PT_LOCKOUT_INTERVAL.value,
-                        Tpm20Property.TPM2_PT_LOCKOUT_RECOVERY.value):
-                    # Decimal property
-                    repr_prop_value = str(prop_value)
-                print(f"  [{prop_id:#6x}] {prop_name} = {repr_prop_value}")
-
-            print("")
-
-            print("Supported algorithms:")
-            for alg_id, alg_properties in dev.tpm20_get_cap_algs():
-                desc_props = ""
-                if alg_properties & 1:
-                    desc_props += " asymmetric"
-                if alg_properties & 2:
-                    desc_props += " symmetric"
-                if alg_properties & 4:
-                    desc_props += " hash"
-                if alg_properties & 8:
-                    desc_props += " object"
-                if alg_properties & 0x100:
-                    desc_props += " signing"
-                if alg_properties & 0x200:
-                    desc_props += " encrypting"
-                if alg_properties & 0x400:
-                    desc_props += " method"
-                remaining = alg_properties & ~0x70f
-                if remaining:
-                    desc_props += f" ???({remaining:#x})"
-                print(f"  [{alg_id.value:#4x}] {alg_id.name}:{desc_props}")
-
-            print("")
-
-            print("Supported ECC curves:")
-            for ecc_curve in dev.tpm20_get_cap_ecc_curves():
-                print(f"  [{ecc_curve.value:#4x}] {ecc_curve.name}")
-
-            print("")
-
-            all_update_counters: Set[int] = set()
-            for bank_alg_id, bank_pcr_select in dev.tpm20_get_cap_pcrs():
-                print(f"PCR for bank {bank_alg_id.name}:")
-                for pcr_idx in bank_pcr_select:
-                    pcr_digest, pcr_update_counter = dev.tpm20_pcr_read(pcr_idx, bank_alg_id)
-                    all_update_counters.add(pcr_update_counter)
-                    pcr_digest_hex = binascii.hexlify(pcr_digest).decode('ascii')
-                    print(f"  {pcr_idx:2d}: {pcr_digest_hex}")
-            print(f"PCR update counter: {','.join(str(c) for c in sorted(all_update_counters))}")
-
-            print("")
-
-            print("PCR properties:")
-            for pcr_prop_id, pcr_select in dev.tpm20_get_cap_pcr_properties():
-                prop_name = Tpm20PcrProperty(pcr_prop_id).name
-                print(f"  [{pcr_prop_id:#4x}] {prop_name}: {','.join(str(pcr) for pcr in pcr_select)}")
-
-            print("")
-
-            cmd_list: Sequence[Tuple[str, Tpm20Capability]] = (
-                ("Normal commands", Tpm20Capability.TPM_CAP_COMMANDS),
-                # "... for confirmation of platform authorization"
-                ("Commands requiring Physical Presence", Tpm20Capability.TPM_CAP_PP_COMMANDS),
-                ("Audit commands", Tpm20Capability.TPM_CAP_AUDIT_COMMANDS),
-            )
-            for comm_category, comm_cap in cmd_list:
-                print(f"{comm_category}:")
-                for command_code, comm_attr in dev.tpm20_get_cap_commands(comm_cap):
-                    try:
-                        command_name = Tpm20CommandCode(command_code).name
-                    except ValueError:
-                        # If this is not a vendor command, this is fatal
-                        if (comm_attr & 0x2000) == 0:
-                            raise
-                        # Otherwise, it is a vendor command
-                        command_name = f"VendorCommand{command_code}"
-                    desc_attr = ""
-                    if comm_attr & 0x40:
-                        desc_attr += " nv"
-                    if comm_attr & 0x80:
-                        desc_attr += " extensive"
-                    if comm_attr & 0x100:
-                        desc_attr += " flushed"
-                    if comm_attr & 0xe00:
-                        desc_attr += f" cHandles<{(comm_attr >> 9) & 7}>"
-                    if comm_attr & 0x1000:
-                        desc_attr += " rHandle"
-                    if comm_attr & 0x2000:
-                        desc_attr += " Vendor"
-                    remaining = comm_attr & ~0x3fc0
-                    if remaining:
-                        desc_attr += f" ???({remaining:#x})"
-                    print(f"  [{command_code:#6x}] {command_name}:{desc_attr}")
-
-                    if command_code == Tpm20CommandCode.TPM2_CC_FirmwareRead.value:
-                        # Terminate abruptely in order to investigate
-                        print("/!\\ The TPM firmware can be read /!\\", file=sys.stderr)
-                        sys.exit(1)
-
-            print("")
-
-            # Try opening a session with the TPM
-            auth_session = dev.tpm20_start_auth_session_hmac()
-            print(f"Started session with handle {auth_session.session_handle:#x}")
-            try:
-                print("Handles:")
-                previous_handle_type: Optional[int] = None
-                for handle in dev.tpm20_get_cap_handles():
-                    handle_type = handle >> 24
-                    if previous_handle_type != handle_type:
-                        handle_type_name = Tpm20HandleType(handle_type).name
-                        print(f"  [{handle_type:#04x}] Handle type {handle_type_name}")
-                        previous_handle_type = handle_type
-                    try:
-                        handle_name = Tpm20Handle(handle).name
-                    except ValueError:
-                        if 0x01000000 <= handle <= 0x013fffff:
-                            handle_name = f"<unknown handle {handle:#x} for NV index defined by TPM Manufacturer>"
-                        elif 0x01400000 <= handle <= 0x017fffff:
-                            handle_name = f"<unknown handle {handle:#x} for NV index defined by Platform Manufacturer>"
-                        elif 0x01800000 <= handle <= 0x01bfffff:
-                            handle_name = f"<unknown handle {handle:#x} for NV index defined by Owner>"
-                        elif 0x01c00000 <= handle <= 0x01ffffff:
-                            handle_name = f"<unknown handle {handle:#x} for NV index defined by TCG>"
-                        else:
-                            handle_name = f"<unknown handle {handle:#x}>"
-                    if handle == auth_session.session_handle:
-                        handle_name += " (handle to the active session)"
-                    print(f"    [{handle:#010x}] {handle_name}")
-
-                    # Read the public area on objects
-                    if handle_type not in (
-                            Tpm20HandleType.TPM_HT_PCR.value,
-                            Tpm20HandleType.TPM_HT_NV_INDEX.value,
-                            Tpm20HandleType.TPM_HT_HMAC_SESSION.value,
-                            Tpm20HandleType.TPM_HT_PERMANENT.value):
-                        try:
-                            obj_pubdata, obj_name, obj_qual_name = dev.tpm20_public_read(handle)
-                        except Tpm20Failure as exc:
-                            if exc.code == Tpm20ResponseCode.TPM2_Unknown_RC_from_Public_Read_0x184:
-                                print(f"      - Public object read: unknown error {exc.code:#x}")
-                            else:
-                                raise
-                        else:
-                            obj_name_hex = binascii.hexlify(obj_name).decode('ascii')
-                            obj_qual_name_hex = binascii.hexlify(obj_qual_name).decode('ascii')
-                            print(f"      - object name: {obj_name_hex}")
-                            print(f"      - object qualified name: {obj_qual_name_hex}")
-                            print("      - object public area:")
-                            print(f"        - type alg ({obj_pubdata.type_alg.value:#x}): {obj_pubdata.type_alg.name}")  # noqa
-                            print(f"        - name alg ({obj_pubdata.name_alg.value:#x}): {obj_pubdata.name_alg.name}")  # noqa
-                            print(f"        - attributes ({obj_pubdata.attributes:#010x}): {obj_pubdata.attr_desc()}")
-                            if obj_pubdata.auth_policy:
-                                hex_auth_policy = binascii.hexlify(obj_pubdata.auth_policy).decode('ascii')
-                                desc_auth_policy = WELL_KNOWN_EA_POLICIES.get(hex_auth_policy, 'unknown')
-                                print(f"        - auth policy: {hex_auth_policy} = {desc_auth_policy}")
-                            else:
-                                print("        - auth policy empty")
-                            print("        - parameters:")
-                            obj_pubdata.print_parameters(indent="          ")
-
-                            computed_obj_name = obj_pubdata.compute_name()
-                            if computed_obj_name != obj_name:
-                                computed_obj_name_hex = binascii.hexlify(computed_obj_name).decode('ascii')
-                                raise RuntimeError(
-                                    f"Name of object {handle:#x} does not match its public area: {computed_obj_name_hex} != {obj_name_hex}")  # noqa
-
-                    # Read non-volatile indexes
-                    if handle_type == Tpm20HandleType.TPM_HT_NV_INDEX.value:
-                        pub_data, nv_name = dev.tpm20_nv_public_read(handle)
-                        nv_name_hex = binascii.hexlify(nv_name).decode('ascii')
-                        print(f"      - NV name: {nv_name_hex}")
-                        print("      - NV public area:")
-                        assert pub_data.nv_index == handle, f"Unexpected NV Index in public data: {pub_data}"
-                        print(f"        - name alg ({pub_data.name_alg.value:#x}): {pub_data.name_alg.name}")
-                        print(f"        - attributes ({pub_data.attributes:#010x}): {pub_data.attr_desc()}")
-                        if pub_data.auth_policy:
-                            hex_auth_policy = binascii.hexlify(pub_data.auth_policy).decode('ascii')
-                            desc_auth_policy = WELL_KNOWN_EA_POLICIES.get(hex_auth_policy, 'unknown')
-                            print(f"        - auth policy: {hex_auth_policy} = {desc_auth_policy}")
-                        else:
-                            print("        - auth policy empty")
-                        print(f"        - data size: {pub_data.data_size:#x} = {pub_data.data_size}")
-
-                        computed_nv_name = pub_data.compute_name()
-                        if computed_nv_name != nv_name:
-                            computed_nv_name_hex = binascii.hexlify(computed_nv_name).decode('ascii')
-                            raise RuntimeError(
-                                f"Name of NV Index {handle:#x} does not match its public area: {computed_nv_name_hex} != {nv_name_hex}")  # noqa
-
-                        try:
-                            # Try reading the handle, using the session
-                            handle_data = dev.tpm20_nv_read_all(
-                                handle, auth_session, nv_name, pub_data.data_size)
-                        except Tpm20Failure as exc:
-                            if exc.code == Tpm20ResponseCode.TPM2_RC_AUTH_UNAVAILABLE:
-                                print("      - NV data: error TPM2_RC_AUTH_UNAVAILABLE")
-                            elif exc.code == Tpm20ResponseCode.TPM2_RC_NV_UNINITIALIZED:
-                                print("      - NV data: error TPM2_RC_NV_UNINITIALIZED")
-                            elif exc.code == Tpm20ResponseCode.TPM2_Unknown_RC_from_NV_Read_0x9a2:
-                                print(f"      - NV data: unknown error {exc.code:#x}")
-                            else:
-                                raise
-                        else:
-                            print("      - NV data:")
-                            hexdump(handle_data, indent='        ')
-            finally:
-                dev.tpm20_flush_context(auth_session.session_handle)
+        show_tpm_dev(dev)
 
 
 if __name__ == '__main__':
