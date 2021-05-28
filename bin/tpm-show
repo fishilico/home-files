@@ -969,6 +969,8 @@ class TpmAlgId(enum.IntEnum):
         """Compute the hash digest according to the algorithm"""
         if self == TpmAlgId.TPM_ALG_SHA256:
             return hashlib.sha256(data).digest()
+        if self == TpmAlgId.TPM_ALG_SHA384:
+            return hashlib.sha384(data).digest()
         raise NotImplementedError(f"Unimplemented hash {self.name}")
 
     def compute_hmac(self, key: bytes, data: bytes) -> bytes:
