@@ -99,6 +99,7 @@ SECCOMP_PROFILE='
                 "madvise",
                 "mmap",
                 "mprotect",
+                "mremap",
                 "munmap",
                 "nanosleep",
                 "newfstatat",
