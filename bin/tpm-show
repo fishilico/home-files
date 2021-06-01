@@ -445,19 +445,20 @@ class Tpm12ResponseCode(enum.IntEnum):
 
 class Tpm12Failure(Exception):
     """Failure while executing a TPM 1.2 command"""
-    def __init__(self, code: int):
+    def __init__(self, cmd_code: Tpm12CommandCode, resp_code: int):
         super(Tpm12Failure, self).__init__()
-        self.code = code
+        self.cmd_code = cmd_code
+        self.code = resp_code
         try:
-            self.code_desc: Optional[Tpm12ResponseCode] = Tpm12ResponseCode(code)
+            self.code_desc: Optional[Tpm12ResponseCode] = Tpm12ResponseCode(resp_code)
         except ValueError:
             print(f"Warning: unknown TPM 1.2 response code {self.code:#x}", file=sys.stderr)
             self.code_desc = None
 
     def __str__(self) -> str:
         if self.code_desc:
-            return repr(self.code_desc)
-        return str(self.code)
+            return f"{self.cmd_code.name}: {self.code_desc.name}={self.code_desc:#x}"
+        return f"{self.cmd_code.name}: {self.code:#x}"
 
 
 @enum.unique
@@ -912,8 +913,9 @@ class Tpm20ResponseCode(enum.IntEnum):
 
 class Tpm20Failure(Exception):
     """Failure while executing a TPM 2.0 command"""
-    def __init__(self, code: int):
+    def __init__(self, cmd_code: Tpm20CommandCode, code: int):
         super(Tpm20Failure, self).__init__()
+        self.cmd_code = cmd_code
         self.code = code
         try:
             self.code_desc: Optional[Tpm20ResponseCode] = Tpm20ResponseCode(code)
@@ -923,8 +925,8 @@ class Tpm20Failure(Exception):
 
     def __str__(self) -> str:
         if self.code_desc:
-            return repr(self.code_desc)
-        return str(self.code)
+            return f"{self.cmd_code.name}: {self.code_desc.name}={self.code_desc:#x}"
+        return f"{self.cmd_code.name}: {self.code:#x}"
 
 
 @enum.unique
@@ -1925,7 +1927,7 @@ class TpmDevice:
             raise NotImplementedError(f"Unknown tag {resp_tag:#x} for TPM 1.2 response code")
         if resp_code != 0:
             # Failure
-            raise Tpm12Failure(resp_code)
+            raise Tpm12Failure(code, resp_code)
 
         if (tag == Tpm12Tag.TPM_TAG_RQU_COMMAND and tpm12_tag == Tpm12Tag.TPM_TAG_RSP_COMMAND) or \
                 (tag == Tpm12Tag.TPM_TAG_RQU_AUTH1_COMMAND and tpm12_tag == Tpm12Tag.TPM_TAG_RSP_AUTH1_COMMAND) or \
@@ -1948,7 +1950,7 @@ class TpmDevice:
             raise NotImplementedError(f"Unknown tag {resp_tag:#x} for TPM 2.0 response code")
         if resp_code != 0:
             # Failure
-            raise Tpm20Failure(resp_code)
+            raise Tpm20Failure(code, resp_code)
 
         if (tag == Tpm20Tag.TPM2_ST_NO_SESSIONS and tpm20_tag == Tpm20Tag.TPM2_ST_NO_SESSIONS) or \
                 (tag == Tpm20Tag.TPM2_ST_SESSIONS and tpm20_tag == Tpm20Tag.TPM2_ST_SESSIONS):
