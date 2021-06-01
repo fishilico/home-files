@@ -1821,8 +1821,49 @@ class TpmDevice:
         else:
             raise ValueError("No device path nor TCP connection info provided")
 
-    def transmit_command(self, tag: int, code: int, params: Optional[bytes] = None) -> None:
-        """Transmit a command to the TPM device
+    def _read_exact(self, size: int) -> bytes:
+        chunks = []
+        while size > 0:
+            new_data = self.dev.read(size)
+            if not new_data:
+                raise RuntimeError(f"Reached EOF while expecting {size} bytes")
+            chunks.append(new_data)
+            size -= len(new_data)
+        return b''.join(chunks)
+
+    def submit_command_raw(self, cmd: bytes) -> bytes:
+        """Transmit an encoded command to the TPM device and receive a response from it"""
+        if self.use_mssim:
+            # Add a 9-byte command header:
+            # - uint32 MS_SIM_TPM_SEND_COMMAND = 8
+            # - uint8 locality = 0
+            # - uint32 size
+            cmd = struct.pack('>IBI', 8, 0, len(cmd)) + cmd
+
+        written = self.dev.write(cmd)
+        if written != len(cmd):
+            raise RuntimeError(
+                f"Fail to write the whole command to TPM device: {written} != {len(cmd)}")
+
+        if self.use_mssim:
+            # Receive a 4-byte response size
+            response_size, = struct.unpack('>I', self._read_exact(4))
+            if response_size == 0:
+                raise RuntimeError("Received zero as response size")
+            if response_size > 4096:
+                raise RuntimeError(f"Received response size too large: {response_size!r}")
+            response = self._read_exact(response_size)
+            # Receive the appended four bytes of 0's
+            last_zeros = self._read_exact(4)
+            if last_zeros != b'\0\0\0\0':
+                raise RuntimeError(f"Unexpected MSSIM trailer: {last_zeros.hex()}")
+            return response
+
+        # On Linux, TPM_BUFSIZE = 4096
+        return self.dev.read(4096)
+
+    def submit_command(self, tag: int, code: int, params: Optional[bytes] = None) -> Tuple[int, int, bytes]:
+        """Transmit a command to the TPM device and receive a response from it
 
         Command header:
         * For TPM 1.2
@@ -1837,36 +1878,6 @@ class TpmDevice:
                 UINT32 paramSize;
                 TPM_CC commandCode; // UINT32
             }
-        """
-        if params:
-            cmd = struct.pack('>HII', tag, 10 + len(params), code) + params
-        else:
-            cmd = struct.pack('>HII', tag, 10, code)
-
-        if self.use_mssim:
-            # Add a 9-byte command header:
-            # - uint32 MS_SIM_TPM_SEND_COMMAND = 8
-            # - uint8 locality = 0
-            # - uint32 size
-            cmd = struct.pack('>IBI', 8, 0, len(cmd)) + cmd
-
-        written = self.dev.write(cmd)
-        if written != len(cmd):
-            raise RuntimeError(
-                f"Fail to write the whole command to TPM device: {written} != {len(cmd)}")
-
-    def _read_exact(self, size: int) -> bytes:
-        chunks = []
-        while size > 0:
-            new_data = self.dev.read(size)
-            if not new_data:
-                raise RuntimeError(f"Reached EOF while expecting {size} bytes")
-            chunks.append(new_data)
-            size -= len(new_data)
-        return b''.join(chunks)
-
-    def receive_response(self) -> Tuple[int, int, bytes]:
-        """Receive a response from the TPM device
 
         Response header:
         * For TPM 1.2
@@ -1882,22 +1893,12 @@ class TpmDevice:
                 TPM_RC responseCode; // UINT32
             }
         """
-        if self.use_mssim:
-            # Receive a 4-byte response size
-            response_size, = struct.unpack('>I', self._read_exact(4))
-            if response_size == 0:
-                raise RuntimeError("Received zero as response size")
-            if response_size > 4096:
-                raise RuntimeError(f"Received response size too large: {response_size!r}")
-            response = self._read_exact(response_size)
-            # Receive the appended four bytes of 0's
-            last_zeros = self._read_exact(4)
-            if last_zeros != b'\0\0\0\0':
-                raise RuntimeError(f"Unexpected MSSIM trailer: {last_zeros.hex()}")
+        if params:
+            cmd = struct.pack('>HII', tag, 10 + len(params), code) + params
         else:
-            # On Linux, TPM_BUFSIZE = 4096
-            response = self.dev.read(4096)
+            cmd = struct.pack('>HII', tag, 10, code)
 
+        response = self.submit_command_raw(cmd)
         if len(response) < 10:
             raise RuntimeError(f"Received response too short: {response!r}")
         tag, param_size, code = struct.unpack('>HII', response[:10])
@@ -1908,8 +1909,7 @@ class TpmDevice:
 
     def tpm12_run(self, tag: Tpm12Tag, code: Tpm12CommandCode, params: Optional[bytes] = None) -> bytes:
         """Run a TPM 1.2 command"""
-        self.transmit_command(tag.value, code.value, params)
-        resp_tag, resp_code, response = self.receive_response()
+        resp_tag, resp_code, response = self.submit_command(tag.value, code.value, params)
         if resp_tag == 0x8001 and resp_code in (0x84, 0xb0143) and response == b'':
             # Linux driver forges a TPM2 response when the command is not implemented by the TPM:
             #     tag = TPM2_ST_NO_SESSIONS
@@ -1937,8 +1937,7 @@ class TpmDevice:
 
     def tpm20_run(self, tag: Tpm20Tag, code: Tpm20CommandCode, params: Optional[bytes] = None) -> bytes:
         """Run a TPM 2.0 command"""
-        self.transmit_command(tag.value, code.value, params)
-        resp_tag, resp_code, response = self.receive_response()
+        resp_tag, resp_code, response = self.submit_command(tag.value, code.value, params)
         if resp_tag == 0x00c4 and resp_code in (0x0009, 0x000a) and response == b'':
             # Received a TPM1 response (tag=TPM_RSP_COMMAND) with
             # * resp_code=TPM_FAIL=0x0009 (from swtpm)
