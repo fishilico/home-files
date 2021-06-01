@@ -621,7 +621,13 @@ TPM12_RESERVED_NV_INDEXES_DESC: Mapping[int, str] = {
     0x00011300: 'Server Base',
     0x00011400: 'Mobile Base',
     0x00011500: 'Peripheral Base',
+    # Section 28.2 Use of NV storage during manufacturing of
+    # https://trustedcomputinggroup.org/wp-content/uploads/TPM-Main-Part-1-Design-Principles_v1.2_rev116_01032011.pdf
+    # defines bit 0x10000000 as the 'D' bit: these NV indexes can be defined
+    # during manufacturing and then be locked (by setting nvLocked to TRUE)
     0x10000001: 'DIR[0]',  # Compatibility with older TPM versions
+    0x1000f000: 'D bit + EK Certificate',
+    0x1000f002: 'D bit + Platform Certificate',
     0x20000001: 'Policy for Verified Launch (Intel TXT)',
     0x20000002: 'Launch error (Intel TXT)',
     0x40000001: 'LCP Structure for Platform Owner (Intel TXT "PO")',  # LCP = Launch Control Policies
@@ -2255,15 +2261,70 @@ class TpmDevice:
 
         Response:
             TPM_PUBKEY pubEndorsementKey
-            TPM_DIGESTchecksum
+            TPM_DIGEST checksum
+
+        struct TPM_PUBKEY {
+          TPM_KEY_PARMS    algorithmParms;
+          TPM_STORE_PUBKEY pubKey;
+        }
+        struct TPM_KEY_PARMS {
+          TPM_ALGORITHM_ID algorithmID;
+          TPM_ENC_SCHEME   encScheme;
+          TPM_SIG_SCHEME   sigScheme;
+          UINT32           parmSize;
+          UINT8            parms[parmSize];
+        }
+        struct TPM_RSA_KEY_PARMS {
+            UINT32 keyLength;
+            UINT32 numPrimes;
+            UINT32 exponentSize;
+            UINT8  exponent[exponentSize];
+        }
+        struct TPM_STORE_PUBKEY {
+          UINT32 keyLength;
+          UINT8  key[keyLength];
+        }
+        struct TPM_DIGEST {
+          UINT8 digest[TPM_SHA1_160_HASH_LEN];
+        }
+        TPM_ALGORITHM_ID is UINT32
+        TPM_ENC_SCHEME is UINT16
+        TPM_SIG_SCHEME is UINT16
+
+        Example with swtpm (the TPM_KEY_PARMS structure is directly an argument
+        of command TPM_ORD_CreateEndorsementKeyPair), with follows
+        recommandations from section "14.1 TPM_CreateEndorsementKeyPair" of
+        https://trustedcomputinggroup.org/wp-content/uploads/TPM-Main-Part-3-Commands_v1.2_rev116_01032011.pdf
+        pubEndorsementKey:
+            000000:  0000 0001 0003 0001 0000 000c 0000 0800  ................
+            000010:  0000 0002 0000 0000 0000 0100 bbf7 4455  ..............DU
+            ...
+            000110:  dd2c 4712 e6e7 b14f 6b63 8933
+        => algorithmParms.algorithmID = 1 = TPM_ALG_RSA
+           algorithmParms.encScheme = 3 = TPM_ES_RSAESOAEP_SHA1_MGF1
+           algorithmParms.sigScheme = 1 = TPM_SS_NONE
+           algorithmParms.parms.keyLength = 0x800 = 2048 bits
+           algorithmParms.parms.numPrimes = 2
+           algorithmParms.parms.exponent[0] = {}
+           pubKey.key[0x100] = RSA2048 modulus
         """
         nonce = secrets.token_bytes(0x14)
         resp = self.tpm12_run(
             Tpm12Tag.TPM_TAG_RQU_COMMAND,
             Tpm12CommandCode.TPM_ORD_ReadPubek,
             nonce)
-        # TODO: decode the PubEK
-        return resp
+        if len(resp) <= 16 + 20:
+            raise RuntimeError(f"ReadPubek returned too few bytes: {len(resp)}, {resp.hex()}")
+        # Verify that checksum == SHA1(TPM_PUBKEY || nonce)
+        pubek = resp[:-20]
+        checksum = resp[-20:]
+        computed_checksum = hashlib.sha1(pubek + nonce).digest()
+        if checksum != computed_checksum:
+            print(f"Error: ReadPubek returned invalid checksum {checksum.hex()}", file=sys.stderr)
+            print(f"Error: ... ReadPubek nonce was {nonce.hex()}", file=sys.stderr)
+            print(f"Error: ... ReadPubek response was {resp.hex()}", file=sys.stderr)
+            raise RuntimeError("ReadPubek returned an invalid checksum")
+        return pubek
 
     def tpm20_pcr_read(self, pcr_idx: int, alg_id: TpmAlgId) -> Tuple[bytes, int]:
         """Read a PCR (Platform Control Register) using TPM 2.0 command
@@ -2929,7 +2990,12 @@ def show_tpm_dev(dev: TpmDevice) -> None:
                 raise
         else:
             hexdump(pubek, indent="  ")
-            raise NotImplementedError("I did not implement PubEK parsing for TPM 1.2")
+            # Check that the PubEK is a RSA2048 key with the standard parameters
+            ek_rsa2048_prefix = bytes.fromhex("00000001 0003 0001 0000000c 00000800 00000002 00000000 00000100")
+            if len(pubek) == 0x11c and pubek[:0x1c] == ek_rsa2048_prefix:
+                print("  => RSA2048 key")
+            else:
+                raise RuntimeError("Unexpected PubEK parameters")
 
     if dev.is_tpm20:
         tpm_prop_group = None
