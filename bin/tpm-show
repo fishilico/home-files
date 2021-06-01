@@ -97,7 +97,6 @@ Other initiative to collect data about TPM:
 """
 import argparse
 import binascii
-from contextlib import contextmanager
 import enum
 import functools
 import hashlib
@@ -1798,69 +1797,12 @@ class IsNotTpm20Error(Exception):
 
 
 class TpmDevice:
-    def __init__(self, dev: BinaryIO, name: str, use_mssim: bool = False):
-        self.dev = dev
+    def __init__(self, name: str):
         self.name = name
-        self.use_mssim = use_mssim
-
-    @staticmethod
-    @contextmanager
-    def open(dev_path: Optional[Path], tpm_host: Optional[str], tpm_port: Optional[int], use_mssim: bool = False
-             ) -> Generator['TpmDevice', None, None]:
-        """Open the specified device, to be used in a with block"""
-        if dev_path is not None:
-            with dev_path.open('r+b', buffering=0) as dev:
-                yield TpmDevice(dev, str(dev_path), use_mssim=use_mssim)
-        elif tpm_port is not None:
-            host = '127.0.0.1' if tpm_host is None else tpm_host
-            proto = 'tcp+mssim' if use_mssim else 'tcp'
-            sock = socket.create_connection((host, tpm_port))
-            sockfile = sock.makefile(mode='rwb', buffering=0)
-            yield TpmDevice(sockfile, f"{proto}://{host}:{tpm_port}", use_mssim=use_mssim)
-            sock.close()
-        else:
-            raise ValueError("No device path nor TCP connection info provided")
-
-    def _read_exact(self, size: int) -> bytes:
-        chunks = []
-        while size > 0:
-            new_data = self.dev.read(size)
-            if not new_data:
-                raise RuntimeError(f"Reached EOF while expecting {size} bytes")
-            chunks.append(new_data)
-            size -= len(new_data)
-        return b''.join(chunks)
 
     def submit_command_raw(self, cmd: bytes) -> bytes:
         """Transmit an encoded command to the TPM device and receive a response from it"""
-        if self.use_mssim:
-            # Add a 9-byte command header:
-            # - uint32 MS_SIM_TPM_SEND_COMMAND = 8
-            # - uint8 locality = 0
-            # - uint32 size
-            cmd = struct.pack('>IBI', 8, 0, len(cmd)) + cmd
-
-        written = self.dev.write(cmd)
-        if written != len(cmd):
-            raise RuntimeError(
-                f"Fail to write the whole command to TPM device: {written} != {len(cmd)}")
-
-        if self.use_mssim:
-            # Receive a 4-byte response size
-            response_size, = struct.unpack('>I', self._read_exact(4))
-            if response_size == 0:
-                raise RuntimeError("Received zero as response size")
-            if response_size > 4096:
-                raise RuntimeError(f"Received response size too large: {response_size!r}")
-            response = self._read_exact(response_size)
-            # Receive the appended four bytes of 0's
-            last_zeros = self._read_exact(4)
-            if last_zeros != b'\0\0\0\0':
-                raise RuntimeError(f"Unexpected MSSIM trailer: {last_zeros.hex()}")
-            return response
-
-        # On Linux, TPM_BUFSIZE = 4096
-        return self.dev.read(4096)
+        raise NotImplementedError(f"submit_command_raw needs to be implemented for {self!r}")
 
     def submit_command(self, tag: int, code: int, params: Optional[bytes] = None) -> Tuple[int, int, bytes]:
         """Transmit a command to the TPM device and receive a response from it
@@ -3250,6 +3192,82 @@ def show_tpm_dev(dev: TpmDevice) -> None:
             dev.tpm20_flush_context(auth_session.session_handle)
 
 
+class LinuxTpmDevice(TpmDevice):
+    """Access the TPM from Linux device /dev/tpm0 or /dev/tpmrm0, or from a socket"""
+    def __init__(self, dev_path: Optional[Path], tpm_host: Optional[str],
+                 tpm_port: Optional[int], use_mssim: bool = False):
+        self.sock: Optional[socket.socket] = None
+        self.dev: Optional[BinaryIO] = None
+        if dev_path is not None:
+            name = str(dev_path)
+            self.dev = dev_path.open('r+b', buffering=0)
+        elif tpm_port is not None:
+            host = '127.0.0.1' if tpm_host is None else tpm_host
+            proto = 'tcp+mssim' if use_mssim else 'tcp'
+            name = f"{proto}://{host}:{tpm_port}"
+            self.sock = socket.create_connection((host, tpm_port))
+            self.dev = self.sock.makefile(mode='rwb', buffering=0)
+        else:
+            raise ValueError("No device path nor TCP connection info provided")
+
+        super(LinuxTpmDevice, self).__init__(name)
+        self.use_mssim = use_mssim
+
+    def __del__(self) -> None:
+        self.close()
+
+    def close(self) -> None:
+        if self.dev is not None:
+            self.dev.close()
+            self.dev = None
+        if self.sock is not None:
+            self.sock.close()
+            self.sock = None
+
+    def _read_exact(self, size: int) -> bytes:
+        """Read exactly size bytes from the device"""
+        assert self.dev is not None
+        chunks = []
+        while size > 0:
+            new_data = self.dev.read(size)
+            if not new_data:
+                raise RuntimeError(f"Reached EOF while expecting {size} bytes")
+            chunks.append(new_data)
+            size -= len(new_data)
+        return b''.join(chunks)
+
+    def submit_command_raw(self, cmd: bytes) -> bytes:
+        assert self.dev is not None
+        if self.use_mssim:
+            # Add a 9-byte command header:
+            # - uint32 MS_SIM_TPM_SEND_COMMAND = 8
+            # - uint8 locality = 0
+            # - uint32 size
+            cmd = struct.pack('>IBI', 8, 0, len(cmd)) + cmd
+
+        written = self.dev.write(cmd)
+        if written != len(cmd):
+            raise RuntimeError(
+                f"Fail to write the whole command to TPM device: {written} != {len(cmd)}")
+
+        if self.use_mssim:
+            # Receive a 4-byte response size
+            response_size, = struct.unpack('>I', self._read_exact(4))
+            if response_size == 0:
+                raise RuntimeError("Received zero as response size")
+            if response_size > 4096:
+                raise RuntimeError(f"Received response size too large: {response_size!r}")
+            response = self._read_exact(response_size)
+            # Receive the appended four bytes of 0's
+            last_zeros = self._read_exact(4)
+            if last_zeros != b'\0\0\0\0':
+                raise RuntimeError(f"Unexpected MSSIM trailer: {last_zeros.hex()}")
+            return response
+
+        # On Linux, TPM_BUFSIZE = 4096
+        return self.dev.read(4096)
+
+
 def main(argv: Optional[Sequence[str]] = None) -> None:
     parser = argparse.ArgumentParser(description="Get various information from a TPM")
     parser.add_argument('-d', '--device', type=Path,
@@ -3279,8 +3297,11 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 print("No TPM device found, exiting")
             return
 
-    with TpmDevice.open(dev_path=dev_path, tpm_host=tpm_host, tpm_port=tpm_port, use_mssim=args.mssim) as dev:
+    dev = LinuxTpmDevice(dev_path=dev_path, tpm_host=tpm_host, tpm_port=tpm_port, use_mssim=args.mssim)
+    try:
         show_tpm_dev(dev)
+    finally:
+        dev.close()
 
 
 if __name__ == '__main__':
