@@ -61,6 +61,14 @@ This script does not use TCTI libraries but it implements their protocols:
   (there is a small encapsulation of TPM packets, over TCP).
 * Connecting to tpm2-abrmd's D-Bus service is not supported.
 
+On Windows, the TPM can be accessed using TPM Base Services (TBS):
+
+* https://trustedcomputinggroup.org/resource/microsoft-tpm-base-services/
+* https://docs.microsoft.com/en-us/windows/win32/api/_tbs/
+* https://github.com/microsoft/TSS.MSR
+* https://github.com/tpm2-software/tpm2-tss/blob/3.1.0/src/tss2-tcti/tcti-tbs.c
+* C:/Windows/System32/tbs.dll (device \\??\\TPM)
+
 ------------------------------- IMPORTANT NOTICE -------------------------------
 This script is a Proof of Concept that should not be ever used in production.
 Use it at your own risks!
@@ -97,11 +105,13 @@ Other initiative to collect data about TPM:
 """
 import argparse
 import binascii
+import ctypes
 import enum
 import functools
 import hashlib
 import hmac
 import itertools
+import os
 from pathlib import Path
 import secrets
 import struct
@@ -436,6 +446,8 @@ class Tpm12ResponseCode(enum.IntEnum):
     TPM_PERMANENTEK = 97
     TPM_BAD_SIGNATURE = 98
     TPM_NOCONTEXTSPACE = 99
+    TPM_RC_VER1 = 0x100
+    TPM_RC_VENDOR_ERROR = 0x400
     TPM_RETRY = 0x00000800  # TPM_NON_FATAL
     TPM_NEEDS_SELFTEST = 0x00000801
     TPM_DOING_SELFTEST = 0x00000802
@@ -1852,12 +1864,13 @@ class TpmDevice:
     def tpm12_run(self, tag: Tpm12Tag, code: Tpm12CommandCode, params: Optional[bytes] = None) -> bytes:
         """Run a TPM 1.2 command"""
         resp_tag, resp_code, response = self.submit_command(tag.value, code.value, params)
-        if resp_tag == 0x8001 and resp_code in (0x84, 0xb0143) and response == b'':
+        if resp_tag == 0x8001 and resp_code in (0x84, 0xb0143, 0x80280400) and response == b'':
             # Linux driver forges a TPM2 response when the command is not implemented by the TPM:
             #     tag = TPM2_ST_NO_SESSIONS
             #     code = TPM2_RC_COMMAND_CODE | TSS2_RESMGR_TPM_RC_LAYER = 0xb0143
             #       (with TSS2_RESMGR_TPM_RC_LAYER = 11 << 16)
             # swtpm returns code = TPM2_RC_VALUE = 0x84
+            # Microsoft Windows TBS returns code 0x80280400
             raise IsNotTpm12Error()
 
         if resp_tag == Tpm12Tag.TPM_TAG_RSP_COMMAND.value and resp_code == Tpm12ResponseCode.TPM_BADTAG:
@@ -1880,10 +1893,11 @@ class TpmDevice:
     def tpm20_run(self, tag: Tpm20Tag, code: Tpm20CommandCode, params: Optional[bytes] = None) -> bytes:
         """Run a TPM 2.0 command"""
         resp_tag, resp_code, response = self.submit_command(tag.value, code.value, params)
-        if resp_tag == 0x00c4 and resp_code in (0x0009, 0x000a) and response == b'':
+        if resp_tag == 0x00c4 and resp_code in (0x0009, 0x000a, 0x001e) and response == b'':
             # Received a TPM1 response (tag=TPM_RSP_COMMAND) with
             # * resp_code=TPM_FAIL=0x0009 (from swtpm)
             # * resp_code=TPM_BAD_ORDINAL=0x000a (from a real TPM)
+            # * resp_code=TPM_BADTAG=0x001e (from Windows with swtpm simulating TPM 1.2)
             raise IsNotTpm20Error()
         try:
             tpm20_tag = Tpm20Tag(resp_tag)
@@ -2435,6 +2449,9 @@ class TpmDevice:
                     handle, = struct.unpack('>I', resp_data)
                     handles.append(handle)
             except Tpm20Failure as exc:
+                if exc.code == Tpm20ResponseCode.TPM2_RC_HANDLE.value:
+                    # On Windows, GetCapability returns response code 0x8b for unsupported input handle types
+                    continue
                 if exc.code == Tpm20ResponseCode.TPM2_RC_HANDLE_GetCapability_property.value:
                     # GetCapability returns response code 0x2cb for unsupported input handle types
                     continue
@@ -2929,6 +2946,14 @@ def show_tpm_dev(dev: TpmDevice) -> None:
                 else:
                     print("  Error TPM_DISABLED_CMD but readPubek is true, raise the exception")
                     raise
+            elif exc.code == Tpm12ResponseCode.TPM_RC_VENDOR_ERROR:
+                # On Windows 10 1809, non-administrator users can open the TPM 1.2
+                # but cannot read the pub EK
+                if not permanent_flags[3]:
+                    print("  Error TPM_RC_VENDOR_ERROR, missing Administrator privileges? (and readPubek is false, an owner may exist)")  # noqa
+                else:
+                    print("  Error TPM_RC_VENDOR_ERROR, missing Administrator privileges?")
+                    raise
             else:
                 raise
         else:
@@ -3268,16 +3293,159 @@ class LinuxTpmDevice(TpmDevice):
         return self.dev.read(4096)
 
 
+@enum.unique
+class TbsResult(enum.IntEnum):
+    """TBS_RESULT: result from TBS commands
+
+    https://docs.microsoft.com/en-us/windows/win32/tbs/tbs-return-codes
+    """
+    TBS_SUCCESS = 0x0
+    TBS_E_INTERNAL_ERROR = 0x80284001
+    TBS_E_BAD_PARAMETER = 0x80284002
+    TBS_E_INVALID_OUTPUT_POINTER = 0x80284003
+    TBS_E_INVALID_CONTEXT = 0x80284004
+    TBS_E_INSUFFICIENT_BUFFER = 0x80284005
+    TBS_E_IOERROR = 0x80284006
+    TBS_E_INVALID_CONTEXT_PARAM = 0x80284007
+    TBS_E_SERVICE_NOT_RUNNING = 0x80284008
+    TBS_E_TOO_MANY_TBS_CONTEXTS = 0x80284009
+    TBS_E_TOO_MANY_RESOURCES = 0x8028400a
+    TBS_E_SERVICE_START_PENDING = 0x8028400b
+    TBS_E_PPI_NOT_SUPPORTED = 0x8028400c
+    TBS_E_COMMAND_CANCELED = 0x8028400d
+    TBS_E_BUFFER_TOO_LARGE = 0x8028400e
+    TBS_E_TPM_NOT_FOUND = 0x8028400f
+    TBS_E_SERVICE_DISABLED = 0x80284010
+    TBS_E_NO_EVENT_LOG = 0x80284011
+    TBS_E_ACCESS_DENIED = 0x80284012
+    TBS_E_PROVISIONING_NOT_ALLOWED = 0x80284013
+    TBS_E_PPI_FUNCTION_UNSUPPORTED = 0x80284014
+    TBS_E_OWNERAUTH_NOT_FOUND = 0x80284015  # also TBS_E_PROVISIONING_INCOMPLETE
+
+
+class TbsFailure(Exception):
+    """Failure while executing a Windows TBS function"""
+    def __init__(self, func_name: str, result: int):
+        super(TbsFailure, self).__init__()
+        self.func_name = func_name
+        self.result = result
+        try:
+            self.result_enum: Optional[TbsResult] = TbsResult(result)
+        except ValueError:
+            print(f"Warning: unknown TBS result {self.result:#x}", file=sys.stderr)
+            self.result_enum = None
+
+    def __str__(self) -> str:
+        if self.result_enum:
+            return f"{self.func_name}: {self.result_enum.name}={self.result:#x}"
+        return f"{self.func_name}: {self.result:#x}"
+
+
+class WindowsTbsDevice(TpmDevice):
+    """Access the TPM from Microsoft Windows using TPM Base Services"""
+    def __init__(self: 'WindowsTbsDevice'):
+        super(WindowsTbsDevice, self).__init__("TBS")
+        self.tbsctx = None
+        if TYPE_CHECKING:
+            self.tbslib = ctypes.CDLL("Tbs")  # Make type-checking work on Linux
+        else:
+            self.tbslib = ctypes.WinDLL('Tbs')
+
+        # https://docs.microsoft.com/en-us/windows/win32/api/tbs/nf-tbs-tbsi_context_create
+        self.tbslib.Tbsi_Context_Create.argtypes = (
+            ctypes.POINTER(ctypes.c_uint),  # PCTBS_CONTEXT_PARAMS pContextParams
+            ctypes.POINTER(ctypes.c_void_p),  # PTBS_HCONTEXT phContext
+        )
+        self.tbslib.Tbsi_Context_Create.restype = ctypes.c_uint  # TBS_RESULT
+
+        # https://docs.microsoft.com/en-us/windows/win32/api/tbs/nf-tbs-tbsip_context_close
+        self.tbslib.Tbsip_Context_Close.argtypes = (
+            ctypes.c_void_p,  # TBS_HCONTEXT hContext
+        )
+        self.tbslib.Tbsip_Context_Close.restype = ctypes.c_uint  # TBS_RESULT
+
+        # https://docs.microsoft.com/en-us/windows/win32/api/tbs/nf-tbs-tbsip_submit_command
+        self.tbslib.Tbsip_Submit_Command.argtypes = (
+            ctypes.c_void_p,  # TBS_HCONTEXT hContext
+            ctypes.c_uint,  # TBS_COMMAND_LOCALITY Locality
+            ctypes.c_uint,  # TBS_COMMAND_PRIORITY Priority
+            ctypes.POINTER(ctypes.c_ubyte),  # PCBYTE pabCommand
+            ctypes.c_uint,  # UINT32 cbCommand
+            ctypes.POINTER(ctypes.c_ubyte),  # PBYTE pabResult
+            ctypes.POINTER(ctypes.c_uint),  # PUINT32 pcbResult
+        )
+        self.tbslib.Tbsip_Submit_Command.restype = ctypes.c_uint  # TBS_RESULT
+
+        # Create a struct TBS_CONTEXT_PARAMS2,
+        # cf. https://docs.microsoft.com/en-us/windows/win32/api/tbs/ns-tbs-tbs_context_params2
+        #     typedef struct tdTBS_CONTEXT_PARAMS2 {
+        #       UINT32 version;
+        #       union {
+        #         struct {
+        #           UINT32 requestRaw : 1;
+        #           UINT32 includeTpm12 : 1;
+        #           UINT32 includeTpm20 : 1;
+        #         };
+        #         UINT32 asUINT32;
+        #       };
+        #     } TBS_CONTEXT_PARAMS2, *PTBS_CONTEXT_PARAMS2;
+        self.tbsctx = ctypes.c_void_p()
+        tbs_context_params = (ctypes.c_uint * 2)(2, 6)
+        result = self.tbslib.Tbsi_Context_Create(tbs_context_params, ctypes.byref(self.tbsctx))
+        if result == TbsResult.TBS_E_INVALID_CONTEXT_PARAM:
+            # Try again with a version-1 TBS_CONTEXT_PARAMS structure
+            print("Warning: Tbsi_Context_Create does not support params v2. Trying v1...", file=sys.stderr)
+            tbs_context_params = (ctypes.c_uint * 2)(1, 0)
+            result = self.tbslib.Tbsi_Context_Create(tbs_context_params, ctypes.byref(self.tbsctx))
+
+        if result == TbsResult.TBS_E_INTERNAL_ERROR:
+            # This happens on Windows 7 when Python is not executed as Administrator
+            print("Tbsi_Context_Create failed with error TBS_E_INTERNAL_ERROR, are you admin?", file=sys.stderr)
+            raise TbsFailure("Tbsi_Context_Create", result)
+        if result != 0:
+            raise TbsFailure("Tbsi_Context_Create", result)
+
+    def __del__(self) -> None:
+        self.close()
+
+    def close(self) -> None:
+        if self.tbsctx is not None:
+            result = self.tbslib.Tbsip_Context_Close(self.tbsctx)
+            self.tbsctx = None
+            if result != 0:
+                raise TbsFailure("Tbsip_Context_Close", result)
+
+    def submit_command_raw(self, cmd: bytes) -> bytes:
+        if self.tbsctx is None:
+            raise ValueError("The WindowsTbsDevice was closed")
+        cmd_buf = (ctypes.c_ubyte * len(cmd))()
+        assert len(cmd) == ctypes.sizeof(cmd_buf)
+        ctypes.memmove(cmd_buf, cmd, len(cmd))
+        resp_len = ctypes.c_uint(4096)
+        resp_buf = (ctypes.c_ubyte * resp_len.value)()
+        result = self.tbslib.Tbsip_Submit_Command(
+            self.tbsctx,
+            0,  # TBS_COMMAND_LOCALITY_ZERO
+            100,  # TBS_COMMAND_PRIORITY_LOW
+            cmd_buf, len(cmd),
+            resp_buf, ctypes.byref(resp_len))
+        if result != 0:
+            raise TbsFailure("Tbsip_Submit_Command", result)
+        return bytes(resp_buf[:resp_len.value])
+
+
 def main(argv: Optional[Sequence[str]] = None) -> None:
     parser = argparse.ArgumentParser(description="Get various information from a TPM")
     parser.add_argument('-d', '--device', type=Path,
-                        help="TPM device to use (/dev/tpmrm0 by default)")
+                        help="TPM device to use (/dev/tpmrm0 by default on Linux)")
     parser.add_argument('-H', '--host', type=int,
                         help="Connect to a TPM through a TCP host and port (127.0.0.1 by default)")
     parser.add_argument('-p', '--port', type=int,
                         help="Connect to a TPM through a TCP port (for example to use swtpm)")
     parser.add_argument('--mssim', action='store_true',
                         help="Use Microsoft Simulator protocol (used by mssim and ibm-sw-tpm2's tpm_server)")
+    parser.add_argument('--tbs', action='store_true',
+                        help="Use Microsoft Windows TPM Base Services (default on Windows)")
     parser.add_argument('--quiet-if-not-found', action='store_true',
                         help="Do not show a message if no TPM is found")
     args = parser.parse_args(argv)
@@ -3285,19 +3453,34 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     dev_path: Optional[Path] = args.device
     tpm_host: Optional[str] = args.host
     tpm_port: Optional[int] = args.port
-    if tpm_port is None:
-        if dev_path is None:
-            for tried_dev in ('/dev/tpmrm0', '/dev/tpm0'):
-                tried_path = Path(tried_dev)
-                if tried_path.exists():
-                    dev_path = tried_path
-                    break
-        if dev_path is None:
-            if not args.quiet_if_not_found:
-                print("No TPM device found, exiting")
-            return
+    use_tbs: bool = args.tbs
+    if tpm_port is None and not use_tbs:
+        if os.name == 'nt':
+            use_tbs = True
+        else:
+            if dev_path is None:
+                for tried_dev in ('/dev/tpmrm0', '/dev/tpm0'):
+                    tried_path = Path(tried_dev)
+                    if tried_path.exists():
+                        dev_path = tried_path
+                        break
+            if dev_path is None:
+                if not args.quiet_if_not_found:
+                    print("No TPM device found, exiting.")
+                return
 
-    dev = LinuxTpmDevice(dev_path=dev_path, tpm_host=tpm_host, tpm_port=tpm_port, use_mssim=args.mssim)
+    if use_tbs:
+        try:
+            dev: Union[WindowsTbsDevice, LinuxTpmDevice] = WindowsTbsDevice()
+        except TbsFailure as exc:
+            if exc.result == TbsResult.TBS_E_TPM_NOT_FOUND:
+                # Exit cleanly if no TPM was found
+                if not args.quiet_if_not_found:
+                    print("No TPM device found using TPM Base Services, exiting.")
+                return
+            raise
+    else:
+        dev = LinuxTpmDevice(dev_path=dev_path, tpm_host=tpm_host, tpm_port=tpm_port, use_mssim=args.mssim)
     try:
         show_tpm_dev(dev)
     finally:
