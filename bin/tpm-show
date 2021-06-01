@@ -1176,6 +1176,8 @@ class Tpm20Handle(enum.IntEnum):
     # 0x01c00000-0x01ffffff: NV indexes defined by TCG
     #   0x01c00000-0x01c07fff: Endorsement certificates, key templates, etc.
     #     0x01c00000-0x01c000ff: EK Certificates
+    #       0x0x01c00002-0x01c00011: Low Range
+    #       0x0x01c00012-0x01c000ff: High Range
     #     0x01c00100-0x01c001ff: EK Certificate Chains
     #     0x01c07f00-0x01c07fff: EK Policies (cf. TCG EK Credential Profile)
     #   0x01c08000-0x01c0ffff: Platform certificates, key templates, etc.
@@ -1200,10 +1202,19 @@ class Tpm20Handle(enum.IntEnum):
     TPM_RESERVED_HANDLE_ECCP256_EK_CERT = 0x01c0000a  # ECC NIST P256 EK Certificate
     TPM_RESERVED_HANDLE_ECCP256_EK_NONCE = 0x01c0000b  # ECC NIST P256 EK Nonce
     TPM_RESERVED_HANDLE_ECCP256_EK_TEMPLATE = 0x01c0000c  # ECC NIST P256 EK Template
+    TPM_RESERVED_HANDLE_HI_RSA2048_EK_CERT = 0x01c00012  # RSA 2048 EK Certificate in High Range
+    TPM_RESERVED_HANDLE_HI_ECCP256_EK_CERT = 0x01c00014  # ECC NIST P256 EK Certificate in High Range
+    TPM_RESERVED_HANDLE_HI_ECCP384_EK_CERT = 0x01c00016  # ECC NIST P384 EK Certificate in High Range
+    TPM_RESERVED_HANDLE_HI_ECCP384_EK_TEMPLATE = 0x01c00017  # ECC NIST P384 EK Template in High Range
+    TPM_RESERVED_HANDLE_HI_ECCP521_EK_CERT = 0x01c00018  # ECC NIST P521 EK Certificate in High Range
+    TPM_RESERVED_HANDLE_HI_ECCSM2P256_EK_CERT = 0x01c0001a  # ECC SM2 P256 EK Certificate in High Range
+    TPM_RESERVED_HANDLE_HI_RSA3072_EK_CERT = 0x01c0001c  # RSA 3072 EK Certificate in High Range
+    TPM_RESERVED_HANDLE_HI_RSA4096_EK_CERT = 0x01c0001e  # RSA 4096 EK Certificate in High Range
     TPM_RESERVED_HANDLE_EK_NV_POLICY_SHA256 = 0x01c07f01  # Policy Index I-1 with nameAlg = SHA256 in https://trustedcomputinggroup.org/wp-content/uploads/TCG_IWG_Credential_Profile_EK_V2.1_R13.pdf  # noqa
     TPM_RESERVED_HANDLE_EK_NV_POLICY_SHA384 = 0x01c07f02  # Policy Index I-2 with nameAlg = SHA384
     TPM_RESERVED_HANDLE_EK_NV_POLICY_SHA512 = 0x01c07f03  # Policy Index I-3 with nameAlg = SHA512
     TPM_RESERVED_HANDLE_EK_NV_POLICY_SM3_256 = 0x01c07f04  # Policy Index I-4 with nameAlg = SM3_256
+    TPM_RESERVED_HANDLE_PLATFORM_CERTIFICATE = 0x01c08000  # Platform certificate
     TPM_NV_INTEL_TXT_LAUNCH_AUXILIARY = 0x01c10102  # Launch Auxiliary (Intel TXT "AUX")
     TPM_NV_INTEL_TXT_PLATFORM_SUPPLIER = 0x01c10103  # LCP Structure for Platform Supplier (Intel TXT "PS")
     TPM_NV_INTEL_TXT_SGX_SVN = 0x01c10104  # SGX Software Version Number (Intel TXT "SGX")
@@ -1264,6 +1275,7 @@ class Tpm20Handle(enum.IntEnum):
     TPM_RESERVED_HANDLE_SRK_4 = 0x81000004
     #   0x81010000-0x8101ffff: Endorsement primary keys
     TPM_RESERVED_HANDLE_EK = 0x81010001
+    TPM_RESERVED_HANDLE_EK_ECC_SECP384R1 = 0x81010016  # ECC NIST P384 public key, cf. https://github.com/stefanberger/swtpm/commit/d65f5ae13be66d1de5030004b5ca70e7835d23da  # noqa
     TPM_RESERVED_HANDLE_IDEVID_KEY = 0x81020000  # IDevID Key (Initial Device Identifier)
     # 0x81800000-0x81ffffff: persistent objects with auth TPM_RH_PLATFORM
     #   0x81800000-0x8180ffff: Platforms primary keys
