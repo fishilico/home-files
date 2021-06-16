@@ -3222,7 +3222,10 @@ def show_tpm_dev(dev: TpmDevice) -> None:
                 remaining = comm_attr & ~0x3fc0
                 if remaining:
                     desc_attr += f" ???({remaining:#x})"
-                print(f"  [{command_code:#6x}] {command_name}:{desc_attr}")
+                if desc_attr:
+                    print(f"  [{command_code:#6x}] {command_name}:{desc_attr}")
+                else:
+                    print(f"  [{command_code:#6x}] {command_name}")
 
                 if command_code == Tpm20CommandCode.TPM2_CC_FirmwareRead.value:
                     # Terminate abruptely in order to investigate
