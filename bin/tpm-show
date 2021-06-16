@@ -3127,11 +3127,15 @@ def show_tpm_dev(dev: TpmDevice) -> None:
                 version_major = (prop_value >> 16) & 0xffff
                 version_minor = prop_value & 0xffff
                 repr_prop_value = f"{version_major}.{version_minor} ({prop_value:#x})"
+            elif prop_id == Tpm20Property.TPM2_PT_CLOCK_UPDATE.value:
+                # Clock update property, at least 2**22 milliseconds (~69.9 minutes)
+                val_mins, val_remaining = divmod(prop_value, 60000)
+                val_secs, val_millis = divmod(val_remaining, 1000)
+                repr_prop_value = f"{val_mins}m {val_secs:02d}s {val_millis:03d}ms ({prop_value:#x})"
             elif prop_id in (
                     Tpm20Property.TPM2_PT_DAY_OF_YEAR.value,
                     Tpm20Property.TPM2_PT_YEAR.value,
                     Tpm20Property.TPM2_PT_PCR_COUNT.value,
-                    Tpm20Property.TPM2_PT_CLOCK_UPDATE.value,
                     Tpm20Property.TPM2_PT_LOCKOUT_INTERVAL.value,
                     Tpm20Property.TPM2_PT_LOCKOUT_RECOVERY.value):
                 # Decimal property
