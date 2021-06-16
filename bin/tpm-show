@@ -845,6 +845,7 @@ class Tpm20ResponseCode(enum.IntEnum):
     TPM2_RC_BINDING = 0x0a5
     TPM2_RC_CURVE = 0x0a6
     TPM2_RC_ECC_POINT = 0x0a7
+
     # RC_VER1 = 0x100
     TPM2_RC_INITIALIZE = 0x100
     TPM2_RC_FAILURE = 0x101
@@ -881,6 +882,79 @@ class Tpm20ResponseCode(enum.IntEnum):
     TPM2_RC_NO_RESULT = 0x154
     TPM2_RC_SENSITIVE = 0x155
     RC_MAX_FM0 = 0x17f
+
+    # TPM2_RC_H=0x000 + TPM2_RC_1=0x100: error related to handle 1
+    TPM2_RC_HANDLE1_ASYMMETRIC = 0x181
+    TPM2_RC_HANDLE1_ATTRIBUTES = 0x182
+    TPM2_RC_HANDLE1_HASH = 0x183
+    TPM2_RC_HANDLE1_VALUE = 0x184  # For example from command Public_Read
+    TPM2_RC_HANDLE1_HIERARCHY = 0x185
+    TPM2_RC_HANDLE1_KEY_SIZE = 0x187
+    TPM2_RC_HANDLE1_MGF = 0x188
+    TPM2_RC_HANDLE1_MODE = 0x189
+    TPM2_RC_HANDLE1_TYPE = 0x18a
+    TPM2_RC_HANDLE1_HANDLE = 0x18b
+    TPM2_RC_HANDLE1_KDF = 0x18c
+    TPM2_RC_HANDLE1_RANGE = 0x18d
+    TPM2_RC_HANDLE1_AUTH_FAIL = 0x18e
+    TPM2_RC_HANDLE1_NONCE = 0x18f
+    TPM2_RC_HANDLE1_PP = 0x190
+    TPM2_RC_HANDLE1_SCHEME = 0x192
+    TPM2_RC_HANDLE1_SIZE = 0x195
+    TPM2_RC_HANDLE1_SYMMETRIC = 0x196
+    TPM2_RC_HANDLE1_TAG = 0x197
+    TPM2_RC_HANDLE1_SELECTOR = 0x198
+    TPM2_RC_HANDLE1_INSUFFICIENT = 0x19a
+    TPM2_RC_HANDLE1_SIGNATURE = 0x19b
+    TPM2_RC_HANDLE1_KEY = 0x19c
+    TPM2_RC_HANDLE1_POLICY_FAIL = 0x19d
+    TPM2_RC_HANDLE1_INTEGRITY = 0x19f
+    TPM2_RC_HANDLE1_TICKET = 0x1a0
+    TPM2_RC_HANDLE1_RESERVED_BITS = 0x1a1
+    TPM2_RC_HANDLE1_BAD_AUTH = 0x1a2
+    TPM2_RC_HANDLE1_EXPIRED = 0x1a3
+    TPM2_RC_HANDLE1_POLICY_CC = 0x1a4
+    TPM2_RC_HANDLE1_BINDING = 0x1a5
+    TPM2_RC_HANDLE1_CURVE = 0x1a6
+    TPM2_RC_HANDLE1_ECC_POINT = 0x1a7
+
+    # TPM2_RC_P=0x040 + TPM2_RC_1=0x100: error related to parameter 1
+    TPM2_RC_PARAM1_ASYMMETRIC = 0x1c1
+    TPM2_RC_PARAM1_ATTRIBUTES = 0x1c2
+    TPM2_RC_PARAM1_HASH = 0x1c3
+    TPM2_RC_PARAM1_VALUE = 0x1c4
+    TPM2_RC_PARAM1_HIERARCHY = 0x1c5
+    TPM2_RC_PARAM1_KEY_SIZE = 0x1c7
+    TPM2_RC_PARAM1_MGF = 0x1c8
+    TPM2_RC_PARAM1_MODE = 0x1c9
+    TPM2_RC_PARAM1_TYPE = 0x1ca
+    TPM2_RC_PARAM1_HANDLE = 0x1cb
+    TPM2_RC_PARAM1_KDF = 0x1cc
+    TPM2_RC_PARAM1_RANGE = 0x1cd
+    TPM2_RC_PARAM1_AUTH_FAIL = 0x1ce
+    TPM2_RC_PARAM1_NONCE = 0x1cf
+    TPM2_RC_PARAM1_PP = 0x1d0
+    TPM2_RC_PARAM1_SCHEME = 0x1d2
+    TPM2_RC_PARAM1_SIZE = 0x1d5
+    TPM2_RC_PARAM1_SYMMETRIC = 0x1d6
+    TPM2_RC_PARAM1_TAG = 0x1d7
+    TPM2_RC_PARAM1_SELECTOR = 0x1d8
+    TPM2_RC_PARAM1_INSUFFICIENT = 0x1da
+    TPM2_RC_PARAM1_SIGNATURE = 0x1db
+    TPM2_RC_PARAM1_KEY = 0x1dc
+    TPM2_RC_PARAM1_POLICY_FAIL = 0x1dd
+    TPM2_RC_PARAM1_INTEGRITY = 0x1df
+    TPM2_RC_PARAM1_TICKET = 0x1e0
+    TPM2_RC_PARAM1_RESERVED_BITS = 0x1e1
+    TPM2_RC_PARAM1_BAD_AUTH = 0x1e2
+    TPM2_RC_PARAM1_EXPIRED = 0x1e3
+    TPM2_RC_PARAM1_POLICY_CC = 0x1e4
+    TPM2_RC_PARAM1_BINDING = 0x1e5
+    TPM2_RC_PARAM1_CURVE = 0x1e6
+    TPM2_RC_PARAM1_ECC_POINT = 0x1e7
+
+    TPM2_RC_PARAM2_HANDLE = 0x2cb  # For example from command GetCapability
+
     RC_WARN = 0x900
     TPM2_RC_CONTEXT_GAP = 0x901
     TPM2_RC_OBJECT_MEMORY = 0x902
@@ -912,19 +986,51 @@ class Tpm20ResponseCode(enum.IntEnum):
     TPM2_RC_NV_UNAVAILABLE = 0x923
     TPM2_RC_NOT_USED = 0x97f
 
+    # TPM2_RC_S=0x800 + TPM2_RC_1=0x100: error related to session 1
+    TPM2_RC_SESS1_ASYMMETRIC = 0x981
+    TPM2_RC_SESS1_ATTRIBUTES = 0x982
+    TPM2_RC_SESS1_HASH = 0x983
+    TPM2_RC_SESS1_VALUE = 0x984
+    TPM2_RC_SESS1_HIERARCHY = 0x985
+    TPM2_RC_SESS1_KEY_SIZE = 0x987
+    TPM2_RC_SESS1_MGF = 0x988
+    TPM2_RC_SESS1_MODE = 0x989
+    TPM2_RC_SESS1_TYPE = 0x98a
+    TPM2_RC_SESS1_HANDLE = 0x98b
+    TPM2_RC_SESS1_KDF = 0x98c
+    TPM2_RC_SESS1_RANGE = 0x98d
+    TPM2_RC_SESS1_AUTH_FAIL = 0x98e
+    TPM2_RC_SESS1_NONCE = 0x98f
+    TPM2_RC_SESS1_PP = 0x990
+    TPM2_RC_SESS1_SCHEME = 0x992
+    TPM2_RC_SESS1_SIZE = 0x995
+    TPM2_RC_SESS1_SYMMETRIC = 0x996
+    TPM2_RC_SESS1_TAG = 0x997
+    TPM2_RC_SESS1_SELECTOR = 0x998
+    TPM2_RC_SESS1_INSUFFICIENT = 0x99a
+    TPM2_RC_SESS1_SIGNATURE = 0x99b
+    TPM2_RC_SESS1_KEY = 0x99c
+    TPM2_RC_SESS1_POLICY_FAIL = 0x99d
+    TPM2_RC_SESS1_INTEGRITY = 0x99f
+    TPM2_RC_SESS1_TICKET = 0x9a0
+    TPM2_RC_SESS1_RESERVED_BITS = 0x9a1
+    TPM2_RC_SESS1_BAD_AUTH = 0x9a2  # For example from command NV_Read
+    TPM2_RC_SESS1_EXPIRED = 0x9a3
+    TPM2_RC_SESS1_POLICY_CC = 0x9a4
+    TPM2_RC_SESS1_BINDING = 0x9a5
+    TPM2_RC_SESS1_CURVE = 0x9a6
+    TPM2_RC_SESS1_ECC_POINT = 0x9a7
+
     # TPM_RC_H = 0x000  # add to a handle-related error
     TPM_RC_P = 0x040  # add to a parameter-related error
     TPM_RC_S = 0x800  # add to a session-related error
     # TPM_RC_1 = 0x100  # add to a parameter-, handle-, or session-related error
     TPM_RC_2 = 0x200
     TPM_RC_3 = 0x300
-    TPM2_RC_HANDLE_GetCapability_capability = 0x1cb  # TPM_RC_1 + TPM_RC_P + TPM2_RC_HANDLE
-    TPM2_RC_HANDLE_GetCapability_property = 0x2cb  # TPM_RC_2 + TPM_RC_P + TPM2_RC_HANDLE
-    TPM2_RC_HANDLE_GetCapability_propertyCount = 0x3cb  # TPM_RC_3 + TPM_RC_P + TPM2_RC_HANDLE
-
-    # Encountered error codes
-    TPM2_Unknown_RC_from_Public_Read_0x184 = 0x184  # ???
-    TPM2_Unknown_RC_from_NV_Read_0x9a2 = 0x9a2  # ???
+    TPM_RC_4 = 0x400
+    TPM_RC_5 = 0x500
+    TPM_RC_6 = 0x600
+    TPM_RC_7 = 0x700
 
 
 class Tpm20Failure(Exception):
@@ -2457,8 +2563,9 @@ class TpmDevice:
                 if exc.code == Tpm20ResponseCode.TPM2_RC_HANDLE.value:
                     # On Windows, GetCapability returns response code 0x8b for unsupported input handle types
                     continue
-                if exc.code == Tpm20ResponseCode.TPM2_RC_HANDLE_GetCapability_property.value:
+                if exc.code == Tpm20ResponseCode.TPM2_RC_PARAM2_HANDLE.value:
                     # GetCapability returns response code 0x2cb for unsupported input handle types
+                    # (because param 1 is capability, 2 is property and 3 is propertyCount)
                     continue
                 raise
         return handles
@@ -3151,8 +3258,10 @@ def show_tpm_dev(dev: TpmDevice) -> None:
                     try:
                         obj_pubdata, obj_name, obj_qual_name = dev.tpm20_public_read(handle)
                     except Tpm20Failure as exc:
-                        if exc.code == Tpm20ResponseCode.TPM2_Unknown_RC_from_Public_Read_0x184:
-                            print(f"      - Public object read: unknown error {exc.code:#x}")
+                        if exc.code == Tpm20ResponseCode.TPM2_RC_HANDLE1_VALUE:
+                            # Error TPM2_RC_VALUE on Handle 1 (parameter) means
+                            # "value is out of range or is not correct for the context"
+                            print(f"      - Public object read: error {exc.code:#x} (handle value is not correct for the context)")  # noqa
                         else:
                             raise
                     else:
@@ -3211,8 +3320,8 @@ def show_tpm_dev(dev: TpmDevice) -> None:
                             print("      - NV data: error TPM2_RC_AUTH_UNAVAILABLE")
                         elif exc.code == Tpm20ResponseCode.TPM2_RC_NV_UNINITIALIZED:
                             print("      - NV data: error TPM2_RC_NV_UNINITIALIZED")
-                        elif exc.code == Tpm20ResponseCode.TPM2_Unknown_RC_from_NV_Read_0x9a2:
-                            print(f"      - NV data: unknown error {exc.code:#x}")
+                        elif exc.code == Tpm20ResponseCode.TPM2_RC_SESS1_BAD_AUTH:
+                            print("      - NV data: error TPM2_RC_S+TPM2_RC_1+TPM2_RC_BAD_AUTH")
                         else:
                             raise
                     else:
