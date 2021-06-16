@@ -2658,13 +2658,24 @@ class TpmDevice:
         }
         """
         properties: Tpm20CapTpmProperties = []
-        for resp_data in self.tpm20_get_capability_vec_gen(
-                Tpm20Capability.TPM_CAP_TPM_PROPERTIES,
-                0,
-                TPM2_MAX_TPM_PROPERTIES,
-                8):
-            prop, value = struct.unpack('>II', resp_data)
-            properties.append((prop, value))
+        max_prop = -1
+        # TPM2_MAX_TPM_PROPERTIES = 0x7f so request the largest power of 2
+        # below, which is 0x40
+        for prop_start in range(0, 0x1000, 0x40):
+            for resp_data in self.tpm20_get_capability_vec_gen(
+                    Tpm20Capability.TPM_CAP_TPM_PROPERTIES,
+                    prop_start,
+                    TPM2_MAX_TPM_PROPERTIES,
+                    8):
+                prop, value = struct.unpack('>II', resp_data)
+                if prop > max_prop:
+                    properties.append((prop, value))
+                    max_prop = prop
+                else:
+                    # Got overlapping data: ensure it is already present
+                    if (prop, value) not in properties:
+                        raise RuntimeError(
+                            f"Error: property {prop:#x} with value {value:#x} is not present in previous properties")
         return properties
 
     def tpm20_get_cap_tpm_property(self, prop: Tpm20Property) -> Optional[int]:
