@@ -803,9 +803,14 @@ class Tpm20CommandCode(enum.IntEnum):
 
 @enum.unique
 class Tpm20ResponseCode(enum.IntEnum):
-    """TPM_RC: command response codes in TPM 2.0"""
+    """TPM_RC: command response codes in TPM 2.0
+
+    Documentation:
+    https://github.com/tpm2-software/tpm2-tss/blob/3.1.0/include/tss2/tss2_tpm2_types.h
+    """
     TPM2_RC_SUCCESS = 0x000
-    TPM2_RC_BAD_TAG = 0x030
+    TPM2_RC_BAD_TAG = 0x01e  # Same as Tpm12ResponseCode.TPM_BADTAG
+
     RC_FMT1 = 0x080
     TPM2_RC_ASYMMETRIC = 0x081
     TPM2_RC_ATTRIBUTES = 0x082
