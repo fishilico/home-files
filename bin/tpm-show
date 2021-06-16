@@ -1053,14 +1053,19 @@ class Tpm20Failure(Exception):
 
 @enum.unique
 class TpmAlgId(enum.IntEnum):
-    """TPM_ALG_ID constants for TPM 2.0"""
+    """TPM_ALG_ID constants for TPM 2.0
+
+    Reference: "TCG Algorithm Registry"
+    https://trustedcomputinggroup.org/resource/tcg-algorithm-registry/
+    https://trustedcomputinggroup.org/wp-content/uploads/TCG-_Algorithm_Registry_r1p32_pub.pdf
+    """
     TPM_ALG_ERROR = 0x0000
     TPM_ALG_RSA = 0x0001
-    TPM_ALG_TDES = 0x0003
-    TPM_ALG_SHA1 = 0x0004
-    TPM_ALG_HMAC = 0x0005
-    TPM_ALG_AES = 0x0006
-    TPM_ALG_MGF1 = 0x0007
+    TPM_ALG_TDES = 0x0003  # Triple Data Encryption Standard
+    TPM_ALG_SHA1 = 0x0004  # Secure Hash Algorithm
+    TPM_ALG_HMAC = 0x0005  # Hash Message Authentication Code
+    TPM_ALG_AES = 0x0006  # Advanced Encryption Standard
+    TPM_ALG_MGF1 = 0x0007  # hash-based mask-generation function
     TPM_ALG_KEYEDHASH = 0x0008
     TPM_ALG_XOR = 0x000a
     TPM_ALG_SHA256 = 0x000b
@@ -1069,31 +1074,37 @@ class TpmAlgId(enum.IntEnum):
     TPM_ALG_NULL = 0x0010
     TPM_ALG_SM3_256 = 0x0012
     TPM_ALG_SM4 = 0x0013
-    TPM_ALG_RSASSA = 0x0014
-    TPM_ALG_RSAES = 0x0015
-    TPM_ALG_RSAPSS = 0x0016
-    TPM_ALG_OAEP = 0x0017
-    TPM_ALG_ECDSA = 0x0018
-    TPM_ALG_ECDH = 0x0019
-    TPM_ALG_ECDAA = 0x001a
+    TPM_ALG_RSASSA = 0x0014  # RSA Signature Scheme with Appendix (PKCS#1 v1.5)
+    TPM_ALG_RSAES = 0x0015  # RSA Encryption/decryption Scheme (PKCS#1 v1.5)
+    TPM_ALG_RSAPSS = 0x0016  # RSA Probabilistic Signature Scheme
+    TPM_ALG_OAEP = 0x0017  # RSA Optimal Asymmetric Encryption Padding
+    TPM_ALG_ECDSA = 0x0018  # signature algorithm using elliptic curve cryptography
+    TPM_ALG_ECDH = 0x0019  # secret sharing using ECC
+    TPM_ALG_ECDAA = 0x001a  # elliptic-curve based, anonymous signing scheme
     TPM_ALG_SM2 = 0x001b
-    TPM_ALG_ECSCHNORR = 0x001c
-    TPM_ALG_ECMQV = 0x001d
-    TPM_ALG_KDF1_SP800_56a = 0x0020
-    TPM_ALG_KDF2 = 0x0021
-    TPM_ALG_KDF1_SP800_108 = 0x0022
+    TPM_ALG_ECSCHNORR = 0x001c  # elliptic-curve based Schnorr signature
+    TPM_ALG_ECMQV = 0x001d  # two-phase elliptic-curve key exchange (NIST SP800-56A)
+    TPM_ALG_KDF1_SP800_56a = 0x0020  # concatenation key derivation function (NIST SP800-56A)
+    TPM_ALG_KDF2 = 0x0021  # key derivation function KDF2 (IEEE Std 1363a-2004)
+    TPM_ALG_KDF1_SP800_108 = 0x0022  # key derivation method (NIST SP800-108)
     TPM_ALG_ECC = 0x0023
-    TPM_ALG_SYMCIPHER = 0x0025
+    TPM_ALG_SYMCIPHER = 0x0025  # symmetric block cipher
     TPM_ALG_CAMELLIA = 0x0026
     TPM_ALG_SHA3_256 = 0x0027
     TPM_ALG_SHA3_384 = 0x0028
     TPM_ALG_SHA3_512 = 0x0029
-    TPM_ALG_CMAC = 0x003f
-    TPM_ALG_CTR = 0x0040
-    TPM_ALG_OFB = 0x0041
-    TPM_ALG_CBC = 0x0042
-    TPM_ALG_CFB = 0x0043
-    TPM_ALG_ECB = 0x0044
+    TPM_ALG_CMAC = 0x003f  # block Cipher-based Message Authentication Code
+    TPM_ALG_CTR = 0x0040  # Counter mode
+    TPM_ALG_OFB = 0x0041  # Output Feedback mode
+    TPM_ALG_CBC = 0x0042  # Cipher Block Chaining mode
+    TPM_ALG_CFB = 0x0043  # Cipher Feedback mode
+    TPM_ALG_ECB = 0x0044  # Electronic Codebook mode
+    TPM_ALG_CCM = 0x0050  # Counter with Cipher Block Chaining-Message Authentication Code
+    TPM_ALG_GCM = 0x0051  # Galois/Counter Mode
+    TPM_ALG_KW = 0x0052  # AES Key Wrap (NIST SP800-38F)
+    TPM_ALG_KWP = 0x0053  # AES Key Wrap with Padding (NIST SP800-38F)
+    TPM_ALG_EAX = 0x0054  # Authenticated-Encryption Mode
+    TPM_ALG_EDDSA = 0x0060  # Edwards-curve Digital Signature Algorithm (PureEdDSA)
 
     def compute_hash(self, data: bytes) -> bytes:
         """Compute the hash digest according to the algorithm"""
@@ -1118,9 +1129,13 @@ class Tpm20EccCurve(enum.IntEnum):
     TPM_ECC_NIST_P256 = 0x0003
     TPM_ECC_NIST_P384 = 0x0004
     TPM_ECC_NIST_P521 = 0x0005
-    TPM_ECC_BN_P256 = 0x0010
-    TPM_ECC_BN_P638 = 0x0011
+    TPM_ECC_BN_P256 = 0x0010  # curve to support ECDAA
+    TPM_ECC_BN_P638 = 0x0011  # curve to support ECDAA
     TPM_ECC_SM2_P256 = 0x0020
+    TPM_ECC_BP_P256_R1 = 0x0030  # Brainpool
+    TPM_ECC_BP_P384_R1 = 0x0031  # Brainpool
+    TPM_ECC_BP_P512_R1 = 0x0032  # Brainpool
+    TPM_ECC_CURVE_25519 = 0x0040  # curve to support EdDSA
 
 
 @enum.unique
