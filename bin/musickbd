@@ -136,13 +136,13 @@ def main():
 
             # Decode unicode
             unicode_buffer += ch
-            unich = unicode_buffer.decode('utf-8', errors='ignore')
-            if not len(unich):
+            unichar = unicode_buffer.decode('utf-8', errors='ignore')
+            if not len(unichar):
                 continue
             unicode_buffer = b''
 
             # Find note
-            note = note_mapping.get(unich)
+            note = note_mapping.get(unichar)
             if note is not None:
                 sys.stdout.write(note2str(note) + '\r\n')
                 play_with_sox(note)

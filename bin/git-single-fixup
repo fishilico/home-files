@@ -24,7 +24,7 @@
 # Add files to the index and create a fixup commit
 #
 # Usage example:
-# let's suppose a projet has a commit in its local history (not pushed),
+# let's suppose a project has a commit in its local history (not pushed),
 # "badc0ffee", which modifies files abc and def.  After some testing, these
 # files need to be modified again in the commit.  The usual workflow is then:
 #
