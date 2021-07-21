@@ -36,11 +36,19 @@ build_container() {
         fi
     done
 
-    # Build a container that runs codespell, using the latest dictionary from git master
+    # Build a container that runs codespell, using the latest dictionaries from git master,
+    # ignoring some really common suggestions.
     podman build --no-cache -t localhost/podman-codespell -f /dev/stdin << EOF
 FROM docker.io/library/python:3.9-alpine
 RUN pip3 install codespell && \
-    wget -O/master-dictionary.txt https://raw.githubusercontent.com/codespell-project/codespell/master/codespell_lib/data/dictionary.txt
+    wget -O/master-dictionary.txt https://raw.githubusercontent.com/codespell-project/codespell/master/codespell_lib/data/dictionary.txt && \
+    wget -O/master-dictionary_code.txt https://raw.githubusercontent.com/codespell-project/codespell/master/codespell_lib/data/dictionary_code.txt && \
+    wget -O/master-dictionary_informal.txt https://raw.githubusercontent.com/codespell-project/codespell/master/codespell_lib/data/dictionary_informal.txt && \
+    wget -O/master-dictionary_names.txt https://raw.githubusercontent.com/codespell-project/codespell/master/codespell_lib/data/dictionary_names.txt && \
+    wget -O/master-dictionary_rare.txt https://raw.githubusercontent.com/codespell-project/codespell/master/codespell_lib/data/dictionary_rare.txt && \
+    grep -hv \
+        -e '^stdio->' \
+        /master-dictionary*.txt > /merged-dictionaries.txt
 EOF
 
 }
@@ -135,4 +143,4 @@ exec podman run --rm \
     --volume "$CURDIR:$CURDIR" \
     --workdir "$CURDIR" \
     --security-opt seccomp=<(printf %s "$SECCOMP_PROFILE") \
-    -ti localhost/podman-codespell codespell -D /master-dictionary.txt "$@"
+    -ti localhost/podman-codespell codespell -D /merged-dictionaries.txt "$@"
