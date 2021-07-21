@@ -297,9 +297,14 @@ TRUSTED_SUID_FILES = [
     LinkToSuidFile('/etc/alternatives/traceroute6', '/bin/traceroute6.iputils'),
 
     # kdelibs, https://www.kde.org/
-    # https://cgit.kde.org/kdelibs.git/tree/?h=KDE/4.14
+    # https://invent.kde.org/frameworks/kdelibs4support/
+    # (src/kio/fileshareset)
     SuidFile('/lib/kde4/libexec/fileshareset'),
     LinkToSuidFile('/lib/kde4/libexec/filesharelist', '/lib/kde4/libexec/fileshareset'),
+
+    # kinit, https://api.kde.org/frameworks/kinit/html/index.html
+    # https://invent.kde.org/frameworks/kinit
+    # (src/start_kdeinit)
     SuidFile('/lib/kde4/libexec/start_kdeinit'),
 
     # lldpd, https://vincentbernat.github.io/lldpd/
@@ -485,6 +490,11 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib/xorg-server/Xorg.wrap'),
     SuidFile('/lib/xorg/Xorg.wrap', owners=('root', ), groups=('root', )),
     SuidFile('/lib(exec)?/Xorg.wrap'),
+
+    # xscreensaver, https://www.jwz.org/xscreensaver/
+    # https://github.com/Zygo/xscreensaver
+    # (driver/xscreensaver-auth.c)
+    SuidFile('/lib/xscreensaver/xscreensaver-auth'),
 ]
 
 # Define here known and fully trusted SGID programs.
@@ -727,6 +737,11 @@ KNOWN_SUID_FILES = [
     # SuidFile('/bin/userdel'),
     # SuidFile('/bin/usermod'),
 
+    # squid, http://www.squid-cache.org/
+    # https://github.com/squid-cache/squid
+    # (src/auth/basic/PAM)
+    SuidFile('/lib/squid/basic_pam_auth', owners=('root', ), groups=('root', )),
+
     # systemtap, https://sourceware.org/systemtap/
     # https://sourceware.org/git/gitweb.cgi?p=systemtap.git;a=tree
     SuidFile('/bin/staprun'),
@@ -800,7 +815,9 @@ TRUSTED_CAPS_FILES = [
                    '= cap_net_raw+ep'),
 
     # kinit, https://api.kde.org/frameworks/kinit/html/index.html
-    # https://cgit.kde.org/kinit.git/tree/
+    # https://invent.kde.org/frameworks/kinit
+    # (src/start_kdeinit)
+    CapsFile('/lib/kf5/start_kdeinit', 'cap_sys_resource=ep'),
     CapsFile('/lib/x86_64-linux-gnu/libexec/kf5/start_kdeinit', '= cap_sys_resource+ep'),
 
     # kismet, https://www.kismetwireless.net/
@@ -853,6 +870,9 @@ TRUSTED_CAPS_FILES = [
     # https://github.com/shadow-maint/shadow
     CapsFile('/bin/newgidmap', '= cap_setgid+ep'),
     CapsFile('/bin/newuidmap', '= cap_setuid+ep'),
+
+    # spice-gtk3, http://spice-space.org
+    CapsFile('/lib/spice-client-glib-usb-acl-helper', 'cap_fowner=ep'),
 
     # systemd, http://www.freedesktop.org/wiki/Software/systemd/
     # https://github.com/systemd/systemd
