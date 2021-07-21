@@ -1,0 +1,216 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2021 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Run https://github.com/facebook/infer in a podman container
+#
+# Creates a new image and a temporary container in order to run infer,
+# using a volume to mount the current working directory in the container.
+#
+# Usage:
+#     podman-infer run --results-dir infer-output --headers --keep-going -- make
+#     podman-infer explore --html --results-dir infer-output
+
+set -e
+
+build_container() {
+    # Update the base image
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/ubuntu:20.04)
+    podman pull docker.io/library/ubuntu:20.04
+    for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman base image ${OLD_BASE_IMAGE}"
+            podman image rm -- "${OLD_BASE_IMAGE}"
+        fi
+    done
+
+    RELEASE_JSON="$(curl --silent 'https://api.github.com/repos/facebook/infer/releases/latest')"
+    VERSION="$(printf %s "$RELEASE_JSON" | jq -r .tag_name)"
+    SHA256SUM="$(printf %s "$RELEASE_JSON" | jq -r .body | grep --color=never -E '^[0-9a-f]{64}  infer-linux64-' | tr -d '\r')"
+
+    echo "Using infer version $VERSION ($SHA256SUM)"
+
+    podman build -t localhost/podman-infer -f /dev/stdin << EOF
+FROM docker.io/library/ubuntu:20.04
+
+# Install some usual build tools in the container, to help using it
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get -qq update && \
+    apt-get install --no-install-recommends --no-install-suggests -qqy \
+        build-essential \
+        ca-certificates \
+        cmake \
+        curl \
+        git \
+        protobuf-compiler \
+        python-is-python3 \
+        python3 \
+        python3-protobuf \
+        xz-utils && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/ /var/log/* && \
+    cd /opt && \
+    curl -sSL --output "infer-linux64-$VERSION.tar.xz" "https://github.com/facebook/infer/releases/download/$VERSION/infer-linux64-$VERSION.tar.xz" && \
+    printf %s "$SHA256SUM" | sha256sum -c && \
+    tar -xJf "infer-linux64-$VERSION.tar.xz" && \
+    rm "infer-linux64-$VERSION.tar.xz" && \
+    ln -s "/opt/infer-linux64-$VERSION/bin/infer" /usr/local/bin/infer
+EOF
+}
+
+# Option --update updates the container if it already exists
+if [ $# -ge 1 ] && [ "$1" = '--update' ] ; then
+    shift
+    mapfile -t OLD_IMAGES < <(podman image list '--format={{.Id}}' localhost/podman-infer)
+    build_container
+    for OLD_IMAGE in "${OLD_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman image ${OLD_IMAGE}"
+            podman image rm -- "${OLD_IMAGE}"
+        fi
+    done
+elif ! podman image exists localhost/podman-infer ; then
+    build_container
+fi
+
+# Use SCMP_ACT_LOG to record the denied syscalls
+SECCOMP_PROFILE='
+{
+    "defaultAction": "SCMP_ACT_ERRNO",
+    "syscalls": [
+        {
+            "names": [
+                "accept4",
+                "access",
+                "arch_prctl",
+                "bind",
+                "brk",
+                "capset",
+                "chdir",
+                "chmod",
+                "chown",
+                "clock_nanosleep",
+                "clone",
+                "close",
+                "connect",
+                "dup",
+                "dup2",
+                "dup3",
+                "epoll_create1",
+                "eventfd2",
+                "execve",
+                "exit_group",
+                "faccessat",
+                "fadvise64",
+                "fchdir",
+                "fchmodat",
+                "fchown",
+                "fcntl",
+                "fdatasync",
+                "fstat",
+                "fstatfs",
+                "ftruncate",
+                "futex",
+                "getcwd",
+                "getdents64",
+                "getegid",
+                "geteuid",
+                "getgid",
+                "getitimer",
+                "getpgrp",
+                "getpid",
+                "getppid",
+                "getrandom",
+                "getrusage",
+                "getsockopt",
+                "gettid",
+                "getuid",
+                "ioctl",
+                "kill",
+                "listen",
+                "lseek",
+                "lstat",
+                "mkdir",
+                "mmap",
+                "mprotect",
+                "mremap",
+                "munmap",
+                "newfstatat",
+                "openat",
+                "pipe",
+                "pipe2",
+                "prctl",
+                "pread64",
+                "prlimit64",
+                "pselect6",
+                "pwrite64",
+                "read",
+                "readlink",
+                "rename",
+                "rmdir",
+                "rt_sigaction",
+                "rt_sigprocmask",
+                "rt_sigreturn",
+                "sched_setaffinity",
+                "select",
+                "set_robust_list",
+                "set_tid_address",
+                "setitimer",
+                "setresgid",
+                "setresuid",
+                "sigaltstack",
+                "socket",
+                "stat",
+                "statfs",
+                "sysinfo",
+                "tgkill",
+                "umask",
+                "uname",
+                "unlink",
+                "unlinkat",
+                "utimensat",
+                "vfork",
+                "wait4",
+                "write",
+                "writev"
+            ],
+            "action": "SCMP_ACT_ALLOW"
+        }
+    ]
+}'
+
+# If the first word is an infer verb, add "infer" command
+if [ $# -ge 1 ] ; then
+    case "$1" in
+        -*|analyze|capture|compile|help|explore|report|reportdiff|run)
+            set -- infer "$@"
+            ;;
+    esac
+fi
+
+CURDIR="$(pwd)"
+exec podman run --rm \
+    --network=none \
+    --volume "$CURDIR:$CURDIR" \
+    --workdir "$CURDIR" \
+    --security-opt seccomp=<(printf %s "$SECCOMP_PROFILE") \
+    -ti localhost/podman-infer "$@"
