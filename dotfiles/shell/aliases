@@ -502,6 +502,7 @@ if type alias > /dev/null 2>&1 ; then
     alias pyserial-enum='python -m serial.tools.list_ports'
 
     # Python linter of 120-character-wide lines
+    alias black-120='black --line-length=120'
     alias flake8-120='flake8 --max-line-length=120'
     alias pylint-120='pylint --max-line-length=120'
 
