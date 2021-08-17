@@ -1,0 +1,348 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2021 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Run https://github.com/NationalSecurityAgency/ghidra in a podman container
+
+set -e
+
+# Create a custom HOME directory for Ghidra
+mkdir -p "$HOME/home-ghidra"
+
+# Copy information from https://github.com/NationalSecurityAgency/ghidra/releases
+ZIPNAME='ghidra_10.0.1_PUBLIC_20210708.zip'
+SHA256='9b68398fcc4c2254a3f8ff231c4e8b2ac75cc8105f819548c7eed3997f8c5a5d'
+VERSION="$(printf %s "$ZIPNAME" | cut -d_ -f2)"
+
+# Build a container for Ghidra from the latest release
+build_container_from_release() {
+    # Update the base image
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/openjdk:16-slim)
+    podman pull docker.io/library/openjdk:16-slim
+    for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman base image ${OLD_BASE_IMAGE}"
+            podman image rm -- "${OLD_BASE_IMAGE}"
+        fi
+    done
+
+    # Customize the user of Ghidra, to be connect to a remote server using a specific name
+    GHIDRA_USER_NAME="$(cat "$HOME/home-ghidra/username.txt" || true)"
+    if [ -z "$GHIDRA_USER_NAME" ] ; then
+        GHIDRA_USER_NAME=ghidra-user
+    fi
+
+    # Map the user ID to the same one in the container
+    GHIDRA_USER_ID="$(id -u)"
+
+    podman build -t localhost/podman-ghidra -f /dev/stdin << EOF
+FROM docker.io/library/openjdk:16-slim
+
+# Create our own launcher instead of using ghidraRun, in order to launch Ghidra in foreground
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get -qq update && \
+    apt-get install --no-install-recommends --no-install-suggests -qqy \
+        ca-certificates \
+        curl \
+        libfontconfig1 \
+        libfreetype6 \
+        libx11-6 \
+        libxi6 \
+        libxrender1 \
+        libxtst6 \
+        unzip && \
+    cd /opt && \
+    curl -sSL --output "$ZIPNAME" "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${VERSION}_build/$ZIPNAME" && \
+    printf %s "$SHA256  $ZIPNAME" | sha256sum -c && \
+    unzip "./$ZIPNAME" && \
+    rm "./$ZIPNAME" && \
+    apt-get purge -qqy curl unzip && \
+    apt-get -qqy autoremove --purge && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/ /var/log/* && \
+    useradd --uid "${GHIDRA_USER_ID}" --user-group --no-create-home user && \
+    echo '#!/bin/sh' > /usr/local/bin/ghidra && \
+    echo 'exec "/opt/ghidra_${VERSION}_PUBLIC/support/launch.sh" fg Ghidra 2G "" ghidra.GhidraRun "\$@"' >> /usr/local/bin/ghidra && \
+    chmod +x /usr/local/bin/ghidra && \
+    ln -s "/opt/ghidra_${VERSION}_PUBLIC/support/sleigh" /usr/local/bin/sleigh && \
+    echo "VMARGS=-Duser.name=${GHIDRA_USER_NAME}" >> "/opt/ghidra_${VERSION}_PUBLIC/support/launch.properties"
+EOF
+}
+
+# Build a container for Ghidra using some patches
+build_container_with_patches() {
+    # Update the base image
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/openjdk:11-slim)
+    podman pull docker.io/library/openjdk:11-slim
+    for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman base image ${OLD_BASE_IMAGE}"
+            podman image rm -- "${OLD_BASE_IMAGE}"
+        fi
+    done
+
+    # Customize the user of Ghidra, to connect to a remote server using a specific name
+    GHIDRA_USER_NAME="$(cat "$HOME/home-ghidra/username.txt" || true)"
+    if [ -z "$GHIDRA_USER_NAME" ] ; then
+        GHIDRA_USER_NAME=ghidra-user
+    fi
+
+    # Map the user ID to the same one in the container
+    GHIDRA_USER_ID="$(id -u)"
+
+    podman build -t localhost/podman-ghidra -f /dev/stdin << EOF
+# Use the same image as the "run" stage, in order to use the same C++ library.
+# Otherwise, when using docker.io/library/gradle:6.9-jdk11 (Ubuntu 20.04) when
+# building and docker.io/library/openjdk:16-slim (Debian 10) when running,
+# /opt/ghidra_10.0.1_DEV/Ghidra/Features/Decompiler/os/linux64/decompile is
+# missing version GLIBCXX_3.4.26 from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.
+FROM docker.io/library/openjdk:11-slim as stage0
+
+# Install Gradle from https://gradle.org/releases/
+# Apply patches from:
+# * https://github.com/NationalSecurityAgency/ghidra/pull/1407 (for Xtensa files)
+# * https://github.com/NationalSecurityAgency/ghidra/pull/3006 (for ARCompact files), using git rebase as "patch" does not support renamed files.
+# * https://github.com/NationalSecurityAgency/ghidra/pull/3212 (for MIPS32el files)
+# * https://github.com/NationalSecurityAgency/ghidra/pull/3220 (for Android DEX files)
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get -qq update && \
+    apt-get install --no-install-recommends --no-install-suggests -qqy \
+        ca-certificates \
+        curl \
+        file \
+        gcc \
+        git \
+        g++ \
+        make \
+        patch \
+        unzip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/ /var/log/* && \
+    cd /opt && \
+    curl -sSL --output gradle.zip https://services.gradle.org/distributions/gradle-6.9-bin.zip && \
+    echo '765442b8069c6bee2ea70713861c027587591c6b1df2c857a23361512560894e  gradle.zip' | sha256sum -c && \
+    unzip gradle.zip && \
+    rm gradle.zip && \
+    export PATH="/opt/gradle-6.9/bin:\$PATH" && \
+    git clone --branch "Ghidra_${VERSION}_build" https://github.com/NationalSecurityAgency/ghidra.git && \
+    cd /opt/ghidra && \
+    git fetch origin pull/3006/head:pr/3006 && \
+    git checkout pr/3006 && \
+    git config user.email build@localhost && \
+    git rebase "Ghidra_${VERSION}_build" && \
+    curl -sSL --output 1407.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/1407.patch && \
+    patch -Np1 -i 1407.patch && \
+    curl -sSL --output 3212.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/3212.patch && \
+    patch -Np1 -i 3212.patch && \
+    curl -sSL --output 3220.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/3220.patch &&  \
+    patch -Np1 -i 3220.patch && \
+    rm /opt/ghidra/Ghidra/Extensions/SleighDevTools/pcodetest/pcode_defs.py.orig && \
+    gradle -I gradle/support/fetchDependencies.gradle init && \
+    gradle buildGhidra && \
+    ls -l /opt/ghidra/build/dist && \
+    unzip -d /opt "build/dist/ghidra_${VERSION}_DEV_"*"_linux64.zip" && \
+    cd / && \
+    rm -rf /opt/ghidra /opt/gradle-6.9 /root/.ghidra
+
+# Second stage, without build dependencies
+FROM docker.io/library/openjdk:11-slim
+
+COPY --from=stage0 /opt/ghidra_${VERSION}_DEV /opt/ghidra_${VERSION}_DEV
+
+# Create our own launcher instead of using ghidraRun, in order to launch Ghidra in foreground
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get -qq update && \
+    apt-get install --no-install-recommends --no-install-suggests -qqy \
+        ca-certificates \
+        libfontconfig1 \
+        libfreetype6 \
+        libx11-6 \
+        libxi6 \
+        libxrender1 \
+        libxtst6 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/ /var/log/* && \
+    useradd --uid "${GHIDRA_USER_ID}" --user-group --no-create-home user && \
+    echo '#!/bin/sh' > /usr/local/bin/ghidra && \
+    echo 'exec "/opt/ghidra_${VERSION}_DEV/support/launch.sh" fg Ghidra 2G "" ghidra.GhidraRun "\$@"' >> /usr/local/bin/ghidra && \
+    chmod +x /usr/local/bin/ghidra && \
+    ln -s "/opt/ghidra_${VERSION}_DEV/support/sleigh" /usr/local/bin/sleigh && \
+    echo "VMARGS=-Duser.name=${GHIDRA_USER_NAME}" >> "/opt/ghidra_${VERSION}_DEV/support/launch.properties"
+EOF
+}
+
+# Option --update updates the container if it already exists
+if [ $# -ge 1 ] && [ "$1" = '--update' ] ; then
+    shift
+    mapfile -t OLD_IMAGES < <(podman image list '--format={{.Id}}' localhost/podman-ghidra)
+    build_container_with_patches
+    for OLD_IMAGE in "${OLD_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman image ${OLD_IMAGE}"
+            podman image rm -- "${OLD_IMAGE}"
+        fi
+    done
+elif ! podman image exists localhost/podman-ghidra ; then
+    build_container_with_patches
+fi
+
+# Use SCMP_ACT_LOG to record the denied syscalls
+SECCOMP_PROFILE='
+{
+    "defaultAction": "SCMP_ACT_ERRNO",
+    "syscalls": [
+        {
+            "names": [
+                "access",
+                "arch_prctl",
+                "bind",
+                "brk",
+                "capset",
+                "chmod",
+                "clock_getres",
+                "clock_nanosleep",
+                "clone",
+                "close",
+                "connect",
+                "dup",
+                "dup2",
+                "execve",
+                "exit",
+                "exit_group",
+                "faccessat",
+                "fadvise64",
+                "fchdir",
+                "fcntl",
+                "fstat",
+                "fstatfs",
+                "fsync",
+                "ftruncate",
+                "futex",
+                "getcwd",
+                "getdents64",
+                "getegid",
+                "geteuid",
+                "getgid",
+                "getgroups",
+                "getpeername",
+                "getpgrp",
+                "getpid",
+                "getppid",
+                "getrandom",
+                "getrusage",
+                "getsockname",
+                "getsockopt",
+                "gettid",
+                "getuid",
+                "ioctl",
+                "kill",
+                "link",
+                "listen",
+                "lseek",
+                "lstat",
+                "madvise",
+                "mkdir",
+                "mmap",
+                "mprotect",
+                "munmap",
+                "nanosleep",
+                "openat",
+                "pipe",
+                "poll",
+                "prctl",
+                "pread64",
+                "prlimit64",
+                "pselect6",
+                "read",
+                "readlink",
+                "recvfrom",
+                "recvmsg",
+                "rename",
+                "restart_syscall",
+                "rmdir",
+                "rt_sigaction",
+                "rt_sigprocmask",
+                "rt_sigreturn",
+                "sched_getaffinity",
+                "sched_yield",
+                "select",
+                "set_robust_list",
+                "set_tid_address",
+                "setpgid",
+                "setresgid",
+                "setresuid",
+                "setsockopt",
+                "shmat",
+                "shmctl",
+                "shmdt",
+                "shmget",
+                "shutdown",
+                "socket",
+                "socketpair",
+                "stat",
+                "statfs",
+                "sysinfo",
+                "umask",
+                "uname",
+                "unlink",
+                "vfork",
+                "wait4",
+                "write",
+                "writev"
+            ],
+            "action": "SCMP_ACT_ALLOW"
+        }
+    ]
+}'
+
+# By default, launch Ghidra
+if [ $# -eq 0 ] ; then
+    set ghidra
+fi
+
+# Mount ~/Downloads too, to easily transmit files
+GHIDRA_ARGS=()
+if [ -d "$HOME/Downloads" ] ; then
+    GHIDRA_ARGS+=(--volume "$HOME/Downloads:/home/user/Downloads")
+fi
+
+# If this does not work because of a X11 connection issue, open the X11 server
+# to local connections from the current user with
+# ("si" means "Server Interpreted", cf. man 7 Xsecurity):
+#
+#     xhost +si:localuser:$USER
+#
+# Or to open the local server to all users:
+#
+#     xhost +local:
+
+exec podman run --rm \
+    --network=private \
+    --env "DISPLAY=$DISPLAY" \
+    --volume /tmp/.X11-unix:/tmp/.X11-unix \
+    --volume "$HOME/home-ghidra:/home/user" \
+    "${GHIDRA_ARGS[@]}" \
+    --security-opt seccomp=<(printf %s "$SECCOMP_PROFILE") \
+    --userns keep-id \
+    --user user \
+    --workdir /home/user \
+    -ti localhost/podman-ghidra "$@"

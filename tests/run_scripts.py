@@ -110,6 +110,7 @@ BIN_SCRIPTS = {
     'ping-box': 'never',
     'podman-bpytop': 'never',
     'podman-codespell': 'never',
+    'podman-ghidra': 'never',
     'podman-infer': 'never',
     'podman-markdownlint': 'never',
     'podman-purge': 'never',

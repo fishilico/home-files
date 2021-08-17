@@ -40,6 +40,9 @@ fi
 if podman image exists localhost/podman-codespell ; then
     "${HOME_FILES_BIN}/podman-codespell" --update /dev/null
 fi
+if podman image exists localhost/podman-ghidra ; then
+    "${HOME_FILES_BIN}/podman-ghidra" --update java --version
+fi
 if podman image exists localhost/podman-infer ; then
     "${HOME_FILES_BIN}/podman-infer" --update --version
 fi
