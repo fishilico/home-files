@@ -2747,6 +2747,63 @@ class TpmDevice:
             properties.append((prop, pcr_select))
         return properties
 
+    def tpm20_testparms_rsa(self, key_bits: int) -> None:
+        """Check if RSA with the specified key size is implemented, using TPM2_TestParms
+        Parameters:
+            TPMT_PUBLIC_PARMS parameters;
+
+            struct TPMT_PUBLIC_PARMS {
+                TPMI_ALG_PUBLIC type;
+                TPMU_PUBLIC_PARMS parameters;
+            }
+            union TPMU_PUBLIC_PARMS {
+                TPMS_RSA_PARMS rsaDetail;
+                ...
+            }
+        """
+        parameters = struct.pack(
+            '>HHHHI',
+            TpmAlgId.TPM_ALG_RSA,  # TPMT_PUBLIC_PARMS.type
+            TpmAlgId.TPM_ALG_NULL,  # TPMS_RSA_PARMS.symmetric.algorithm
+            TpmAlgId.TPM_ALG_NULL,  # TPMS_RSA_PARMS.scheme.scheme
+            key_bits,  # TPMS_RSA_PARMS.keyBits
+            0,  # TPMS_RSA_PARMS.exponent
+        )
+        resp = self.tpm20_run(
+            Tpm20Tag.TPM2_ST_NO_SESSIONS,
+            Tpm20CommandCode.TPM2_CC_TestParms,
+            parameters)
+        if resp:
+            raise RuntimeError(f"Unexpected response content for TPM2_CC_TestParms: {resp!r}")
+
+    def tpm20_testparms_symcipher(self, alg: TpmAlgId, key_bits: int, mode: TpmAlgId) -> None:
+        """Check if the symmetric cipher with the specified parameters is implemented, using TPM2_TestParms
+        Parameters:
+            TPMT_PUBLIC_PARMS parameters;
+
+            struct TPMT_PUBLIC_PARMS {
+                TPMI_ALG_PUBLIC type;
+                TPMU_PUBLIC_PARMS parameters;
+            }
+            union TPMU_PUBLIC_PARMS {
+                TPMT_SYM_DEF_OBJECT symDetail;
+                ...
+            }
+        """
+        parameters = struct.pack(
+            '>HHHH',
+            TpmAlgId.TPM_ALG_SYMCIPHER,  # TPMT_PUBLIC_PARMS.type
+            alg,  # TPMT_SYM_DEF_OBJECT.algorithm
+            key_bits,  # TPMT_SYM_DEF_OBJECT.keyBits
+            mode,  # TPMT_SYM_DEF_OBJECT.mode
+        )
+        resp = self.tpm20_run(
+            Tpm20Tag.TPM2_ST_NO_SESSIONS,
+            Tpm20CommandCode.TPM2_CC_TestParms,
+            parameters)
+        if resp:
+            raise RuntimeError(f"Unexpected response content for TPM2_CC_TestParms: {resp!r}")
+
     def tpm20_public_read(self, handle: int) -> Tuple[Tpm20PublicStruct, bytes, bytes]:
         """Read the public area of a loaded object, without authorization, using TPM2_ReadPublic
 
@@ -3186,6 +3243,57 @@ def show_tpm_dev(dev: TpmDevice) -> None:
         print("Supported ECC curves:")
         for ecc_curve in dev.tpm20_get_cap_ecc_curves():
             print(f"  [{ecc_curve.value:#4x}] {ecc_curve.name}")
+
+        print("")
+
+        print("Supported RSA key sizes:")
+        for key_bits in (512, 1024, 2048, 3072, 4096, 8192):
+            try:
+                dev.tpm20_testparms_rsa(key_bits)
+            except Tpm20Failure as exc:
+                if exc.code_desc is not None:
+                    desc_result = f"{exc.code_desc.name}={exc.code_desc:#x}"
+                else:
+                    desc_result = f"unknown error {exc}"
+
+                if exc.code == Tpm20ResponseCode.TPM2_RC_PARAM1_VALUE:
+                    desc_result = f"unsupported algorithm specification ({desc_result})"
+            else:
+                desc_result = "OK"
+            print(f"  RSA {key_bits:4}: {desc_result}")
+
+        print("")
+
+        print("Supported AES key sizes and modes:")
+        symcipher_modes: Tuple[Tuple[str, TpmAlgId], ...] = (
+            ("",  TpmAlgId.TPM_ALG_NULL),
+            ("CTR",  TpmAlgId.TPM_ALG_CTR),
+            ("OFB",  TpmAlgId.TPM_ALG_OFB),
+            ("CBC",  TpmAlgId.TPM_ALG_CBC),
+            ("CFB",  TpmAlgId.TPM_ALG_CFB),
+            ("ECB",  TpmAlgId.TPM_ALG_ECB),
+            ("CCM",  TpmAlgId.TPM_ALG_CCM),
+            ("GCM",  TpmAlgId.TPM_ALG_GCM),
+            ("KW",  TpmAlgId.TPM_ALG_KW),
+            ("KWP",  TpmAlgId.TPM_ALG_KWP),
+        )
+        for key_bits in (128, 192, 256):
+            for mode_name, mode in symcipher_modes:
+                try:
+                    dev.tpm20_testparms_symcipher(TpmAlgId.TPM_ALG_AES, key_bits, mode)
+                except Tpm20Failure as exc:
+                    if exc.code_desc is not None:
+                        desc_result = f"{exc.code_desc.name}={exc.code_desc:#x}"
+                    else:
+                        desc_result = f"unknown error {exc}"
+
+                    if exc.code == Tpm20ResponseCode.TPM2_RC_PARAM1_VALUE:
+                        desc_result = f"unsupported algorithm specification ({desc_result})"
+                    elif exc.code == Tpm20ResponseCode.TPM2_RC_PARAM1_MODE:
+                        desc_result = f"unsupported symmetric mode ({desc_result})"
+                else:
+                    desc_result = "OK"
+                print(f"  AES {key_bits:3} {mode_name:3}: {desc_result}")
 
         print("")
 
