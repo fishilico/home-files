@@ -27,7 +27,7 @@ Encoding uses IEEE 754 specifications. In these specifications, a number n is
 represented using:
 * a sign s, 0 for positive numbers and 1 for negative ones
 * a significant, with a fraction part f, which is a positive or nul integer
-* a precision p, which is the number of bits in s
+* a precision p, which is the number of bits in the significant
 * a base b = 2
 * an exponent e, which is a signed integer
 
