@@ -29,8 +29,8 @@ set -e
 mkdir -p "$HOME/home-ghidra"
 
 # Copy information from https://github.com/NationalSecurityAgency/ghidra/releases
-ZIPNAME='ghidra_10.0.1_PUBLIC_20210708.zip'
-SHA256='9b68398fcc4c2254a3f8ff231c4e8b2ac75cc8105f819548c7eed3997f8c5a5d'
+ZIPNAME='ghidra_10.0.2_PUBLIC_20210804.zip'
+SHA256='5534521ccb958b5cde04fc5c51bfa2918d475af49e94d372fa7c117cc9fe804b'
 VERSION="$(printf %s "$ZIPNAME" | cut -d_ -f2)"
 
 # Build a container for Ghidra from the latest release
@@ -54,7 +54,7 @@ build_container_from_release() {
     # Map the user ID to the same one in the container
     GHIDRA_USER_ID="$(id -u)"
 
-    podman build -t localhost/podman-ghidra -f /dev/stdin << EOF
+    podman build -t "localhost/podman-ghidra:$VERSION" -f /dev/stdin << EOF
 FROM docker.io/library/openjdk:16-slim
 
 # Create our own launcher instead of using ghidraRun, in order to launch Ghidra in foreground
@@ -109,7 +109,7 @@ build_container_with_patches() {
     # Map the user ID to the same one in the container
     GHIDRA_USER_ID="$(id -u)"
 
-    podman build -t localhost/podman-ghidra -f /dev/stdin << EOF
+    podman build -t "localhost/podman-ghidra:$VERSION" -f /dev/stdin << EOF
 # Use the same image as the "run" stage, in order to use the same C++ library.
 # Otherwise, when using docker.io/library/gradle:6.9-jdk11 (Ubuntu 20.04) when
 # building and docker.io/library/openjdk:16-slim (Debian 10) when running,
@@ -193,7 +193,7 @@ EOF
 # Option --update updates the container if it already exists
 if [ $# -ge 1 ] && [ "$1" = '--update' ] ; then
     shift
-    mapfile -t OLD_IMAGES < <(podman image list '--format={{.Id}}' localhost/podman-ghidra)
+    mapfile -t OLD_IMAGES < <(podman image list '--format={{.Id}}' "localhost/podman-ghidra:$VERSION")
     build_container_with_patches
     for OLD_IMAGE in "${OLD_IMAGES[@]}" ; do
         if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_IMAGE}")" = 'true' ] ; then
@@ -201,7 +201,7 @@ if [ $# -ge 1 ] && [ "$1" = '--update' ] ; then
             podman image rm -- "${OLD_IMAGE}"
         fi
     done
-elif ! podman image exists localhost/podman-ghidra ; then
+elif ! podman image exists "localhost/podman-ghidra:$VERSION" ; then
     build_container_with_patches
 fi
 
@@ -345,4 +345,4 @@ exec podman run --rm \
     --userns keep-id \
     --user user \
     --workdir /home/user \
-    -ti localhost/podman-ghidra "$@"
+    -ti "localhost/podman-ghidra:$VERSION" "$@"
