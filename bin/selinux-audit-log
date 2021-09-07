@@ -65,6 +65,9 @@ COLOR_NORM: str = '\033[m'
 # and from /usr/include/libaudit.h
 # (https://github.com/linux-audit/audit-userspace/blob/v2.8.5/lib/libaudit.h)
 AUDIT_TYPES: Mapping[int, str] = {
+    # 1000 - 1099 are for commanding the audit system
+    1006: 'LOGIN',
+
     # 1100 - 1199 user space trusted application messages
     1100: 'USER_AUTH',
     1101: 'USER_ACCT',
