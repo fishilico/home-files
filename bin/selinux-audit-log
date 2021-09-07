@@ -1839,8 +1839,8 @@ class SELinuxAuditLogAnalyzer:
                             help="use sudo to become root")
         parser.add_argument('-S', '--show-other', action='store_true',
                             help="show audit logs from other types that SELinux-focused ones")
-        group.add_argument('--seccomp', action='store_true',
-                           help="show AUDIT_SECCOMP entries in audit logs too")
+        parser.add_argument('--seccomp', action='store_true',
+                            help="show AUDIT_SECCOMP entries in audit logs too")
         parser.add_argument('-V', '--vagrant', action='store_true',
                             help="ssh into a vagrant virtual machine here to grab its audit log")
         parser.add_argument('-M', '--machine', type=str,
