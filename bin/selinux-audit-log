@@ -1984,7 +1984,7 @@ class SELinuxAuditLogAnalyzer:
 
         self.command_line: Sequence[str] = command_line
 
-    def spawn_command_for_audit_log(self):
+    def spawn_command_for_audit_log(self) -> int:
         """Spawn a process from a command to read the audit log"""
         logger.debug("Running %r", escape_cmdline(self.command_line))
         proc = subprocess.Popen(
@@ -1994,10 +1994,11 @@ class SELinuxAuditLogAnalyzer:
             stdout=subprocess.PIPE,  # Grab the output
             stderr=None,  # Show errors to the console directly
         )
+        assert proc.stdout is not None
         try:
             for raw_line in proc.stdout:
                 # Remove coloring escape sequences (from journalctl)
-                raw_line: bytes = raw_line.replace(b'\x1b[0;34m', b'').replace(b'\x1b[0m', b'')
+                raw_line = raw_line.replace(b'\x1b[0;34m', b'').replace(b'\x1b[0m', b'')
                 try:
                     # Audit logs are always ASCII
                     # '\0' could happen in corrupted journal files
@@ -2054,7 +2055,7 @@ class SELinuxAuditLogAnalyzer:
             logger.warning("Command %r exited with code %d", self.command_line, exit_code)
         return exit_code
 
-    def analyze_audit_line(self, line: str, entry_time: Optional[datetime.datetime] = None):
+    def analyze_audit_line(self, line: str, entry_time: Optional[datetime.datetime] = None) -> None:
         """Analyze a line from Linux audit log"""
         # The first field is the type, either numerical or textual:
         # - audit.log uses "type=AVC msg=audit(...:...): pid=..."
@@ -2284,7 +2285,9 @@ class SELinuxAuditLogAnalyzer:
                     print(f"        - {key} = {value!r}", end='\r\n')
         elif type_name == 'AVC' and 'apparmor' in parsed_record:  # AppArmor AVC
             apparmor_result = parsed_record['apparmor']
+            assert isinstance(apparmor_result, str)
             operation = parsed_record['operation']
+            assert isinstance(operation, str)
             used_keys = {'apparmor', 'operation'}
             avc_desc = type_name
             if apparmor_result == 'DENIED':
@@ -2298,7 +2301,9 @@ class SELinuxAuditLogAnalyzer:
 
             if operation == 'capable':
                 capability = parsed_record['capability']
+                assert isinstance(capability, str)
                 capname = parsed_record['capname']
+                assert isinstance(capname, str)
                 used_keys.add('capability')
                 used_keys.add('capname')
                 avc_desc += f"({self.color_cyan}{capname}{self.color_norm}"
@@ -2306,7 +2311,9 @@ class SELinuxAuditLogAnalyzer:
             elif operation in ('file_mmap', 'mknod', 'open'):
                 name = parsed_record['name']
                 requested_mask = parsed_record['requested_mask']
+                assert isinstance(requested_mask, str)
                 denied_mask = parsed_record['denied_mask']
+                assert isinstance(denied_mask, str)
                 used_keys.add('name')
                 used_keys.add('requested_mask')
                 used_keys.add('denied_mask')
@@ -2412,7 +2419,9 @@ class SELinuxAuditLogAnalyzer:
                 print(f"    - {key} = {value!r}", end='\r\n')
         elif type_name == 'USER_AVC' and 'msg/apparmor' in parsed_record:  # AppArmor user AVC
             apparmor_result = parsed_record['msg/apparmor']
+            assert isinstance(apparmor_result, str)
             operation = parsed_record['msg/operation']
+            assert isinstance(operation, str)
             used_keys = {'msg/apparmor', 'msg/operation'}
             avc_desc = type_name
             if apparmor_result == 'DENIED':
@@ -2540,9 +2549,13 @@ class SELinuxAuditLogAnalyzer:
         elif type_name == 'SECCOMP':
             # Format Seccomp action SCMP_ACT_LOG (https://man7.org/linux/man-pages/man3/seccomp_rule_add.3.html)
             seccomp_syscall = parsed_record['syscall']
+            assert isinstance(seccomp_syscall, str)
             seccomp_desc = f"{type_name} syscall={self.color_boldred}{seccomp_syscall}{self.color_norm}"
-            if 'SYSCALL' in parsed_record and parsed_record['SYSCALL'] not in seccomp_syscall:
-                seccomp_desc += f" SYSCALL={parsed_record['SYSCALL']!r}"
+            if 'SYSCALL' in parsed_record:
+                seccomp_usyscall = parsed_record['SYSCALL']
+                assert isinstance(seccomp_usyscall, str)
+                if seccomp_usyscall not in seccomp_syscall:
+                    seccomp_desc += f" SYSCALL={seccomp_usyscall!r}"
             seccomp_desc += f" exe={self.color_cyan}{parsed_record['exe']!r}{self.color_norm}"
             seccomp_desc += f" comm={self.color_cyan}{parsed_record['comm']!r}{self.color_norm}"
             seccomp_desc += f" pid={parsed_record['pid']!r}"
@@ -2550,7 +2563,9 @@ class SELinuxAuditLogAnalyzer:
             assert isinstance(seccomp_uid, int)
             seccomp_desc += f" uid={seccomp_uid}"
             with suppress(KeyError):
-                seccomp_desc += f"({parsed_record['UID']})"
+                seccomp_u_uid = parsed_record['UID']
+                assert isinstance(seccomp_u_uid, str)
+                seccomp_desc += f"({seccomp_u_uid})"
             with suppress(KeyError):
                 seccomp_auid = parsed_record['auid']
                 assert isinstance(seccomp_auid, int)
@@ -2559,14 +2574,24 @@ class SELinuxAuditLogAnalyzer:
                         seccomp_desc += " auid=-1"
                     else:
                         seccomp_desc += f" auid={seccomp_auid}"
-                    seccomp_desc += f"({parsed_record['AUID']})"
+                    seccomp_u_auid = parsed_record['AUID']
+                    assert isinstance(seccomp_u_auid, str)
+                    seccomp_desc += f"({seccomp_u_auid})"
             seccomp_desc += f" gid={parsed_record['gid']!r}"
             with suppress(KeyError):
-                seccomp_desc += f"({parsed_record['GID']})"
+                seccomp_u_gid = parsed_record['GID']
+                assert isinstance(seccomp_u_gid, str)
+                seccomp_desc += f"({seccomp_u_gid})"
             with suppress(KeyError):
-                seccomp_desc += f" subj={parsed_record['subj']}"
-            seccomp_desc += f" code={parsed_record['code']}"
-            seccomp_desc += f" ip={parsed_record['ip']}"
+                seccomp_subj = parsed_record['subj']
+                assert isinstance(seccomp_subj, str)
+                seccomp_desc += f" subj={seccomp_subj}"
+            seccomp_code = parsed_record['code']
+            assert isinstance(seccomp_code, str)
+            seccomp_desc += f" code={seccomp_code}"
+            seccomp_ip = parsed_record['ip']
+            assert isinstance(seccomp_ip, str)
+            seccomp_desc += f" ip={seccomp_ip}"
             seccomp_sig = parsed_record['sig']
             assert isinstance(seccomp_sig, int)
             if seccomp_sig != 0:
