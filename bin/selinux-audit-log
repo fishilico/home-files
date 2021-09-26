@@ -204,6 +204,11 @@ AUDIT_TYPES: Mapping[int, str] = {
     1806: 'INTEGRITY_EVM_XATTR',
     1807: 'INTEGRITY_POLICY_RULE',
 
+    # 2000 is for otherwise unclassified kernel audit messages (legacy)
+    2000: 'KERNEL',  # On Android 11: "state=initialized audit_enabled=0 res=1"
+
+    # 2001 - 2099 unused (kernel)
+
     # 2100 - 2199 user space anomaly records
     2100: 'ANOM_LOGIN_FAILURES',
     2101: 'ANOM_LOGIN_TIME',
@@ -740,6 +745,7 @@ AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('AVC', 'comm'),
     ('DAEMON_END', 'comm'),
     ('NETFILTER_CFG', 'comm'),
+    ('USER_AVC', 'comm'),  # This is a fake field, from adb logcat
     ('USER_MAC_CONFIG_CHANGE', 'comm'),
     ('SECCOMP', 'comm'),
     ('SERVICE_START', 'comm'),
@@ -1001,6 +1007,7 @@ AUDIT_UNQUOTED_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('CRYPTO_SESSION', 'pfs'),
     ('BPRM_FCAPS', 'pi'),
     ('BPRM_FCAPS', 'pp'),
+    ('USER_AVC', 'property'),
     ('PATH', 'rdev'),
     ('VIRT_RESOURCE', 'rdev'),
     ('SELINUX_ERR', 'reason'),
@@ -1527,7 +1534,7 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
                 nl_rf_error, remaining = matches.groups()
                 result[prefix + 'netlink_recvfrom_error'] = int(nl_rf_error)
             else:
-                matches = re.match(r'avc:  (denied|granted)  \{([0-9a-z_ ]+)\} for +(.*)$', remaining)
+                matches = re.match(r'avc: +(denied|granted) +\{([0-9a-z_ ]+)\} for +(.*)$', remaining)
                 if not matches:
                     raise ValueError(f"Unable to parse AVC line: {line!r}")
                 result[prefix + 'avc/result'], avc_perms_str, remaining = matches.groups()
@@ -1844,14 +1851,16 @@ class SELinuxAuditLogAnalyzer:
         parser.add_argument('logfiles', metavar='LOGFILES', nargs='*', type=str,
                             help=f"path to audit.log (default: {DEFAULT_AUDIT_LOG_PATH})")
         group = parser.add_mutually_exclusive_group(required=False)
-        group.add_argument('--audit', action='store_true',
-                           help="reads {DEFAULT_AUDIT_LOG_PATH} (default is stdin is a TTY)")
+        group.add_argument('-a', '--audit', action='store_true',
+                           help=f"reads {DEFAULT_AUDIT_LOG_PATH} (default if stdin is a TTY)")
         group.add_argument('-d', '--dmesg', action='store_true',
                            help="use dmesg to get the audit logs")
         group.add_argument('--dmesg-busybox', action='store_true',
                            help="use busybox dmesg to get the audit logs (implies --dmesg)")
         group.add_argument('-j', '--journal', action='store_true',
                            help="use systemd's journal to get the audit logs")
+        group.add_argument('-l', '--logcat', action='store_true',
+                           help="use ADB logcat to get the audit logs")
         group.add_argument('--stdin', action='store_true',
                            help="show audit logs from the standard input (default when it is not a TTY)")
         group.add_argument('-t', '--today', action='store_true',
@@ -1871,6 +1880,8 @@ class SELinuxAuditLogAnalyzer:
                             help="show audit logs from other types that SELinux-focused ones")
         parser.add_argument('--seccomp', action='store_true',
                             help="show AUDIT_SECCOMP entries in audit logs too")
+        parser.add_argument('-A', '--adb', action='store_true',
+                            help="connect to a device with ADB (Android Debug Bridge)")
         parser.add_argument('-V', '--vagrant', action='store_true',
                             help="ssh into a vagrant virtual machine here to grab its audit log")
         parser.add_argument('-M', '--machine', type=str,
@@ -1883,6 +1894,7 @@ class SELinuxAuditLogAnalyzer:
             level=logging.DEBUG)
 
         self.from_dmesg: bool = args.dmesg or args.dmesg_busybox
+        self.from_logcat: bool = args.logcat
         self.show_other: bool = args.show_other
         self.show_seccomp: bool = args.seccomp
         self.last_show_evt_idx: Optional[int] = None
@@ -1930,6 +1942,13 @@ class SELinuxAuditLogAnalyzer:
                 command_line.append(f'--lines={args.num}')
             if args.follow:
                 command_line.append('--follow')
+        elif args.logcat:
+            # Use adb logcat, limited to messages with the word "audit"
+            if args.follow:
+                command_line = ['adb', 'logcat', '--regex=audit']
+            else:
+                # Option "Don't block"
+                command_line = ['adb', 'logcat', '-d', '--regex=audit']
         elif args.today:
             # Use ausearch --start today
             if args.logfiles:
@@ -1973,6 +1992,18 @@ class SELinuxAuditLogAnalyzer:
         if args.sudo or args.vagrant:  # Vagrant also needs sudo
             command_line = ['sudo', '-s'] + command_line
 
+        if args.adb:
+            if self.from_dmesg:
+                # Running "dmesg" on Android requires root privileges
+                # Also, dmesg does not support --color option
+                command_line = [arg for arg in command_line if arg != '--color=never']
+                command_line = ['adb', 'shell', 'su', 'root', escape_cmdline(command_line)]
+            elif self.from_logcat:
+                # The logcat command handler already inserted "adb"
+                assert 'adb' in command_line
+            else:
+                parser.error("Option --adb requires using --dmesg or --logcat source")
+
         if args.vagrant:
             # Use Vagrant to run a command
             if args.machine:
@@ -1994,6 +2025,7 @@ class SELinuxAuditLogAnalyzer:
             stdout=subprocess.PIPE,  # Grab the output
             stderr=None,  # Show errors to the console directly
         )
+        current_year: str = datetime.datetime.now(tz=tzlocal()).strftime('%Y')
         assert proc.stdout is not None
         try:
             for raw_line in proc.stdout:
@@ -2010,11 +2042,46 @@ class SELinuxAuditLogAnalyzer:
                     continue
 
                 if self.from_dmesg:
-                    # Strip the prefix after the timestamp
-                    matches = re.match(r'^\[[0-9.]+\] audit: (.*)$', line)
+                    # Strip the prefix after the timestamp, and accept both
+                    # Linux messages ("[1.2] audit: ...")
+                    # and Android ones ("[  1.2] type=1400 audit(3.4:56): ...")
+                    matches = re.match(r'^\[ *[0-9.]+\] audit: (.*)$', line)
+                    if not matches:
+                        matches = re.match(r'^\[ *[0-9.]+\] (type=[0-9]+ audit\(.*)$', line)
                     if matches:
-                        self.analyze_audit_line(matches.group(1))
+                        # Ignore some lines
+                        audit_line = matches.group(1)
+                        if audit_line != 'initializing netlink subsys (disabled)':
+                            self.analyze_audit_line(audit_line)
                     # When using dmesg, ignore all lines that do not match
+                    continue
+
+                if self.from_logcat:
+                    # Match lines such as:
+                    #     01-01 00:00:20.632     1     1 W /system/bin/init:
+                    #     type=1107 audit(0.0:5): uid=0 auid=4294967295 ...
+                    # The command name is 8-character wide, such as "ls      "
+                    # or a kernel task ID such as "[ T1819]"
+                    matches = re.match(
+                        r'^([0-9-]+ [0-9:.]+) +[0-9]+ +[0-9]+ +[A-Z]+ (.{8}[^ ]*) audit: (.*)$',
+                        line)
+                    if not matches:
+                        matches = re.match(
+                            r'^([0-9-]+ [0-9:.]+) +[0-9]+ +[0-9]+ +[A-Z]+ (.{8}[^ ]*): (type=[0-9]+ audit\(.*)$',
+                            line)
+                    if matches:
+                        # Insert an artificial "comm" field in the audit record, to track the command name
+                        time_str, comm, audit_line = matches.groups()
+                        if audit_line != 'initializing netlink subsys (disabled)':
+                            # Insert the current year in the log line
+                            entry_time = datetime.datetime.strptime(
+                                f'{current_year}!{time_str}',
+                                '%Y!%m-%d %H:%M:%S.%f',
+                            )
+                            comm = comm.strip().replace('\\', '\\\\').replace('"', '\\"').replace(' ', '_')
+                            audit_line += f' comm="{comm}"'
+                            self.analyze_audit_line(audit_line, entry_time=entry_time)
+                    # When using adb logcat, ignore all lines that do not match
                     continue
 
                 # Match audit.log entries
@@ -2059,7 +2126,7 @@ class SELinuxAuditLogAnalyzer:
         """Analyze a line from Linux audit log"""
         # The first field is the type, either numerical or textual:
         # - audit.log uses "type=AVC msg=audit(...:...): pid=..."
-        # - audit.log may use "type=UNKNOWN[1332]" for messages that are not yet known to auditd
+        # - audit.log may use "type=UNKNOWN[1332]" for messages that are not known yet to auditd
         # - dmesg uses "type=1400 audit(...:...): pid=..."
         # - systemd's journal uses "AVC pid=..."
         matches = re.match(r'^(?:type=)?(?:([0-9]+)|([0-9A-Z_]+)|(?:UNKNOWN\[([0-9]+)\])) (.*)$', line)
@@ -2077,7 +2144,7 @@ class SELinuxAuditLogAnalyzer:
                 type_name = AUDIT_TYPES[int(type_intstr)]
             except KeyError:
                 logger.error("Unknown audit type %r in %r", type_intstr, line)
-                raise NotImplementedError(f"Audit type {type_intstr!r} not yet known")
+                raise NotImplementedError(f"Audit type {type_intstr!r} is not known yet")
 
         assert type_name
 
@@ -2086,11 +2153,15 @@ class SELinuxAuditLogAnalyzer:
         matches = re.match(r'^(?:msg=)?audit\(([0-9]+)\.([0-9]+):([0-9]+)\): (.*)$', remaining)
         if matches:
             seconds, millis, evt_idx_str, remaining = matches.groups()
-            if len(millis) != 3:
+            if seconds == '0' and millis == '0':
+                # Skip parsing "fake" time given by adb logcat
+                pass
+            elif len(millis) != 3:
                 logger.error("Invalid audit timestamp (ms) %r in %r", millis, line)
                 raise ValueError(f"Invalid audit timestamp ({millis} ms)")
-            entry_time = datetime.datetime.fromtimestamp(int(seconds), tz=tzlocal())
-            entry_time += datetime.timedelta(milliseconds=int(millis))
+            else:
+                entry_time = datetime.datetime.fromtimestamp(int(seconds), tz=tzlocal())
+                entry_time += datetime.timedelta(milliseconds=int(millis))
             evt_idx = int(evt_idx_str)
 
         # Keep the event if its index matches the previous one
