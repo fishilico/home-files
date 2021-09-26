@@ -2301,7 +2301,7 @@ class SELinuxAuditLogAnalyzer:
 
             if operation == 'capable':
                 capability = parsed_record['capability']
-                assert isinstance(capability, str)
+                assert isinstance(capability, int)
                 capname = parsed_record['capname']
                 assert isinstance(capname, str)
                 used_keys.add('capability')
