@@ -1023,6 +1023,7 @@ def add_acpi_path_names(device_tree):
 # Known ACPI device IDs, as described by:
 # * http://www.acpi.info/DOWNLOADS/ACPIspec50.pdf
 # * https://uefi.org/sites/default/files/resources/ACPI_6_3_final_Jan30.pdf
+# * https://uefi.org/specs/ACPI/6.4/05_ACPI_Software_Programming_Model/ACPI_Software_Programming_Model.html
 # * https://www.kernel.org/doc/Documentation/acpi/namespace.txt
 # * https://www.kernel.org/doc/Documentation/PCI/acpi-info.txt
 # * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/acpi/acpi_pnp.c?h=v4.20
@@ -1070,6 +1071,9 @@ KNOWN_ACPI_DEVICES = {
     'ACPI0012': 'NVDIMM Root Device (NVDR)',
     'ACPI0013': 'Generic Event Device (GED)',
     'ACPI0014': 'Wireless Power Calibration Device',
+    'ACPI0015': 'USB4 Host Interface Device',
+    'ACPI0016': 'Compute Express Link Host Bridge (CXL)',
+    'ACPI0017': 'Compute Express Link Interconnect (CXL)',
 
     # Alps Electric Company Ltd
     'ALP0001': 'ALPS Touchpad',  # Seen as \_SB_.PCI0.I2C1.TPD2
