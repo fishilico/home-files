@@ -355,7 +355,7 @@ TRUSTED_SUID_FILES = [
 
     # openssh, http://www.openssh.com/portable.html
     # https://anongit.mindrot.org/openssh.git/tree/
-    SuidFile('/bin/ssh-agent', groups=('nobody', 'ssh', )),
+    SuidFile('/bin/ssh-agent', groups=('nobody', 'ssh', '_ssh', )),
     SuidFile('/lib/ssh/ssh-keysign'),
     SuidFile('/lib64/misc/ssh-keysign'),
     SuidFile('/lib(exec)?/openssh/ssh-keysign'),
