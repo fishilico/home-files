@@ -541,7 +541,17 @@ class ElfFile:
                 return
             logger.warning("no DYNAMIC string table: %r", path)
             return
-        dyn_strtab = virtual_mem.read_data(dyn_strtab_vaddr, dyn_strsz)
+        try:
+            dyn_strtab = virtual_mem.read_data(dyn_strtab_vaddr, dyn_strsz)
+        except IndexError:
+            # This may happen when the .dynstr section is not mapped in the program header
+            # For example: /opt/isabelle/contrib/zipperposition-2.0-1/x86_64-linux/zipperposition
+            # with Arch Linux package isabelle 2021-1
+            logger.warning("unmapped .dynstr section: %r", path)
+            # Allow only some known-bad files.
+            if path == "/opt/isabelle/contrib/zipperposition-2.0-1/x86_64-linux/zipperposition":
+                return
+            raise
 
         def dyn_str(str_offset):
             """Get a string from DYNAMIC's string table"""
