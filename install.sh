@@ -63,7 +63,7 @@ install_rec() {
         IGNPAT_REF="$FILENAME $FILENAME"
         for EXT in backup bak orig pyc pyo rej swp tmp
         do
-            IGNPAT_TEST="$IGNPAT_TEST ${FILENAME%.$EXT}"
+            IGNPAT_TEST="$IGNPAT_TEST ${FILENAME%."$EXT"}"
             IGNPAT_REF="$IGNPAT_REF $FILENAME"
         done
         [ "$IGNPAT_TEST" = "$IGNPAT_REF" ] || continue

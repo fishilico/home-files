@@ -127,7 +127,7 @@ fi
 [ -n "$HOME" ] || die "\$HOME is no longer set"
 [ "$HOME" = "$TMPHOME" ] || die "\$HOME is no longer $TMPHOME"
 [ -n "$PATH" ] || die "\$PATH is not set"
-[ "$PATH" != "${PATH#$HOME/bin:}" ] || die "\$PATH does not begin with $HOME/bin"
+[ "$PATH" != "${PATH#"$HOME"/bin:}" ] || die "\$PATH does not begin with $HOME/bin"
 [ -n "$PS1" ] || die "\$PS1 is not set"
 
 # Test aliases

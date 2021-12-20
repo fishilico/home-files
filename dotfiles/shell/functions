@@ -592,7 +592,7 @@ gitarc() {
     esac
     git -C "$(git rev-parse --show-toplevel)" archive \
         --format="$FORMAT" --output="$ARCPATH" \
-        --prefix="${ARCFILE%.$FORMAT}/" HEAD
+        --prefix="${ARCFILE%."$FORMAT"}/" HEAD
 }
 
 # Override objdump to write stdin to a temporary file if no file is provided in

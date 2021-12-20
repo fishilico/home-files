@@ -26,7 +26,7 @@
 # Ensure that all bin and sbin folders are in PATH, if they are not symlinks
 COLON_PATH=":$PATH:"
 for DIR in /usr/local/bin /usr/local/sbin /bin /usr/bin /sbin /usr/sbin ; do
-    if [ ! -L "$DIR" ] && [ -d "$DIR" ] && [ "${COLON_PATH%:$DIR:*}" = "$COLON_PATH" ] ; then
+    if [ ! -L "$DIR" ] && [ -d "$DIR" ] && [ "${COLON_PATH%:"$DIR":*}" = "$COLON_PATH" ] ; then
         PATH="$DIR:$PATH"
     fi
 done
@@ -52,7 +52,7 @@ fi
 
 # Add home in path
 HOMEBIN="$REAL_HOME/bin"
-if [ -d "$HOMEBIN" ] && [ "${COLON_PATH%:$HOMEBIN:*}" = "$COLON_PATH" ] ; then
+if [ -d "$HOMEBIN" ] && [ "${COLON_PATH%:"$HOMEBIN":*}" = "$COLON_PATH" ] ; then
     export PATH="$HOMEBIN:$PATH"
 fi
 unset COLON_PATH HOMEBIN
