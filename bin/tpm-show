@@ -1642,6 +1642,11 @@ WELL_KNOWN_EA_POLICIES: Mapping[str, str] = {
     '21784fe1fc7d5496c488e4fa33dd95f82fce48f440a75d882f8c8a44bc12018a': 'PolicyNV(windows_nvbits_0x01880001: bit 1 clear)',  # noqa
     '983d228d2827649da8e461587538d741991aef5cd1b5ceae869242f537535ce1': 'PolicyNvWritten(YES) AND PolicyLocality(TWO, THREE, FOUR)',  # noqa
     'fb204f312abaaac0980ce9fbbf5260788c7c7b6d4b68b6ce0845750c761511ed': 'PolicyNV(windows_nvbits_0x01880001: bit 1 clear) OR (PolicyNvWritten(YES) AND PolicyLocality(TWO, THREE, FOUR))',  # noqa
+    '093ceb41181d47808862d7946268ee6a17a10e3d1b79b32351bc56e4beaceff0': 'PolicyPCR(0 is ZEROS)',
+    '4b44fc4192db5ad7167e0135708fd374890a06bfb56317df01f24f2226542a3f': 'PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial) AND PolicyPCR(0 is ZEROS)',  # noqa
+    'cb5c8014e27a5f7586aae42db4f9776a977bcbc952ca61e33609da2b2c329418': 'PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial) AND PolicyPCR(0 is extended from SHA1(00,01,00))',  # noqa
+    'e6ef4f0296ac3ef0f53906480985b1be8058e0e517e5f74a5b8a415efe339d87': 'PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial) AND PolicyPCR(0 is extended from SHA1(01,01,00))',  # noqa
+    '44447900cbb83f5b15765650ef96980a2b966ea909044a01b85fa54a96fc5984': '(PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial) AND PolicyPCR(0 is ZEROS)) OR (PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial) AND PolicyPCR(0 is extended from SHA1(00,01,00))) OR (PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial) AND PolicyPCR(0 is extended from SHA1(01,01,00)))',  # noqa
     '1169a46a813a8ccdd0f3066785207bb9b67afd3a6cd6dfe5c5aee120867a96df': 'Unknown (used by Intel TXT for LCP Platform Supplier and SGX SVN)',  # noqa
     'b75ce1946f78df8baa426918db09318017e6b38d048c954e05c2c4f34bd44060': 'Unknown (used by Intel TXT for LCP Platform Supplier and SGX SVN)',  # noqa
 }
