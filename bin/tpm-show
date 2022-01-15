@@ -212,6 +212,10 @@ class Tpm12Tag(enum.IntEnum):
     TPM_TAG_RSP_AUTH1_COMMAND = 0x00c5
     TPM_TAG_RSP_AUTH2_COMMAND = 0x00c6
 
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#06x}>"
+
 
 @enum.unique
 class Tpm12CommandCode(enum.IntEnum):
@@ -342,6 +346,10 @@ class Tpm12CommandCode(enum.IntEnum):
     # TPM_CONNECTION_COMMAND = 0x40000000
     TSC_ORD_PhysicalPresence = 0x4000000a
     TSC_ORD_ResetEstablishmentBit = 0x4000000b
+
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#010x}>"
 
 
 @enum.unique
@@ -486,6 +494,10 @@ class Tpm12AlgId(enum.IntEnum):
     TPM_ALG_AES256 = 0x00000009  # AES, key size 256
     TPM_ALG_XOR = 0x0000000a  # XOR using the rolling nonces
 
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#x}>"
+
 
 @enum.unique
 class Tpm12SymMode(enum.IntEnum):
@@ -493,6 +505,10 @@ class Tpm12SymMode(enum.IntEnum):
     TPM_SYM_MODE_ECB = 0x00000001
     TPM_SYM_MODE_CBC = 0x00000002
     TPM_SYM_MODE_CFB = 0x00000003
+
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#x}>"
 
 
 @enum.unique
@@ -563,6 +579,10 @@ class Tpm12CapabilityArea(enum.IntEnum):
     TPM_CAP_PROP_ACTIVE_COUNTER = 0x00000122
     TPM_CAP_PROP_MAX_NV_AVAILABLE = 0x00000123
     TPM_CAP_PROP_INPUT_BUFFER = 0x00000124
+
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#x}>"
 
 
 # Description of fields of structure TPM_PERMANENT_FLAGS
@@ -671,6 +691,10 @@ class Tpm20Tag(enum.IntEnum):
     TPM2_ST_HASHCHECK = 0x8024
     TPM2_ST_AUTH_SIGNED = 0x8025
     TPM2_ST_FU_MANIFEST = 0x8029
+
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#06x}>"
 
 
 @enum.unique
@@ -799,6 +823,10 @@ class Tpm20CommandCode(enum.IntEnum):
     TPM2_CC_Vendor_TCG_Test = 0x20000000
     TPM2_CC_VerifySignature = 0x00000177
     TPM2_CC_ZGen_2Phase = 0x0000018d
+
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#010x}>"
 
 
 @enum.unique
@@ -1032,6 +1060,10 @@ class Tpm20ResponseCode(enum.IntEnum):
     TPM_RC_6 = 0x600
     TPM_RC_7 = 0x700
 
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#06x}>"
+
 
 class Tpm20Failure(Exception):
     """Failure while executing a TPM 2.0 command"""
@@ -1106,6 +1138,10 @@ class TpmAlgId(enum.IntEnum):
     TPM_ALG_EAX = 0x0054  # Authenticated-Encryption Mode
     TPM_ALG_EDDSA = 0x0060  # Edwards-curve Digital Signature Algorithm (PureEdDSA)
 
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#06x}>"
+
     def compute_hash(self, data: bytes) -> bytes:
         """Compute the hash digest according to the algorithm"""
         if self == TpmAlgId.TPM_ALG_SHA256:
@@ -1136,6 +1172,10 @@ class Tpm20EccCurve(enum.IntEnum):
     TPM_ECC_BP_P384_R1 = 0x0031  # Brainpool
     TPM_ECC_BP_P512_R1 = 0x0032  # Brainpool
     TPM_ECC_CURVE_25519 = 0x0040  # curve to support EdDSA
+
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#06x}>"
 
 
 @enum.unique
@@ -1226,6 +1266,10 @@ class Tpm20Property(enum.IntEnum):
     TPM2_PT_AUDIT_COUNTER_0 = 0x00000213
     TPM2_PT_AUDIT_COUNTER_1 = 0x00000214
 
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#06x}>"
+
 
 @enum.unique
 class Tpm20PcrProperty(enum.IntEnum):
@@ -1246,6 +1290,10 @@ class Tpm20PcrProperty(enum.IntEnum):
     TPM_PT_PCR_POLICY = 0x00000013
     TPM_PT_PCR_AUTH = 0x00000014
 
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#x}>"
+
 
 @enum.unique
 class Tpm20HandleType(enum.IntEnum):
@@ -1260,6 +1308,10 @@ class Tpm20HandleType(enum.IntEnum):
     TPM_HT_TRANSIENT = 0x80
     TPM_HT_PERSISTENT = 0x81
     TPM_HT_AC = 0x90  # Attached Component
+
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#04x}>"
 
 
 @enum.unique
@@ -1367,6 +1419,8 @@ class Tpm20Handle(enum.IntEnum):
     TPM_NV_INTEL_TXT_LAUNCH_POLICY = 0x01c10131  # Policy for Verified Launch (Intel TXT)
     TPM_NV_INTEL_TXT_LAUNCH_ERROR = 0x01c10132  # Launch error (Intel TXT)
     TPM_RESERVED_HANDLE_IDEVID_CERT = 0x01c90000  # IDevID Certificate (Initial Device Identifier)
+    # 0x02000000-0x02ffffff: HMAC sessions
+    TPM_HMAC_SESSION_0 = 0x02000000
     # TPM_RH: Resource Handle
     TPM_RH_SRK = 0x40000000  # SRK = Storage Root Key
     TPM_RH_OWNER = 0x40000001  # handle references the Storage Primary Seed (SPS), the ownerAuth, and the ownerPolicy
@@ -1404,6 +1458,8 @@ class Tpm20Handle(enum.IntEnum):
     TPM_RH_ACT_D = 0x4000011d
     TPM_RH_ACT_E = 0x4000011e
     TPM_RH_ACT_F = 0x4000011f
+    # 0x80000000-0x80ffffff: Transient handles
+    TPM_TRANSIENT_HANDLE_0 = 0x80000000
     # Reserved Handles in persistent objects
     # 0x81000000-0x817fffff: persistent objects with auth TPM_RH_OWNER
     #   0x81000000-0x8100ffff: Storage primary keys
@@ -1426,6 +1482,10 @@ class Tpm20Handle(enum.IntEnum):
     #   0x81800000-0x8180ffff: Platforms primary keys
     TPM_RESERVED_HANDLE_PLATFORM_KEY_0 = 0x81800000
     TPM_RESERVED_HANDLE_PLATFORM_KEY_1 = 0x81800001
+
+    def __repr__(self) -> str:
+        """Represent the value in hexadecimal"""
+        return f"<{self.name}: {self.value:#010x}>"
 
 
 # Well-known Enhanced Authorization policy digests in TPM 2.0
