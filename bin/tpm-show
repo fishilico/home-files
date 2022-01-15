@@ -2177,6 +2177,53 @@ TPM20_OBJECT_ATTR_DESC: Tuple[Tuple[int, str], ...] = (
 
 
 @dataclass
+class Tpm20SensitiveStruct:
+    """Represent a TPMT_SENSITIVE in TPM 2.0
+
+    struct TPMT_SENSITIVE {
+        TPMI_ALG_PUBLIC sensitiveType; // TPM_ALG_ID = UINT16
+        TPM2B_AUTH authValue;
+        TPM2B_DIGEST seedValue;
+        TPMU_SENSITIVE_COMPOSITE sensitive; // TPM2B
+    }
+    """
+    type_alg: TpmAlgId
+    auth_value: bytes
+    seed_value: bytes
+    sensitive: bytes
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20SensitiveStruct':
+        """Decode a TPMT_PUBLIC from a buffer"""
+        type_alg = buf.read_tpm_algid()
+        auth_value = buf.read_tpm2b()
+        seed_value = buf.read_tpm2b()
+        sensitive = buf.read_tpm2b()
+        return cls(type_alg, auth_value, seed_value, sensitive)
+
+    @classmethod
+    def from_buffer_2b(cls, buf: ParsedBuffer) -> 'Tpm20SensitiveStruct':
+        """Decode a TPM2B_SENSITIVE from a buffer"""
+        data = buf.read_tpm2b()
+        with ParsedBuffer(data) as buf:
+            return cls.from_buffer(buf)
+
+    def print(self, indent: str = "") -> None:
+        print(f"{indent}- type alg: {self.type_alg}")
+        print(f"{indent}- auth value: {self.auth_value.hex()}")
+        print(f"{indent}- seed value: {self.seed_value.hex()}")
+        if self.type_alg == TpmAlgId.TPM_ALG_KEYEDHASH:
+            print(f"{indent}- sensitive (Keyed hash secret, {len(self.sensitive)} bytes):")
+        elif self.type_alg == TpmAlgId.TPM_ALG_RSA:
+            print(f"{indent}- sensitive (RSA private factor, {len(self.sensitive)} bytes):")
+        elif self.type_alg == TpmAlgId.TPM_ALG_ECC:
+            print(f"{indent}- sensitive (ECC private key, {len(self.sensitive)} bytes):")
+        else:
+            print(f"{indent}- sensitive (???, {len(self.sensitive)} bytes):")
+        hexdump(self.sensitive, indent=f"{indent}  ")
+
+
+@dataclass
 class Tpm20NvPublicStruct:
     """Represent a TPMS_NV_PUBLIC in TPM 2.0
 
@@ -2341,17 +2388,23 @@ def print_file(file_type: str, in_file: Optional[Path]) -> None:
     file_type = file_type.upper()
     with ParsedBuffer(data) as buf:
         if file_type == "TPM2B_PUBLIC":
-            obj = Tpm20PublicStruct.from_buffer_2b(buf)
-            obj.print()
+            pub_obj = Tpm20PublicStruct.from_buffer_2b(buf)
+            pub_obj.print()
         elif file_type == "TPMT_PUBLIC":
-            obj = Tpm20PublicStruct.from_buffer(buf)
-            obj.print()
+            pub_obj = Tpm20PublicStruct.from_buffer(buf)
+            pub_obj.print()
+        elif file_type == "TPM2B_SENSITIVE":
+            sens_obj = Tpm20SensitiveStruct.from_buffer_2b(buf)
+            sens_obj.print()
+        elif file_type == "TPMT_SENSITIVE":
+            sens_obj = Tpm20SensitiveStruct.from_buffer(buf)
+            sens_obj.print()
         elif file_type == "TPM2B_NV_PUBLIC":
-            obj = Tpm20NvPublicStruct.from_buffer_2b(buf)
-            obj.print()
+            nvpub_obj = Tpm20NvPublicStruct.from_buffer_2b(buf)
+            nvpub_obj.print()
         elif file_type == "TPMS_NV_PUBLIC":
-            obj = Tpm20NvPublicStruct.from_buffer(buf)
-            obj.print()
+            nvpub_obj = Tpm20NvPublicStruct.from_buffer(buf)
+            nvpub_obj.print()
         else:
             print(f"Error: unknown type {file_type}", file=sys.stderr)
             sys.exit(1)
