@@ -644,6 +644,7 @@ KNOWN_MEI_UUIDS = {
     '05b79a6f-4628-4d7f-899d-a91514cb32ab': 'WD (Watchdog)',
     '0bb17a78-2a8e-4c50-94d4-50266723775c': 'NFC HCI',
     '12f80028-b4b7-4b2d-aca8-46e0ff65814c': 'PTHI = AMTHI (Active Management Technology Host Interface)',
+    '13280904-7792-4fcb-a1aa-5e70cbb1e865': 'WLAN (Wi-Fi)',
     '309dcde8-ccb1-4062-8f78-600115a34327': 'FWU (Firmware Update)',
     '3c4852d6-d47b-4f46-b05e-b5edc1aa430a': 'TDT = AT-p (Theft Deterrence Technology, Anti-Theft)',
     '3c4852d6-d47b-4f46-b05e-b5edc1aa440e': 'JOM (Dynamic Application Loader, DAL)',
