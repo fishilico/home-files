@@ -2339,7 +2339,10 @@ class Tpm20NvPublicStruct:
             print(f"{indent}- auth policy: {hex_auth_policy} = {desc_auth_policy}")
         else:
             print(f"{indent}- auth policy empty")
-        print(f"{indent}- data size: {self.data_size:#x} = {self.data_size}")
+        if self.data_size <= 9:
+            print(f"{indent}- data size: {self.data_size}")
+        else:
+            print(f"{indent}- data size: {self.data_size:#x} = {self.data_size}")
 
 
 # Description of the TPMA_NV bits
@@ -2371,6 +2374,45 @@ TPM20_NV_ATTR_DESC: Tuple[Tuple[int, str], ...] = (
     (0x40000000, 'platformcreate'),
     (0x80000000, 'read_stclear'),
 )
+
+
+@dataclass
+class Tpm20ReadPublicResponse:
+    """Response of a TPM2_CC_ReadPublic command"""
+    public: Tpm20PublicStruct
+    name: bytes
+    qualified_name: bytes
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20ReadPublicResponse':
+        public = Tpm20PublicStruct.from_buffer_2b(buf)
+        name = buf.read_tpm2b()
+        qualified_name = buf.read_tpm2b()
+        return cls(public, name, qualified_name)
+
+    def print(self, indent: str = "") -> None:
+        print(f"{indent}- object name: {self.name.hex()}")
+        print(f"{indent}- object qualified name: {self.qualified_name.hex()}")
+        print(f"{indent}- object public area:")
+        self.public.print(indent=f"{indent}  ")
+
+
+@dataclass
+class Tpm20NvReadPublicResponse:
+    """Response of a TPM2_CC_NV_ReadPublic command"""
+    public: Tpm20NvPublicStruct
+    name: bytes
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20NvReadPublicResponse':
+        public = Tpm20NvPublicStruct.from_buffer_2b(buf)
+        name = buf.read_tpm2b()
+        return cls(public, name)
+
+    def print(self, expected_handle: Optional[int] = None, indent: str = "") -> None:
+        print(f"{indent}- NV name: {self.name.hex()}")
+        print(f"{indent}- NV public area:")
+        self.public.print(expected_handle=expected_handle, indent=f"{indent}  ")
 
 
 def print_file(file_type: str, in_file: Optional[Path]) -> None:
@@ -3332,7 +3374,7 @@ class TpmDevice:
         if resp:
             raise RuntimeError(f"Unexpected response content for TPM2_CC_TestParms: {resp!r}")
 
-    def tpm20_public_read(self, handle: int) -> Tuple[Tpm20PublicStruct, bytes, bytes]:
+    def tpm20_public_read(self, handle: int) -> Tpm20ReadPublicResponse:
         """Read the public area of a loaded object, without authorization, using TPM2_ReadPublic
 
         Response:
@@ -3354,12 +3396,14 @@ class TpmDevice:
             Tpm20CommandCode.TPM2_CC_ReadPublic,
             struct.pack('>I', handle))
         with ParsedBuffer(resp, "TPM2_CC_ReadPublic response") as buf:
-            public = Tpm20PublicStruct.from_buffer_2b(buf)
-            name = buf.read_tpm2b()
-            qualified_name = buf.read_tpm2b()
-        return public, name, qualified_name
+            obj = Tpm20ReadPublicResponse.from_buffer(buf)
+        computed_name = obj.public.compute_name()
+        if computed_name != obj.name:
+            raise RuntimeError(
+                f"Name of object {handle:#x} does not match its public area: {computed_name.hex()} != {obj.name.hex()}")  # noqa
+        return obj
 
-    def tpm20_nv_public_read(self, nv_index: int) -> Tuple[Tpm20NvPublicStruct, bytes]:
+    def tpm20_nv_public_read(self, nv_index: int) -> Tpm20NvReadPublicResponse:
         """Read the public area and name of an Non-Volatile Index, using TPM2_NV_ReadPublic
 
         Response:
@@ -3380,9 +3424,12 @@ class TpmDevice:
             Tpm20CommandCode.TPM2_CC_NV_ReadPublic,
             struct.pack('>I', nv_index))
         with ParsedBuffer(resp, "TPM2_CC_NV_ReadPublic response") as buf:
-            public = Tpm20NvPublicStruct.from_buffer_2b(buf)
-            name = buf.read_tpm2b()
-        return public, name
+            obj = Tpm20NvReadPublicResponse.from_buffer(buf)
+        computed_name = obj.public.compute_name()
+        if computed_name != obj.name:
+            raise RuntimeError(
+                f"Name of NV index {nv_index:#x} does not match its public area: {computed_name.hex()} != {obj.name.hex()}")  # noqa
+        return obj
 
     def tpm20_start_auth_session_hmac(self) -> Tpm20AuthSessionContext:
         """Start an authorization session with HMAC-SHA256, using TPM2_StartAuthSession
@@ -3914,7 +3961,7 @@ def show_tpm_dev(dev: TpmDevice) -> None:
                         Tpm20HandleType.TPM_HT_HMAC_SESSION.value,
                         Tpm20HandleType.TPM_HT_PERMANENT.value):
                     try:
-                        obj_pubdata, obj_name, obj_qual_name = dev.tpm20_public_read(handle)
+                        obj_resp = dev.tpm20_public_read(handle)
                     except Tpm20Failure as exc:
                         if exc.code == Tpm20ResponseCode.TPM2_RC_HANDLE1_VALUE:
                             # Error TPM2_RC_VALUE on Handle 1 (parameter) means
@@ -3923,37 +3970,17 @@ def show_tpm_dev(dev: TpmDevice) -> None:
                         else:
                             raise
                     else:
-                        obj_name_hex = binascii.hexlify(obj_name).decode('ascii')
-                        obj_qual_name_hex = binascii.hexlify(obj_qual_name).decode('ascii')
-                        print(f"      - object name: {obj_name_hex}")
-                        print(f"      - object qualified name: {obj_qual_name_hex}")
-                        print("      - object public area:")
-                        obj_pubdata.print(indent="        ")
-
-                        computed_obj_name = obj_pubdata.compute_name()
-                        if computed_obj_name != obj_name:
-                            computed_obj_name_hex = binascii.hexlify(computed_obj_name).decode('ascii')
-                            raise RuntimeError(
-                                f"Name of object {handle:#x} does not match its public area: {computed_obj_name_hex} != {obj_name_hex}")  # noqa
+                        obj_resp.print(indent="      ")
 
                 # Read non-volatile indexes
                 if handle_type == Tpm20HandleType.TPM_HT_NV_INDEX.value:
-                    pub_data, nv_name = dev.tpm20_nv_public_read(handle)
-                    nv_name_hex = binascii.hexlify(nv_name).decode('ascii')
-                    print(f"      - NV name: {nv_name_hex}")
-                    print("      - NV public area:")
-                    pub_data.print(expected_handle=handle, indent="        ")
-
-                    computed_nv_name = pub_data.compute_name()
-                    if computed_nv_name != nv_name:
-                        computed_nv_name_hex = binascii.hexlify(computed_nv_name).decode('ascii')
-                        raise RuntimeError(
-                            f"Name of NV Index {handle:#x} does not match its public area: {computed_nv_name_hex} != {nv_name_hex}")  # noqa
+                    nv_resp = dev.tpm20_nv_public_read(handle)
+                    nv_resp.print(expected_handle=handle, indent="      ")
 
                     try:
                         # Try reading the handle, using the session
                         handle_data = dev.tpm20_nv_read_all(
-                            handle, auth_session, nv_name, pub_data.data_size)
+                            handle, auth_session, nv_resp.name, nv_resp.public.data_size)
                     except Tpm20Failure as exc:
                         if exc.code == Tpm20ResponseCode.TPM2_RC_AUTH_UNAVAILABLE:
                             print("      - NV data: error TPM2_RC_AUTH_UNAVAILABLE")
