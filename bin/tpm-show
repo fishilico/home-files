@@ -104,7 +104,6 @@ Other initiative to collect data about TPM:
   https://github.com/danzatt/tpm2-algtest/tree/7c03e5d20216a80ae633da72b8ae9729e6000e16 (to measure perf)
 """
 import argparse
-import binascii
 import ctypes
 from dataclasses import dataclass
 import enum
@@ -2144,7 +2143,7 @@ class Tpm20PublicStruct:
         print(f"{indent}- name alg: {self.name_alg}")
         print(f"{indent}- attributes: {self.attr_desc()} ({self.attributes:#010x})")
         if self.auth_policy:
-            hex_auth_policy = binascii.hexlify(self.auth_policy).decode('ascii')
+            hex_auth_policy = self.auth_policy.hex()
             desc_auth_policy = WELL_KNOWN_EA_POLICIES.get(hex_auth_policy, 'unknown')
             print(f"{indent}- auth policy: {hex_auth_policy} = {desc_auth_policy}")
         else:
@@ -2335,7 +2334,7 @@ class Tpm20NvPublicStruct:
         print(f"{indent}- name alg: {self.name_alg}")
         print(f"{indent}- attributes: {self.attr_desc()} ({self.attributes:#010x})")
         if self.auth_policy:
-            hex_auth_policy = binascii.hexlify(self.auth_policy).decode('ascii')
+            hex_auth_policy = self.auth_policy.hex()
             desc_auth_policy = WELL_KNOWN_EA_POLICIES.get(hex_auth_policy, 'unknown')
             print(f"{indent}- auth policy: {hex_auth_policy} = {desc_auth_policy}")
         else:
@@ -2750,8 +2749,7 @@ class TpmDevice:
             repr_vendor = repr(bytes_vendor)
         print(f"{indent}  - TPM vendor ID: {repr_vendor} ({vendor:#x})")
         if vend_spec_size:
-            vend_spec_hex = binascii.hexlify(resp[0xf:]).decode('ascii')
-            print(f"{indent}  - vendor specific information: {vend_spec_hex}")
+            print(f"{indent}  - vendor specific information: {resp[0xf:].hex()}")
 
     def tpm12_print_cap_nv_index(self, nv_idx: int, indent: str = '') -> None:
         """Print TPM 1.2 capability TPM_CAP_NV_INDEX
@@ -2803,7 +2801,7 @@ class TpmDevice:
             offset += pcr_select_size
             pcr_loc_at_release, = struct.unpack('B', resp[offset:offset + 1])
             offset += 1
-            pcr_digest_at_release_hex = binascii.hexlify(resp[offset:offset + 20]).decode('ascii')
+            pcr_digest_at_release_hex = resp[offset:offset + 20].hex()
             offset += 20
             print(f"{indent}- PCR info {['read', 'write'][read_write]}: {pcr_select}")
             print(f"{indent}  - localities at release: {pcr_loc_at_release:#x}")  # 0x1f is "ALL" in tpm_nvinfo
@@ -3638,8 +3636,7 @@ def show_tpm_dev(dev: TpmDevice) -> None:
         print("PCR:")
         for pcr_idx in range(prop_pcr):
             pcr_digest = dev.tpm12_pcr_read(pcr_idx)
-            pcr_digest_hex = binascii.hexlify(pcr_digest).decode('ascii')
-            print(f"  {pcr_idx:2d}: {pcr_digest_hex}")
+            print(f"  {pcr_idx:2d}: {pcr_digest.hex()}")
         print("")
 
         print("Non Volatile memory:")
@@ -3787,16 +3784,16 @@ def show_tpm_dev(dev: TpmDevice) -> None:
 
         print("Supported AES key sizes and modes:")
         symcipher_modes: Tuple[Tuple[str, TpmAlgId], ...] = (
-            ("",  TpmAlgId.TPM_ALG_NULL),
-            ("CTR",  TpmAlgId.TPM_ALG_CTR),
-            ("OFB",  TpmAlgId.TPM_ALG_OFB),
-            ("CBC",  TpmAlgId.TPM_ALG_CBC),
-            ("CFB",  TpmAlgId.TPM_ALG_CFB),
-            ("ECB",  TpmAlgId.TPM_ALG_ECB),
-            ("CCM",  TpmAlgId.TPM_ALG_CCM),
-            ("GCM",  TpmAlgId.TPM_ALG_GCM),
-            ("KW",  TpmAlgId.TPM_ALG_KW),
-            ("KWP",  TpmAlgId.TPM_ALG_KWP),
+            ("", TpmAlgId.TPM_ALG_NULL),
+            ("CTR", TpmAlgId.TPM_ALG_CTR),
+            ("OFB", TpmAlgId.TPM_ALG_OFB),
+            ("CBC", TpmAlgId.TPM_ALG_CBC),
+            ("CFB", TpmAlgId.TPM_ALG_CFB),
+            ("ECB", TpmAlgId.TPM_ALG_ECB),
+            ("CCM", TpmAlgId.TPM_ALG_CCM),
+            ("GCM", TpmAlgId.TPM_ALG_GCM),
+            ("KW", TpmAlgId.TPM_ALG_KW),
+            ("KWP", TpmAlgId.TPM_ALG_KWP),
         )
         for key_bits in (128, 192, 256):
             for mode_name, mode in symcipher_modes:
@@ -3824,8 +3821,7 @@ def show_tpm_dev(dev: TpmDevice) -> None:
             for pcr_idx in bank_pcr_select:
                 pcr_digest, pcr_update_counter = dev.tpm20_pcr_read(pcr_idx, bank_alg_id)
                 all_update_counters.add(pcr_update_counter)
-                pcr_digest_hex = binascii.hexlify(pcr_digest).decode('ascii')
-                print(f"  {pcr_idx:2d}: {pcr_digest_hex}")
+                print(f"  {pcr_idx:2d}: {pcr_digest.hex()}")
         print(f"PCR update counter: {','.join(str(c) for c in sorted(all_update_counters))}")
 
         print("")
