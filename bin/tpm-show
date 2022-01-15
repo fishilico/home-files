@@ -2089,6 +2089,7 @@ TPM20_OBJECT_ATTR_DESC: Tuple[Tuple[int, str], ...] = (
 )
 
 
+@dataclass
 class Tpm20NvPublicStruct:
     """Represent a TPMS_NV_PUBLIC in TPM 2.0
 
@@ -2132,27 +2133,35 @@ class Tpm20NvPublicStruct:
         BYTE buffer[sizeof(TPMU_HA)];
     }
     """
-    def __init__(self, nv_index: int, name_alg: TpmAlgId, attributes: int, auth_policy: bytes, data_size: int):
-        self.nv_index = nv_index
-        self.name_alg = name_alg
-        self.attributes = attributes
-        self.auth_policy = auth_policy
-        self.data_size = data_size
+    nv_index: int
+    name_alg: TpmAlgId
+    attributes: int
+    auth_policy: bytes
+    data_size: int
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> 'Tpm20NvPublicStruct':
-        nv_index, name_alg_id, attributes, digest_size = struct.unpack('>IHIH', data[:0xc])
-        auth_policy = data[0xc:0xc + digest_size]
-        data_size, = struct.unpack('>H', data[0xc + digest_size:])  # Fail if the data is too large
-        name_alg = TpmAlgId(name_alg_id)
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20NvPublicStruct':
+        """Decode a TPMS_NV_PUBLIC from a buffer"""
+        nv_index = buf.read_u32()
+        name_alg = buf.read_tpm_algid()
+        attributes = buf.read_u32()
+        auth_policy = buf.read_tpm2b()
+        data_size = buf.read_u16()
         return cls(nv_index, name_alg, attributes, auth_policy, data_size)
 
-    def to_bytes(self) -> bytes:
-        """Convert to bytes"""
-        return (
-            struct.pack('>IHIH', self.nv_index, self.name_alg.value, self.attributes, len(self.auth_policy)) +
-            self.auth_policy +
-            struct.pack('>H', self.data_size))
+    @classmethod
+    def from_buffer_2b(cls, buf: ParsedBuffer) -> 'Tpm20NvPublicStruct':
+        """Decode a TPM2B_NV_PUBLIC from a buffer"""
+        data = buf.read_tpm2b()
+        with ParsedBuffer(data) as buf:
+            return cls.from_buffer(buf)
+
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        buf.write_u32(self.nv_index)
+        buf.write_u16(self.name_alg)
+        buf.write_u32(self.attributes)
+        buf.write_tpm2b(self.auth_policy)
+        buf.write_u16(self.data_size)
 
     def compute_name(self) -> bytes:
         """Get the name of the Non-Volatile Index
@@ -2161,7 +2170,10 @@ class Tpm20NvPublicStruct:
         Family "2.0", Level 00, Revision 01.59 - November 2019
         Part 1: Architecture
         """
-        return struct.pack('>H', self.name_alg.value) + self.name_alg.compute_hash(self.to_bytes())
+        buf = OutputBuffer()
+        self.to_buffer(buf)
+        name_hash = self.name_alg.compute_hash(buf.finalize())
+        return struct.pack('>H', self.name_alg.value) + name_hash
 
     def attr_desc(self) -> str:
         """Get the description of the attribute, using a syntax from
@@ -2180,6 +2192,21 @@ class Tpm20NvPublicStruct:
             assert remaining
         all_desc.append(hex(remaining))
         return '|'.join(all_desc)
+
+    def print(self, expected_handle: Optional[int] = None, indent: str = "") -> None:
+        if expected_handle is None:
+            print(f"{indent}- NV index: {self.nv_index:#010x}")
+        elif self.nv_index != expected_handle:
+            raise ValueError(f"Unexpected NV Index in public data: {self.nv_index:#010x}")
+        print(f"{indent}- name alg: {self.name_alg}")
+        print(f"{indent}- attributes: {self.attr_desc()} ({self.attributes:#010x})")
+        if self.auth_policy:
+            hex_auth_policy = binascii.hexlify(self.auth_policy).decode('ascii')
+            desc_auth_policy = WELL_KNOWN_EA_POLICIES.get(hex_auth_policy, 'unknown')
+            print(f"{indent}- auth policy: {hex_auth_policy} = {desc_auth_policy}")
+        else:
+            print(f"{indent}- auth policy empty")
+        print(f"{indent}- data size: {self.data_size:#x} = {self.data_size}")
 
 
 # Description of the TPMA_NV bits
@@ -2231,6 +2258,12 @@ def print_file(file_type: str, in_file: Optional[Path]) -> None:
             obj.print()
         elif file_type == "TPMT_PUBLIC":
             obj = Tpm20PublicStruct.from_buffer(buf)
+            obj.print()
+        elif file_type == "TPM2B_NV_PUBLIC":
+            obj = Tpm20NvPublicStruct.from_buffer_2b(buf)
+            obj.print()
+        elif file_type == "TPMS_NV_PUBLIC":
+            obj = Tpm20NvPublicStruct.from_buffer(buf)
             obj.print()
         else:
             print(f"Error: unknown type {file_type}", file=sys.stderr)
@@ -3195,7 +3228,7 @@ class TpmDevice:
             TPM2B_NV_PUBLIC nvPublic : the public area of the NV Index
             TPM2B_NAME nvName : the Name of the NV Index
 
-        struct TPM2B_NV_PUBLIC{
+        struct TPM2B_NV_PUBLIC {
             UINT16 size;
             TPMS_NV_PUBLIC nvPublic;
         }
@@ -3208,12 +3241,9 @@ class TpmDevice:
             Tpm20Tag.TPM2_ST_NO_SESSIONS,
             Tpm20CommandCode.TPM2_CC_NV_ReadPublic,
             struct.pack('>I', nv_index))
-        public_size, = struct.unpack('>H', resp[:2])
-        public = Tpm20NvPublicStruct.from_bytes(resp[2:2 + public_size])
-        name_size, = struct.unpack('>H', resp[2 + public_size:4 + public_size])
-        name = resp[4 + public_size:4 + public_size + name_size]
-        if 4 + public_size + name_size != len(resp):
-            raise RuntimeError(f"Unexpected response format for TPM2_CC_NV_ReadPublic: {resp!r}")
+        with ParsedBuffer(resp, "TPM2_CC_NV_ReadPublic response") as buf:
+            public = Tpm20NvPublicStruct.from_buffer_2b(buf)
+            name = buf.read_tpm2b()
         return public, name
 
     def tpm20_start_auth_session_hmac(self) -> Tpm20AuthSessionContext:
@@ -3776,16 +3806,7 @@ def show_tpm_dev(dev: TpmDevice) -> None:
                     nv_name_hex = binascii.hexlify(nv_name).decode('ascii')
                     print(f"      - NV name: {nv_name_hex}")
                     print("      - NV public area:")
-                    assert pub_data.nv_index == handle, f"Unexpected NV Index in public data: {pub_data}"
-                    print(f"        - name alg: {pub_data.name_alg}")
-                    print(f"        - attributes ({pub_data.attributes:#010x}): {pub_data.attr_desc()}")
-                    if pub_data.auth_policy:
-                        hex_auth_policy = binascii.hexlify(pub_data.auth_policy).decode('ascii')
-                        desc_auth_policy = WELL_KNOWN_EA_POLICIES.get(hex_auth_policy, 'unknown')
-                        print(f"        - auth policy: {hex_auth_policy} = {desc_auth_policy}")
-                    else:
-                        print("        - auth policy empty")
-                    print(f"        - data size: {pub_data.data_size:#x} = {pub_data.data_size}")
+                    pub_data.print(expected_handle=handle, indent="        ")
 
                     computed_nv_name = pub_data.compute_name()
                     if computed_nv_name != nv_name:
