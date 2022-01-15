@@ -106,6 +106,7 @@ Other initiative to collect data about TPM:
 import argparse
 import binascii
 import ctypes
+from dataclasses import dataclass
 import enum
 import functools
 import hashlib
@@ -1534,9 +1535,10 @@ WELL_KNOWN_EA_POLICIES: Mapping[str, str] = {
 
 class ParsedBuffer:
     """A buffer being parsed, for example to unmarshal data"""
-    def __init__(self, buffer: bytes, ensure_end_on_exit: bool = True) -> None:
+    def __init__(self, buffer: bytes, name: Optional[str] = None, ensure_end_on_exit: bool = True) -> None:
         self.buffer = buffer
         self.pos = 0
+        self.name = name
         self.ensure_end_on_exit = ensure_end_on_exit
 
     def remaining_size(self) -> int:
@@ -1552,6 +1554,8 @@ class ParsedBuffer:
 
     def assert_end(self) -> None:
         if self.pos != len(self.buffer):
+            if self.name:
+                raise RuntimeError(f"while parsing {self.name}, remaining {self.remaining_size()} bytes: {self.remaining().hex()}")  # noqa
             raise RuntimeError(f"remaining {self.remaining_size()} bytes: {self.remaining().hex()}")
 
     def __enter__(self) -> 'ParsedBuffer':
@@ -1600,6 +1604,337 @@ class ParsedBuffer:
         return Tpm20Handle(self.read_u32())
 
 
+class OutputBuffer:
+    """A buffer being written to"""
+    def __init__(self) -> None:
+        self.chunks = [b""]
+
+    def finalize(self) -> bytes:
+        return b"".join(self.chunks)
+
+    def write_bytes(self, data: bytes) -> None:
+        self.chunks.append(data)
+
+    def write_u8(self, value: int) -> None:
+        self.chunks.append(value.to_bytes(1, "big"))
+
+    def write_u16(self, value: int) -> None:
+        self.chunks.append(value.to_bytes(2, "big"))
+
+    def write_u32(self, value: int) -> None:
+        self.chunks.append(value.to_bytes(4, "big"))
+
+    def write_u64(self, value: int) -> None:
+        self.chunks.append(value.to_bytes(8, "big"))
+
+    def write_tpm2b(self, buffer: bytes) -> None:
+        self.write_u16(len(buffer))
+        self.write_bytes(buffer)
+
+
+@dataclass
+class Tpm20BufferStruct:
+    """Represent any TPM2B_... in TPM 2.0"""
+    data: bytes
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20BufferStruct':
+        return cls(buf.read_tpm2b())
+
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        buf.write_tpm2b(self.data)
+
+    def print(self, indent: str = "") -> None:
+        hexdump(self.data, indent=f"{indent}")
+
+
+@dataclass
+class Tpm20SymDefObjectStruct:
+    """Represent a TPMT_SYM_DEF_OBJECT in TPM 2.0
+
+    struct TPMT_SYM_DEF_OBJECT {
+        TPMI_ALG_SYM_OBJECT algorithm; // TPM_ALG_ID = UINT16
+        TPMU_SYM_KEY_BITS keyBits; // TPM_KEY_BITS = UINT16
+        TPMU_SYM_MODE mode; // TPMI_ALG_SYM_MODE = TPM_ALG_ID = UINT16
+    }
+    """
+    alg: TpmAlgId
+    key_bits: Optional[int]
+    mode: Optional[TpmAlgId]
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20SymDefObjectStruct':
+        alg = buf.read_tpm_algid()
+        if alg == TpmAlgId.TPM_ALG_NULL:
+            return cls(alg, None, None)
+        if alg == TpmAlgId.TPM_ALG_AES:
+            key_bits = buf.read_u16()
+            mode = buf.read_tpm_algid()
+            return cls(alg, key_bits, mode)
+        raise NotImplementedError(f"Unimplemented parameters for symmetric algorithm {alg!r}")
+
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        buf.write_u16(self.alg)
+        if self.key_bits is not None:
+            buf.write_u16(self.key_bits)
+            assert self.mode is not None
+            buf.write_u16(self.mode)
+
+    def __str__(self) -> str:
+        if self.alg == TpmAlgId.TPM_ALG_NULL:
+            return f"{self.alg}"
+        return f"{self.alg} with key_bits={self.key_bits}, mode={self.mode}"
+
+
+@dataclass
+class Tpm20RsaSchemeStruct:
+    """Represent a TPMT_RSA_SCHEME in TPM 2.0
+
+    struct TPMT_RSA_SCHEME {
+        TPMI_ALG_RSA_SCHEME scheme; // TPM_ALG_ID = UINT16
+        TPMU_ASYM_SCHEME details; // TPMS_SCHEME_SIGHASH = TPMI_ALG_HASH = TPM_ALG_ID = UINT16
+    }
+    """
+    scheme: TpmAlgId
+    details: Optional[TpmAlgId]
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20RsaSchemeStruct':
+        scheme = buf.read_tpm_algid()
+        if scheme == TpmAlgId.TPM_ALG_NULL:
+            return cls(scheme, None)
+        if scheme == TpmAlgId.TPM_ALG_RSASSA:
+            details = buf.read_tpm_algid()
+            return cls(scheme, details)
+        raise NotImplementedError(f"Unimplemented parameters for RSA scheme {scheme!r}")
+
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        buf.write_u16(self.scheme)
+        if self.details is not None:
+            buf.write_u16(self.details)
+
+    def __str__(self) -> str:
+        if self.scheme == TpmAlgId.TPM_ALG_NULL:
+            return f"{self.scheme}"
+        if self.scheme == TpmAlgId.TPM_ALG_RSASSA:
+            return f"{self.scheme} with halg={self.details}"
+        return f"{self.scheme} with details={self.details}"
+
+
+@dataclass
+class Tpm20EccSchemeStruct:
+    """Represent a TPMT_ECC_SCHEME in TPM 2.0
+
+    struct TPMT_ECC_SCHEME {
+        TPMI_ALG_ECC_SCHEME scheme; // TPM_ALG_ID = UINT16
+        TPMU_SIG_SCHEME details; // TPMS_SCHEME_SIGHASH = TPMI_ALG_HASH = TPM_ALG_ID = UINT16
+    }
+    """
+    scheme: TpmAlgId
+    details: Optional[TpmAlgId]
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20EccSchemeStruct':
+        scheme = buf.read_tpm_algid()
+        if scheme == TpmAlgId.TPM_ALG_NULL:
+            return cls(scheme, None)
+        if scheme == TpmAlgId.TPM_ALG_ECDSA:
+            details = buf.read_tpm_algid()
+            return cls(scheme, details)
+        raise NotImplementedError(f"Unimplemented parameters for ECC scheme {scheme!r}")
+
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        buf.write_u16(self.scheme)
+        if self.details is not None:
+            buf.write_u16(self.details)
+
+    def __str__(self) -> str:
+        if self.scheme == TpmAlgId.TPM_ALG_NULL:
+            return f"{self.scheme}"
+        if self.scheme == TpmAlgId.TPM_ALG_ECDSA:
+            return f"{self.scheme} with halg={self.details}"
+        return f"{self.scheme} with details={self.details}"
+
+
+@dataclass
+class Tpm20KdfSchemeStruct:
+    """Represent a TPMT_KDF_SCHEME in TPM 2.0
+
+    struct TPMT_KDF_SCHEME {
+        TPMI_ALG_KDF scheme; // TPM_ALG_ID = UINT16
+        TPMU_KDF_SCHEME details; // TPMI_ALG_HASH = TPM_ALG_ID = UINT16
+    }
+    """
+    scheme: TpmAlgId
+    details: Optional[TpmAlgId]
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20KdfSchemeStruct':
+        scheme = buf.read_tpm_algid()
+        if scheme == TpmAlgId.TPM_ALG_NULL:
+            return cls(scheme, None)
+        raise NotImplementedError(f"Unimplemented parameters for KDF scheme {scheme!r}")
+
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        buf.write_u16(self.scheme)
+        if self.details is not None:
+            buf.write_u16(self.details)
+
+    def __str__(self) -> str:
+        if self.scheme == TpmAlgId.TPM_ALG_NULL:
+            return f"{self.scheme}"
+        return f"{self.scheme} with details={self.details}"
+
+
+@dataclass
+class Tpm20RsaParmsStruct:
+    """Represent a TPMS_RSA_PARMS in TPM 2.0
+
+    struct TPMS_RSA_PARMS {
+        TPMT_SYM_DEF_OBJECT symmetric;
+        TPMT_RSA_SCHEME scheme;
+        TPMI_RSA_KEY_BITS keyBits; // TPM_KEY_BITS = UINT16
+        UINT32 exponent;
+    }
+
+    Examples:
+    * For a signature key:
+        0010  symmetric.algorithm = TPM_ALG_NULL
+        0014  scheme.scheme = TPM_ALG_RSASSA
+        0004  scheme.details = TPM_ALG_SHA1
+        0800  keyBits = 2048
+        0000 0000  exponent = 0 (default exponent is 0x10001)
+        0100  unique.TPM2B_PUBLIC_KEY_RSA.size = 256 bytes
+        ...   modulus
+    * For an encryption key:
+        0006  symmetric.algorithm = TPM_ALG_AES
+        0080  symmetric.keyBits = 128
+        0043  symmetric.mode = TPM_ALG_CFB
+        0010  scheme.scheme = TPM_ALG_NULL
+        0800  keyBits = 2048
+        0000 0000  exponent = 0 (default exponent is 0x10001)
+        0100  unique.TPM2B_PUBLIC_KEY_RSA.size = 256 bytes
+        ...   modulus
+    """
+    symmetric: Tpm20SymDefObjectStruct
+    scheme: Tpm20RsaSchemeStruct
+    key_bits: int
+    exponent: int
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20RsaParmsStruct':
+        symmetric = Tpm20SymDefObjectStruct.from_buffer(buf)
+        scheme = Tpm20RsaSchemeStruct.from_buffer(buf)
+        key_bits = buf.read_u16()
+        exponent = buf.read_u32()
+        return cls(symmetric, scheme, key_bits, exponent)
+
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        self.symmetric.to_buffer(buf)
+        self.scheme.to_buffer(buf)
+        buf.write_u16(self.key_bits)
+        buf.write_u32(self.exponent)
+
+    def print(self, indent: str = "") -> None:
+        print(f"{indent}- symmetric: {self.symmetric}")
+        print(f"{indent}- scheme: {self.scheme}")
+        print(f"{indent}- key_bits: {self.key_bits}")
+        if self.exponent == 0:
+            print(f"{indent}- exponent: {self.exponent:#x} (default is 0x10001)")
+        else:
+            print(f"{indent}- exponent: {self.exponent:#x}")
+
+
+@dataclass
+class Tpm20EccParmsStruct:
+    """Represent a TPMS_ECC_PARMS in TPM 2.0
+
+    struct TPMS_ECC_PARMS {
+        TPMT_SYM_DEF_OBJECT symmetric;
+        TPMT_ECC_SCHEME scheme;
+        TPMI_ECC_CURVE curveID; // TPM_ECC_CURVE = UINT16
+        TPMT_KDF_SCHEME kdf;
+    }
+
+    Examples:
+    * For a signature key:
+        0010  symmetric.algorithm = TPM_ALG_NULL
+        0018  scheme.scheme = TPM_ALG_ECDSA
+        000b  scheme.details = TPM_ALG_SHA256
+        0003  curve = TPM_ECC_NIST_P256
+        0010  kdf.scheme = TPM_ALG_NULL
+        0020  unique.TPMS_ECC_POINT.x.size = 32 bytes
+        ...   point.x
+        0020  unique.TPMS_ECC_POINT.y.size = 32 bytes
+        ...   point.y
+    * For an encryption key:
+        0006  symmetric.algorithm = TPM_ALG_AES
+        0080  symmetric.keyBits = 128
+        0043  symmetric.mode = TPM_ALG_CFB
+        0010  scheme.scheme = TPM_ALG_NULL
+        0003  curve = TPM_ECC_NIST_P256
+        0010  kdf.scheme = TPM_ALG_NULL
+        0020  unique.TPMS_ECC_POINT.x.size = 32 bytes
+        ...   point.x
+        0020  unique.TPMS_ECC_POINT.y.size = 32 bytes
+        ...   point.y
+    """
+    symmetric: Tpm20SymDefObjectStruct
+    scheme: Tpm20EccSchemeStruct
+    curve: Tpm20EccCurve
+    kdf: Tpm20KdfSchemeStruct
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20EccParmsStruct':
+        symmetric = Tpm20SymDefObjectStruct.from_buffer(buf)
+        scheme = Tpm20EccSchemeStruct.from_buffer(buf)
+        curve = Tpm20EccCurve(buf.read_u16())
+        kdf = Tpm20KdfSchemeStruct.from_buffer(buf)
+        return cls(symmetric, scheme, curve, kdf)
+
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        self.symmetric.to_buffer(buf)
+        self.scheme.to_buffer(buf)
+        buf.write_u16(self.curve)
+        self.kdf.to_buffer(buf)
+
+    def print(self, indent: str = "") -> None:
+        print(f"{indent}- symmetric: {self.symmetric}")
+        print(f"{indent}- scheme: {self.scheme}")
+        print(f"{indent}- curve: {self.curve}")
+        print(f"{indent}- KDF scheme: {self.kdf}")
+
+
+@dataclass
+class Tpm20EccPointStruct:
+    """Represent a TPMS_ECC_POINT in TPM 2.0
+
+    struct TPMS_ECC_POINT {
+        TPM2B_ECC_PARAMETER x; // X coordinate
+        TPM2B_ECC_PARAMETER y; // Y coordinate
+    };
+    """
+    x: bytes
+    y: bytes
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20EccPointStruct':
+        x = buf.read_tpm2b()
+        y = buf.read_tpm2b()
+        return cls(x, y)
+
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        buf.write_tpm2b(self.x)
+        buf.write_tpm2b(self.y)
+
+    def print(self, indent: str = "") -> None:
+        print(f"{indent}- x ({len(self.x)} bytes):")
+        hexdump(self.x, indent=f"{indent}  ")
+        print(f"{indent}- y ({len(self.y)} bytes):")
+        hexdump(self.y, indent=f"{indent}  ")
+
+
+@dataclass
 class Tpm20PublicStruct:
     """Represent a TPMT_PUBLIC in TPM 2.0
 
@@ -1645,34 +1980,49 @@ class Tpm20PublicStruct:
         TPMS_ECC_POINT ecc;
     }
     """
-    def __init__(self, type_alg: TpmAlgId, name_alg: TpmAlgId, attributes: int,
-                 auth_policy: bytes, parameters_unique: bytes):
-        self.type_alg = type_alg
-        self.name_alg = name_alg
-        self.attributes = attributes
-        self.auth_policy = auth_policy
-        self.parameters_unique = parameters_unique
+    type_alg: TpmAlgId
+    name_alg: TpmAlgId
+    attributes: int
+    auth_policy: bytes
+    parameters: Union[Tpm20RsaParmsStruct, Tpm20EccParmsStruct]
+    unique: Union[Tpm20BufferStruct, Tpm20EccPointStruct]
 
     @classmethod
     def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20PublicStruct':
+        """Decode a TPMT_PUBLIC from a buffer"""
         type_alg = buf.read_tpm_algid()
         name_alg = buf.read_tpm_algid()
         attributes = buf.read_u32()
         auth_policy = buf.read_tpm2b()
-        parameters_unique = buf.read_remaining()
-        return cls(type_alg, name_alg, attributes, auth_policy, parameters_unique)
+
+        if type_alg == TpmAlgId.TPM_ALG_RSA:
+            rsa_parameters = Tpm20RsaParmsStruct.from_buffer(buf)
+            rsa_unique = Tpm20BufferStruct.from_buffer(buf)  # RSA modulus
+            if rsa_parameters.key_bits != len(rsa_unique.data) * 8:
+                raise ValueError(f"Unexpected RSA-{rsa_parameters.key_bits} modulus size: {len(rsa_unique.data)} bytes")
+            return cls(type_alg, name_alg, attributes, auth_policy, rsa_parameters, rsa_unique)
+
+        if type_alg == TpmAlgId.TPM_ALG_ECC:
+            ecc_parameters = Tpm20EccParmsStruct.from_buffer(buf)
+            ecc_unique = Tpm20EccPointStruct.from_buffer(buf)
+            return cls(type_alg, name_alg, attributes, auth_policy, ecc_parameters, ecc_unique)
+
+        raise NotImplementedError(f"Unimplemented object public parameters for algorithm {type_alg!r}")
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> 'Tpm20PublicStruct':
+    def from_buffer_2b(cls, buf: ParsedBuffer) -> 'Tpm20PublicStruct':
+        """Decode a TPM2B_PUBLIC from a buffer"""
+        data = buf.read_tpm2b()
         with ParsedBuffer(data) as buf:
             return cls.from_buffer(buf)
 
-    def to_bytes(self) -> bytes:
-        """Convert to bytes"""
-        return (
-            struct.pack('>HHIH', self.type_alg.value, self.name_alg.value, self.attributes, len(self.auth_policy)) +
-            self.auth_policy +
-            self.parameters_unique)
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        buf.write_u16(self.type_alg)
+        buf.write_u16(self.name_alg)
+        buf.write_u32(self.attributes)
+        buf.write_tpm2b(self.auth_policy)
+        self.parameters.to_buffer(buf)
+        self.unique.to_buffer(buf)
 
     def compute_name(self) -> bytes:
         """Get the name of the Non-Volatile Index
@@ -1681,7 +2031,10 @@ class Tpm20PublicStruct:
         Family "2.0", Level 00, Revision 01.59 - November 2019
         Part 1: Architecture
         """
-        return struct.pack('>H', self.name_alg.value) + self.name_alg.compute_hash(self.to_bytes())
+        buf = OutputBuffer()
+        self.to_buffer(buf)
+        name_hash = self.name_alg.compute_hash(buf.finalize())
+        return struct.pack('>H', self.name_alg.value) + name_hash
 
     def attr_desc(self) -> str:
         """Get the description of the attribute"""
@@ -1710,181 +2063,9 @@ class Tpm20PublicStruct:
         else:
             print(f"{indent}- auth policy empty")
         print(f"{indent}- parameters:")
-        self.print_parameters(indent=f"{indent}  ")
-
-    def print_parameters(self, indent: str = '') -> None:
-        """Describe the parameters"""
-        if self.type_alg == TpmAlgId.TPM_ALG_RSA:
-            """
-            struct TPMS_RSA_PARMS {
-                TPMT_SYM_DEF_OBJECT symmetric;
-                TPMT_RSA_SCHEME scheme;
-                TPMI_RSA_KEY_BITS keyBits; // TPM_KEY_BITS = UINT16
-                UINT32 exponent;
-            }
-            struct TPMT_SYM_DEF_OBJECT {
-                TPMI_ALG_SYM_OBJECT algorithm; // TPM_ALG_ID = UINT16
-                TPMU_SYM_KEY_BITS keyBits; // TPM_KEY_BITS = UINT16
-                TPMU_SYM_MODE mode; // TPMI_ALG_SYM_MODE = TPM_ALG_ID = UINT16
-            }
-            struct TPMT_RSA_SCHEME {
-                TPMI_ALG_RSA_SCHEME scheme; // TPM_ALG_ID = UINT16
-                TPMU_ASYM_SCHEME details; // TPMS_SCHEME_SIGHASH = TPMI_ALG_HASH = TPM_ALG_ID = UINT16
-            }
-
-            Examples:
-            * For a signature key:
-                0010  symmetric.algorithm = TPM_ALG_NULL
-                0014  scheme.scheme = TPM_ALG_RSASSA
-                0004  scheme.details = TPM_ALG_SHA1
-                0800  keyBits = 2048
-                0000 0000  exponent = 0 (default exponent is 0x10001)
-                0100  unique.TPM2B_PUBLIC_KEY_RSA.size = 256 bytes
-                ...   modulus
-            * For an encryption key:
-                0006  symmetric.algorithm = TPM_ALG_AES
-                0080  symmetric.keyBits = 128
-                0043  symmetric.mode = TPM_ALG_CFB
-                0010  scheme.scheme = TPM_ALG_NULL
-                0800  keyBits = 2048
-                0000 0000  exponent = 0 (default exponent is 0x10001)
-                0100  unique.TPM2B_PUBLIC_KEY_RSA.size = 256 bytes
-                ...   modulus
-            """
-            sym_alg_id, = struct.unpack('>H', self.parameters_unique[:2])
-            offset = 2
-            sym_alg = TpmAlgId(sym_alg_id)
-            if sym_alg == TpmAlgId.TPM_ALG_NULL:
-                print(f"{indent}- symmetric: {sym_alg}")
-            elif sym_alg == TpmAlgId.TPM_ALG_AES:
-                sym_keybits, sym_mode_id = struct.unpack('>HH', self.parameters_unique[offset:offset + 4])
-                offset += 4
-                sym_mode = TpmAlgId(sym_mode_id)
-                print(f"{indent}- symmetric: {sym_alg}, keyBits={sym_keybits}, mode={sym_mode}")
-            else:
-                raise NotImplementedError(f"Unimplemented parameters for RSA/sym algorithm {sym_alg!r}")
-            scheme_alg_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
-            offset += 2
-            scheme_alg = TpmAlgId(scheme_alg_id)
-            if scheme_alg == TpmAlgId.TPM_ALG_NULL:
-                print(f"{indent}- scheme: {scheme_alg}")
-            elif scheme_alg == TpmAlgId.TPM_ALG_RSASSA:
-                scheme_details_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
-                offset += 2
-                scheme_details = TpmAlgId(scheme_details_id)
-                print(f"{indent}- scheme: {scheme_alg}, halg={scheme_details}")
-            else:
-                raise NotImplementedError(f"Unimplemented parameters for RSA/scheme algorithm {scheme_alg!r}")
-            keybits, exponent, unique_size = struct.unpack('>HIH', self.parameters_unique[offset:offset + 8])
-            offset += 8
-            if exponent == 0:
-                print(f"{indent}- exponent: {exponent:#x} (default is 0x10001)")
-            else:
-                print(f"{indent}- exponent: {exponent:#x}")
-            print(f"{indent}- keybits: {keybits} ({unique_size} bytes)")
-            if keybits != unique_size * 8:
-                raise RuntimeError(f"Unexpected RSA-{keybits} modulus size: {unique_size} bytes")
-            unique = self.parameters_unique[offset:]
-            print(f"{indent}- unique (RSA modulus):")
-            hexdump(unique, indent=indent + "  ")
-            if offset + unique_size != len(self.parameters_unique):
-                raise RuntimeError(f"Unexpected parameters format for RSA public key object: {self.parameters_unique!r}")  # noqa
-            return
-
-        if self.type_alg == TpmAlgId.TPM_ALG_ECC:
-            """
-            struct TPMS_ECC_PARMS {
-                TPMT_SYM_DEF_OBJECT symmetric;
-                TPMT_ECC_SCHEME scheme;
-                TPMI_ECC_CURVE curveID; // TPM_ECC_CURVE = UINT16
-                TPMT_KDF_SCHEME kdf;
-            }
-            struct TPMT_ECC_SCHEME {
-                TPMI_ALG_ECC_SCHEME scheme; // TPM_ALG_ID = UINT16
-                TPMU_SIG_SCHEME details; // TPMS_SCHEME_SIGHASH = TPMI_ALG_HASH = TPM_ALG_ID = UINT16
-            }
-            struct TPMT_KDF_SCHEME {
-                TPMI_ALG_KDF scheme;
-                TPMU_KDF_SCHEME details; // TPMI_ALG_HASH = TPM_ALG_ID = UINT16
-            }
-
-            Examples:
-            * For a signature key:
-                0010  symmetric.algorithm = TPM_ALG_NULL
-                0018  scheme.scheme = TPM_ALG_ECDSA
-                000b  scheme.details = TPM_ALG_SHA256
-                0003  curve = TPM_ECC_NIST_P256
-                0010  kdf.scheme = TPM_ALG_NULL
-                0020  unique.TPMS_ECC_POINT.x.size = 32 bytes
-                ...   point.x
-                0020  unique.TPMS_ECC_POINT.y.size = 32 bytes
-                ...   point.y
-            * For an encryption key:
-                0006  symmetric.algorithm = TPM_ALG_AES
-                0080  symmetric.keyBits = 128
-                0043  symmetric.mode = TPM_ALG_CFB
-                0010  scheme.scheme = TPM_ALG_NULL
-                0003  curve = TPM_ECC_NIST_P256
-                0010  kdf.scheme = TPM_ALG_NULL
-                0020  unique.TPMS_ECC_POINT.x.size = 32 bytes
-                ...   point.x
-                0020  unique.TPMS_ECC_POINT.y.size = 32 bytes
-                ...   point.y
-            """
-            sym_alg_id, = struct.unpack('>H', self.parameters_unique[:2])
-            offset = 2
-            sym_alg = TpmAlgId(sym_alg_id)
-            if sym_alg == TpmAlgId.TPM_ALG_NULL:
-                print(f"{indent}- symmetric: {sym_alg}")
-            elif sym_alg == TpmAlgId.TPM_ALG_AES:
-                sym_keybits, sym_mode_id = struct.unpack('>HH', self.parameters_unique[offset:offset + 4])
-                offset += 4
-                sym_mode = TpmAlgId(sym_mode_id)
-                print(f"{indent}- symmetric: {sym_alg}, keyBits={sym_keybits}, mode={sym_mode}")
-            else:
-                raise NotImplementedError(f"Unimplemented parameters for ECC/sym algorithm {sym_alg!r}")
-            scheme_alg_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
-            offset += 2
-            scheme_alg = TpmAlgId(scheme_alg_id)
-            if scheme_alg == TpmAlgId.TPM_ALG_NULL:
-                print(f"{indent}- scheme: {scheme_alg}")
-            elif scheme_alg == TpmAlgId.TPM_ALG_ECDSA:
-                scheme_details_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
-                offset += 2
-                scheme_details = TpmAlgId(scheme_details_id)
-                print(f"{indent}- scheme: {scheme_alg}, halg={scheme_details}")
-            else:
-                raise NotImplementedError(f"Unimplemented parameters for ECC/scheme algorithm {scheme_alg!r}")
-            ecc_curve_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
-            offset += 2
-            ecc_curve = Tpm20EccCurve(ecc_curve_id)
-            print(f"{indent}- curve: {ecc_curve}")
-            kdf_scheme_alg_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
-            offset += 2
-            kdf_scheme_alg = TpmAlgId(kdf_scheme_alg_id)
-            if kdf_scheme_alg == TpmAlgId.TPM_ALG_NULL:
-                print(f"{indent}- KDF scheme: {kdf_scheme_alg}")
-            else:
-                raise NotImplementedError(f"Unimplemented parameters for ECC/KDF scheme algorithm {scheme_alg!r}")
-            pt_x_size, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
-            offset += 2
-            pt_x = self.parameters_unique[offset:offset + pt_x_size]
-            offset += pt_x_size
-            print(f"{indent}- public key point.x:")
-            hexdump(pt_x, indent=indent + "  ")
-            pt_y_size, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
-            offset += 2
-            pt_y = self.parameters_unique[offset:offset + pt_y_size]
-            offset += pt_y_size
-            print(f"{indent}- public key point.y:")
-            hexdump(pt_y, indent=indent + "  ")
-            if offset != len(self.parameters_unique):
-                raise RuntimeError(f"Unexpected parameters format for ECC public key object: {self.parameters_unique!r}")  # noqa
-            return
-
-        print(f"Error: Unimplemented object public parameters for algorithm {self.type_alg!r}")
-        hexdump(self.parameters_unique, indent=indent + '  ')
-        raise NotImplementedError(f"Unimplemented object public parameters for algorithm {self.type_alg!r}")
+        self.parameters.print(indent=f"{indent}  ")
+        print(f"{indent}- unique:")
+        self.unique.print(indent=f"{indent}  ")
 
 
 # Description of the TPMA_OBJECT bits
@@ -2046,14 +2227,7 @@ def print_file(file_type: str, in_file: Optional[Path]) -> None:
     file_type = file_type.upper()
     with ParsedBuffer(data) as buf:
         if file_type == "TPM2B_PUBLIC":
-            # struct {
-            #     UINT16 size;
-            #     TPMT_PUBLIC publicArea;
-            # } TPM2B_PUBLIC;
-            size = buf.read_u16()
-            if size != buf.remaining_size():
-                raise ValueError(f"Error in TPM2B_PUBLIC: size {size:#x} is not the remaining")
-            obj = Tpm20PublicStruct.from_buffer(buf)
+            obj = Tpm20PublicStruct.from_buffer_2b(buf)
             obj.print()
         elif file_type == "TPMT_PUBLIC":
             obj = Tpm20PublicStruct.from_buffer(buf)
@@ -3008,16 +3182,10 @@ class TpmDevice:
             Tpm20Tag.TPM2_ST_NO_SESSIONS,
             Tpm20CommandCode.TPM2_CC_ReadPublic,
             struct.pack('>I', handle))
-        public_size, = struct.unpack('>H', resp[:2])
-        public = Tpm20PublicStruct.from_bytes(resp[2:2 + public_size])
-        offset = 2 + public_size
-        name_size, = struct.unpack('>H', resp[offset:offset + 2])
-        name = resp[offset + 2:offset + 2 + name_size]
-        offset += 2 + name_size
-        qualified_name_size, = struct.unpack('>H', resp[offset:offset + 2])
-        qualified_name = resp[offset + 2:offset + 2 + qualified_name_size]
-        if offset + 2 + qualified_name_size != len(resp):
-            raise RuntimeError(f"Unexpected response format for TPM2_CC_ReadPublic: {resp!r}")
+        with ParsedBuffer(resp, "TPM2_CC_ReadPublic response") as buf:
+            public = Tpm20PublicStruct.from_buffer_2b(buf)
+            name = buf.read_tpm2b()
+            qualified_name = buf.read_tpm2b()
         return public, name, qualified_name
 
     def tpm20_nv_public_read(self, nv_index: int) -> Tuple[Tpm20NvPublicStruct, bytes]:
