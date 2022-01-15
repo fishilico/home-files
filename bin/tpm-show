@@ -1685,6 +1685,91 @@ class Tpm20SymDefObjectStruct:
             return f"{self.alg}"
         return f"{self.alg} with key_bits={self.key_bits}, mode={self.mode}"
 
+    def print(self, indent: str = "") -> None:
+        print(f"{indent}- symmetric: {self}")
+
+
+@dataclass
+class Tpm20KdfSchemeStruct:
+    """Represent a TPMT_KDF_SCHEME in TPM 2.0
+
+    struct TPMT_KDF_SCHEME {
+        TPMI_ALG_KDF scheme; // TPM_ALG_ID = UINT16
+        TPMU_KDF_SCHEME details; // TPMS_SCHEME_HASH = TPMI_ALG_HASH = TPM_ALG_ID = UINT16
+    }
+    """
+    scheme: TpmAlgId
+    details: Optional[TpmAlgId]
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20KdfSchemeStruct':
+        scheme = buf.read_tpm_algid()
+        if scheme == TpmAlgId.TPM_ALG_NULL:
+            return cls(scheme, None)
+        raise NotImplementedError(f"Unimplemented parameters for KDF scheme {scheme!r}")
+
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        buf.write_u16(self.scheme)
+        if self.details is not None:
+            buf.write_u16(self.details)
+
+    def __str__(self) -> str:
+        if self.scheme == TpmAlgId.TPM_ALG_NULL:
+            return f"{self.scheme}"
+        return f"{self.scheme} with details={self.details}"
+
+
+@dataclass
+class Tpm20KeyedHashSchemeStruct:
+    """Represent a TPMT_KEYEDHASH_SCHEME in TPM 2.0
+
+    struct TPMT_KEYEDHASH_SCHEME {
+        TPMI_ALG_KEYEDHASH_SCHEME scheme; // TPM_ALG_ID = UINT16
+        TPMU_SCHEME_KEYEDHASH details;
+    }
+    union TPMU_SCHEME_KEYEDHASH {
+        TPMS_SCHEME_HMAC hmac; // TPMS_SCHEME_HASH = TPMI_ALG_HASH = TPM_ALG_ID = UINT16
+        TPMS_SCHEME_XOR exclusiveOr;
+    }
+    struct TPMS_SCHEME_XOR {
+        TPMI_ALG_HASH hashAlg; // TPM_ALG_ID = UINT16
+        TPMI_ALG_KDF kdf; // TPM_ALG_ID = UINT16
+    };
+    """
+    scheme: TpmAlgId
+    hash_alg: Optional[TpmAlgId]
+    kdf: Optional[TpmAlgId]
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20KeyedHashSchemeStruct':
+        scheme = buf.read_tpm_algid()
+        if scheme == TpmAlgId.TPM_ALG_NULL:
+            return cls(scheme, None, None)
+        if scheme == TpmAlgId.TPM_ALG_HMAC:
+            hash_alg = buf.read_tpm_algid()
+            return cls(scheme, hash_alg, None)
+        if scheme == TpmAlgId.TPM_ALG_XOR:
+            hash_alg = buf.read_tpm_algid()
+            kdf = buf.read_tpm_algid()
+            return cls(scheme, hash_alg, kdf)
+        raise NotImplementedError(f"Unimplemented parameters for Keyed Hash scheme {scheme!r}")
+
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        buf.write_u16(self.scheme)
+        if self.hash_alg is not None:
+            buf.write_u16(self.hash_alg)
+            if self.kdf is not None:
+                buf.write_u16(self.kdf)
+        else:
+            assert self.kdf is None
+
+    def __str__(self) -> str:
+        if self.scheme == TpmAlgId.TPM_ALG_NULL:
+            return f"{self.scheme}"
+        if self.scheme == TpmAlgId.TPM_ALG_HMAC:
+            return f"{self.scheme} with hash_alg={self.hash_alg}"
+        return f"{self.scheme} with hash_alg={self.hash_alg}, kdf={self.kdf}"
+
 
 @dataclass
 class Tpm20RsaSchemeStruct:
@@ -1757,33 +1842,25 @@ class Tpm20EccSchemeStruct:
 
 
 @dataclass
-class Tpm20KdfSchemeStruct:
-    """Represent a TPMT_KDF_SCHEME in TPM 2.0
+class Tpm20KeyedHashParmsStruct:
+    """Represent a TPMS_KEYEDHASH_PARMS in TPM 2.0
 
-    struct TPMT_KDF_SCHEME {
-        TPMI_ALG_KDF scheme; // TPM_ALG_ID = UINT16
-        TPMU_KDF_SCHEME details; // TPMI_ALG_HASH = TPM_ALG_ID = UINT16
-    }
+    struct TPMS_KEYEDHASH_PARMS {
+        TPMT_KEYEDHASH_SCHEME scheme;
+    };
     """
-    scheme: TpmAlgId
-    details: Optional[TpmAlgId]
+    scheme: Tpm20KeyedHashSchemeStruct
 
     @classmethod
-    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20KdfSchemeStruct':
-        scheme = buf.read_tpm_algid()
-        if scheme == TpmAlgId.TPM_ALG_NULL:
-            return cls(scheme, None)
-        raise NotImplementedError(f"Unimplemented parameters for KDF scheme {scheme!r}")
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20KeyedHashParmsStruct':
+        scheme = Tpm20KeyedHashSchemeStruct.from_buffer(buf)
+        return cls(scheme)
 
     def to_buffer(self, buf: OutputBuffer) -> None:
-        buf.write_u16(self.scheme)
-        if self.details is not None:
-            buf.write_u16(self.details)
+        self.scheme.to_buffer(buf)
 
-    def __str__(self) -> str:
-        if self.scheme == TpmAlgId.TPM_ALG_NULL:
-            return f"{self.scheme}"
-        return f"{self.scheme} with details={self.details}"
+    def print(self, indent: str = "") -> None:
+        print(f"{indent}- scheme: {self.scheme}")
 
 
 @dataclass
@@ -1984,7 +2061,7 @@ class Tpm20PublicStruct:
     name_alg: TpmAlgId
     attributes: int
     auth_policy: bytes
-    parameters: Union[Tpm20RsaParmsStruct, Tpm20EccParmsStruct]
+    parameters: Union[Tpm20KeyedHashParmsStruct, Tpm20SymDefObjectStruct, Tpm20RsaParmsStruct, Tpm20EccParmsStruct]
     unique: Union[Tpm20BufferStruct, Tpm20EccPointStruct]
 
     @classmethod
@@ -1994,6 +2071,16 @@ class Tpm20PublicStruct:
         name_alg = buf.read_tpm_algid()
         attributes = buf.read_u32()
         auth_policy = buf.read_tpm2b()
+
+        if type_alg == TpmAlgId.TPM_ALG_KEYEDHASH:
+            keyedhash_parameters = Tpm20KeyedHashParmsStruct.from_buffer(buf)
+            keyedhash_unique = Tpm20BufferStruct.from_buffer(buf)
+            return cls(type_alg, name_alg, attributes, auth_policy, keyedhash_parameters, keyedhash_unique)
+
+        if type_alg == TpmAlgId.TPM_ALG_SYMCIPHER:
+            sym_parameters = Tpm20SymDefObjectStruct.from_buffer(buf)
+            sym_unique = Tpm20BufferStruct.from_buffer(buf)
+            return cls(type_alg, name_alg, attributes, auth_policy, sym_parameters, sym_unique)
 
         if type_alg == TpmAlgId.TPM_ALG_RSA:
             rsa_parameters = Tpm20RsaParmsStruct.from_buffer(buf)
