@@ -117,7 +117,7 @@ import secrets
 import struct
 import socket
 import sys
-from typing import BinaryIO, Generator, List, Mapping, Optional, Sequence, Set, Tuple, TYPE_CHECKING, Union
+from typing import Any, BinaryIO, Generator, List, Mapping, Optional, Sequence, Set, Tuple, TYPE_CHECKING, Union
 
 
 # Use cached_property if it is available
@@ -1142,6 +1142,9 @@ class TpmAlgId(enum.IntEnum):
         """Represent the value in hexadecimal"""
         return f"<{self.name}: {self.value:#06x}>"
 
+    def __str__(self) -> str:
+        return f"{self.name} ({self.value:#06x})"
+
     def compute_hash(self, data: bytes) -> bytes:
         """Compute the hash digest according to the algorithm"""
         if self == TpmAlgId.TPM_ALG_SHA256:
@@ -1176,6 +1179,9 @@ class Tpm20EccCurve(enum.IntEnum):
     def __repr__(self) -> str:
         """Represent the value in hexadecimal"""
         return f"<{self.name}: {self.value:#06x}>"
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.value:#06x})"
 
 
 @enum.unique
@@ -1431,10 +1437,10 @@ class Tpm20Handle(enum.IntEnum):
     TPM_RH_EK = 0x40000006  # EK = Endorsement Key (Root Trust for Reporting, RTR)
     TPM_RH_NULL = 0x40000007  # a handle associated with the null hierarchy, an EmptyAuth authValue, and an Empty Policy authPolicy  # noqa
     TPM_RH_UNASSIGNED = 0x40000008  # value reserved to the TPM to indicate a handle location that has not been initialized or assigned  # noqa
-    TPM_RS_PW = 0x40000009  # authorization value used to indicate a password authorization session  # noqa
+    TPM_RS_PW = 0x40000009  # authorization value used to indicate a password authorization session
     TPM_RH_LOCKOUT = 0x4000000a  # references the authorization associated with the dictionary attack lockout reset  # noqa
     TPM_RH_ENDORSEMENT = 0x4000000b  # references the Endorsement Primary Seed (EPS), endorsementAuth, and endorsementPolicy  # noqa
-    TPM_RH_PLATFORM = 0x4000000c  # references the Platform Primary Seed (PPS), platformAuth, and platformPolicy  # noqa
+    TPM_RH_PLATFORM = 0x4000000c  # references the Platform Primary Seed (PPS), platformAuth, and platformPolicy
     TPM_RH_PLATFORM_NV = 0x4000000d  # for phEnableNV
     #   0x40000010-0x4000010f: range of authorization values that are vendor specific.
     #     A TPM may support any of the values in this range as are needed for vendor-specific purposes.
@@ -1526,6 +1532,74 @@ WELL_KNOWN_EA_POLICIES: Mapping[str, str] = {
 }
 
 
+class ParsedBuffer:
+    """A buffer being parsed, for example to unmarshal data"""
+    def __init__(self, buffer: bytes, ensure_end_on_exit: bool = True) -> None:
+        self.buffer = buffer
+        self.pos = 0
+        self.ensure_end_on_exit = ensure_end_on_exit
+
+    def remaining_size(self) -> int:
+        return len(self.buffer) - self.pos
+
+    def remaining(self) -> bytes:
+        return self.buffer[self.pos:]
+
+    def read_remaining(self) -> bytes:
+        value = self.buffer[self.pos:]
+        self.pos = len(self.buffer)
+        return value
+
+    def assert_end(self) -> None:
+        if self.pos != len(self.buffer):
+            raise RuntimeError(f"remaining {self.remaining_size()} bytes: {self.remaining().hex()}")
+
+    def __enter__(self) -> 'ParsedBuffer':
+        return self
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        if self.ensure_end_on_exit:
+            self.assert_end()
+
+    def read_bytes(self, size: int) -> bytes:
+        assert size >= 0
+        assert self.pos + size <= len(self.buffer)
+        value = self.buffer[self.pos:self.pos + size]
+        self.pos += size
+        return value
+
+    def read_bool(self) -> bool:
+        value = self.read_bytes(1)
+        if value == b"\x00":
+            return False
+        if value == b"\x01":
+            return True
+        raise ValueError(f"Unexpected serialized boolean {value!r}")
+
+    def read_u8(self) -> int:
+        return int.from_bytes(self.read_bytes(1), "big")
+
+    def read_u16(self) -> int:
+        return int.from_bytes(self.read_bytes(2), "big")
+
+    def read_u32(self) -> int:
+        return int.from_bytes(self.read_bytes(4), "big")
+
+    def read_u64(self) -> int:
+        return int.from_bytes(self.read_bytes(8), "big")
+
+    def read_tpm2b(self) -> bytes:
+        """Decode a TPM_2B structure, which includes a 16-bit size"""
+        size = self.read_u16()
+        return self.read_bytes(size)
+
+    def read_tpm_algid(self) -> TpmAlgId:
+        return TpmAlgId(self.read_u16())
+
+    def read_tpm20_handle(self) -> Tpm20Handle:
+        return Tpm20Handle(self.read_u32())
+
+
 class Tpm20PublicStruct:
     """Represent a TPMT_PUBLIC in TPM 2.0
 
@@ -1580,13 +1654,18 @@ class Tpm20PublicStruct:
         self.parameters_unique = parameters_unique
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> 'Tpm20PublicStruct':
-        type_alg_id, name_alg_id, attributes, digest_size = struct.unpack('>HHIH', data[:0xa])
-        auth_policy = data[0xa:0xa + digest_size]
-        parameters_unique = data[0xa + digest_size:]
-        type_alg = TpmAlgId(type_alg_id)
-        name_alg = TpmAlgId(name_alg_id)
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20PublicStruct':
+        type_alg = buf.read_tpm_algid()
+        name_alg = buf.read_tpm_algid()
+        attributes = buf.read_u32()
+        auth_policy = buf.read_tpm2b()
+        parameters_unique = buf.read_remaining()
         return cls(type_alg, name_alg, attributes, auth_policy, parameters_unique)
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> 'Tpm20PublicStruct':
+        with ParsedBuffer(data) as buf:
+            return cls.from_buffer(buf)
 
     def to_bytes(self) -> bytes:
         """Convert to bytes"""
@@ -1619,6 +1698,19 @@ class Tpm20PublicStruct:
             assert remaining
         all_desc.append(hex(remaining))
         return '|'.join(all_desc)
+
+    def print(self, indent: str = "") -> None:
+        print(f"{indent}- type alg: {self.type_alg}")
+        print(f"{indent}- name alg: {self.name_alg}")
+        print(f"{indent}- attributes: {self.attr_desc()} ({self.attributes:#010x})")
+        if self.auth_policy:
+            hex_auth_policy = binascii.hexlify(self.auth_policy).decode('ascii')
+            desc_auth_policy = WELL_KNOWN_EA_POLICIES.get(hex_auth_policy, 'unknown')
+            print(f"{indent}- auth policy: {hex_auth_policy} = {desc_auth_policy}")
+        else:
+            print(f"{indent}- auth policy empty")
+        print(f"{indent}- parameters:")
+        self.print_parameters(indent=f"{indent}  ")
 
     def print_parameters(self, indent: str = '') -> None:
         """Describe the parameters"""
@@ -1663,24 +1755,24 @@ class Tpm20PublicStruct:
             offset = 2
             sym_alg = TpmAlgId(sym_alg_id)
             if sym_alg == TpmAlgId.TPM_ALG_NULL:
-                print(f"{indent}- symmetric: {sym_alg.name} ({sym_alg_id:#x})")
+                print(f"{indent}- symmetric: {sym_alg}")
             elif sym_alg == TpmAlgId.TPM_ALG_AES:
                 sym_keybits, sym_mode_id = struct.unpack('>HH', self.parameters_unique[offset:offset + 4])
                 offset += 4
                 sym_mode = TpmAlgId(sym_mode_id)
-                print(f"{indent}- symmetric: {sym_alg.name} ({sym_alg_id:#x}), keyBits={sym_keybits}, mode={sym_mode.name} ({sym_mode_id:#x})")  # noqa
+                print(f"{indent}- symmetric: {sym_alg}, keyBits={sym_keybits}, mode={sym_mode}")
             else:
                 raise NotImplementedError(f"Unimplemented parameters for RSA/sym algorithm {sym_alg!r}")
             scheme_alg_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
             offset += 2
             scheme_alg = TpmAlgId(scheme_alg_id)
             if scheme_alg == TpmAlgId.TPM_ALG_NULL:
-                print(f"{indent}- scheme: {scheme_alg.name} ({scheme_alg:#x})")
+                print(f"{indent}- scheme: {scheme_alg}")
             elif scheme_alg == TpmAlgId.TPM_ALG_RSASSA:
                 scheme_details_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
                 offset += 2
                 scheme_details = TpmAlgId(scheme_details_id)
-                print(f"{indent}- scheme: {scheme_alg.name} ({scheme_alg:#x}), halg={scheme_details.name} ({scheme_details_id:#x})")  # noqa
+                print(f"{indent}- scheme: {scheme_alg}, halg={scheme_details}")
             else:
                 raise NotImplementedError(f"Unimplemented parameters for RSA/scheme algorithm {scheme_alg!r}")
             keybits, exponent, unique_size = struct.unpack('>HIH', self.parameters_unique[offset:offset + 8])
@@ -1743,35 +1835,35 @@ class Tpm20PublicStruct:
             offset = 2
             sym_alg = TpmAlgId(sym_alg_id)
             if sym_alg == TpmAlgId.TPM_ALG_NULL:
-                print(f"{indent}- symmetric: {sym_alg.name} ({sym_alg_id:#x})")
+                print(f"{indent}- symmetric: {sym_alg}")
             elif sym_alg == TpmAlgId.TPM_ALG_AES:
                 sym_keybits, sym_mode_id = struct.unpack('>HH', self.parameters_unique[offset:offset + 4])
                 offset += 4
                 sym_mode = TpmAlgId(sym_mode_id)
-                print(f"{indent}- symmetric: {sym_alg.name} ({sym_alg_id:#x}), keyBits={sym_keybits}, mode={sym_mode.name} ({sym_mode_id:#x})")  # noqa
+                print(f"{indent}- symmetric: {sym_alg}, keyBits={sym_keybits}, mode={sym_mode}")
             else:
                 raise NotImplementedError(f"Unimplemented parameters for ECC/sym algorithm {sym_alg!r}")
             scheme_alg_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
             offset += 2
             scheme_alg = TpmAlgId(scheme_alg_id)
             if scheme_alg == TpmAlgId.TPM_ALG_NULL:
-                print(f"{indent}- scheme: {scheme_alg.name} ({scheme_alg:#x})")
+                print(f"{indent}- scheme: {scheme_alg}")
             elif scheme_alg == TpmAlgId.TPM_ALG_ECDSA:
                 scheme_details_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
                 offset += 2
                 scheme_details = TpmAlgId(scheme_details_id)
-                print(f"{indent}- scheme: {scheme_alg.name} ({scheme_alg:#x}), halg={scheme_details.name} ({scheme_details_id:#x})")  # noqa
+                print(f"{indent}- scheme: {scheme_alg}, halg={scheme_details}")
             else:
                 raise NotImplementedError(f"Unimplemented parameters for ECC/scheme algorithm {scheme_alg!r}")
             ecc_curve_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
             offset += 2
             ecc_curve = Tpm20EccCurve(ecc_curve_id)
-            print(f"{indent}- curve: {ecc_curve.name} ({ecc_curve:#x})")
+            print(f"{indent}- curve: {ecc_curve}")
             kdf_scheme_alg_id, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
             offset += 2
             kdf_scheme_alg = TpmAlgId(kdf_scheme_alg_id)
             if kdf_scheme_alg == TpmAlgId.TPM_ALG_NULL:
-                print(f"{indent}- KDF scheme: {kdf_scheme_alg.name} ({kdf_scheme_alg:#x})")
+                print(f"{indent}- KDF scheme: {kdf_scheme_alg}")
             else:
                 raise NotImplementedError(f"Unimplemented parameters for ECC/KDF scheme algorithm {scheme_alg!r}")
             pt_x_size, = struct.unpack('>H', self.parameters_unique[offset:offset + 2])
@@ -1804,7 +1896,7 @@ TPM20_OBJECT_ATTR_DESC: Tuple[Tuple[int, str], ...] = (
     (0x00000010, 'fixedParent'),  # the object's parent may not be changed ; this object may not be the object of a TPM2_Duplicate()  # noqa
     (0x00000020, 'sensitiveDataOrigin'),  # the key was generated by TPM.
     (0x00000040, 'userWithAuth'),  # authorization for operations that require USER role authorization may be given if the caller provides proof of knowledge of the authValue of the object with an HMAC authorization session or a password  # noqa
-    (0x00000080, 'adminWithPolicy'),  # HMAC or password authorizations may not be used for ADMIN role authorizations.  # noqa
+    (0x00000080, 'adminWithPolicy'),  # HMAC or password authorizations may not be used for ADMIN role authorizations.
     # bits 8-9: reserved
     (0x00000400, 'noDA'),  # authorization failures for the object do not affect the dictionary attack protection logic and authorization of the object is not blocked if the TPM is in lockout.  # noqa
     (0x00000800, 'encryptedDuplication'),  # when the object is duplicated, the sensitive portion of the object is required to be encrypted with an inner wrapper and the new parent shall be an asymmetric key and not TPM_RH_NULL.  # noqa
@@ -1938,6 +2030,37 @@ TPM20_NV_ATTR_DESC: Tuple[Tuple[int, str], ...] = (
     (0x40000000, 'platformcreate'),
     (0x80000000, 'read_stclear'),
 )
+
+
+def print_file(file_type: str, in_file: Optional[Path]) -> None:
+    """Deserialize a file and dump its content"""
+    if in_file:
+        with in_file.open("rb") as f_in:
+            data = f_in.read()
+    elif sys.stdin.isatty():
+        print("Error: --type expects data either from a file or from stdin", file=sys.stderr)
+        sys.exit(1)
+    else:
+        data = sys.stdin.buffer.read()
+
+    file_type = file_type.upper()
+    with ParsedBuffer(data) as buf:
+        if file_type == "TPM2B_PUBLIC":
+            # struct {
+            #     UINT16 size;
+            #     TPMT_PUBLIC publicArea;
+            # } TPM2B_PUBLIC;
+            size = buf.read_u16()
+            if size != buf.remaining_size():
+                raise ValueError(f"Error in TPM2B_PUBLIC: size {size:#x} is not the remaining")
+            obj = Tpm20PublicStruct.from_buffer(buf)
+            obj.print()
+        elif file_type == "TPMT_PUBLIC":
+            obj = Tpm20PublicStruct.from_buffer(buf)
+            obj.print()
+        else:
+            print(f"Error: unknown type {file_type}", file=sys.stderr)
+            sys.exit(1)
 
 
 class Tpm20AuthSessionContext:
@@ -3471,17 +3594,7 @@ def show_tpm_dev(dev: TpmDevice) -> None:
                         print(f"      - object name: {obj_name_hex}")
                         print(f"      - object qualified name: {obj_qual_name_hex}")
                         print("      - object public area:")
-                        print(f"        - type alg ({obj_pubdata.type_alg.value:#x}): {obj_pubdata.type_alg.name}")  # noqa
-                        print(f"        - name alg ({obj_pubdata.name_alg.value:#x}): {obj_pubdata.name_alg.name}")  # noqa
-                        print(f"        - attributes ({obj_pubdata.attributes:#010x}): {obj_pubdata.attr_desc()}")
-                        if obj_pubdata.auth_policy:
-                            hex_auth_policy = binascii.hexlify(obj_pubdata.auth_policy).decode('ascii')
-                            desc_auth_policy = WELL_KNOWN_EA_POLICIES.get(hex_auth_policy, 'unknown')
-                            print(f"        - auth policy: {hex_auth_policy} = {desc_auth_policy}")
-                        else:
-                            print("        - auth policy empty")
-                        print("        - parameters:")
-                        obj_pubdata.print_parameters(indent="          ")
+                        obj_pubdata.print(indent="        ")
 
                         computed_obj_name = obj_pubdata.compute_name()
                         if computed_obj_name != obj_name:
@@ -3496,7 +3609,7 @@ def show_tpm_dev(dev: TpmDevice) -> None:
                     print(f"      - NV name: {nv_name_hex}")
                     print("      - NV public area:")
                     assert pub_data.nv_index == handle, f"Unexpected NV Index in public data: {pub_data}"
-                    print(f"        - name alg ({pub_data.name_alg.value:#x}): {pub_data.name_alg.name}")
+                    print(f"        - name alg: {pub_data.name_alg}")
                     print(f"        - attributes ({pub_data.attributes:#010x}): {pub_data.attr_desc()}")
                     if pub_data.auth_policy:
                         hex_auth_policy = binascii.hexlify(pub_data.auth_policy).decode('ascii')
@@ -3751,7 +3864,7 @@ class WindowsTbsDevice(TpmDevice):
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
     parser = argparse.ArgumentParser(description="Get various information from a TPM")
-    parser.add_argument('-d', '--device', type=Path,
+    parser.add_argument('device', nargs="?", type=Path,
                         help="TPM device to use (/dev/tpmrm0 by default on Linux)")
     parser.add_argument('-H', '--host', type=int,
                         help="Connect to a TPM through a TCP host and port (127.0.0.1 by default)")
@@ -3763,7 +3876,14 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                         help="Use Microsoft Windows TPM Base Services (default on Windows)")
     parser.add_argument('--quiet-if-not-found', action='store_true',
                         help="Do not show a message if no TPM is found")
+    parser.add_argument('-t', '--type', type=str,
+                        help="Deserialize a file (or stdin) instead of querying a TPM (like tpm2_print)")
     args = parser.parse_args(argv)
+
+    file_type: Optional[str] = args.type
+    if file_type:
+        print_file(file_type, args.device)
+        return
 
     dev_path: Optional[Path] = args.device
     tpm_host: Optional[str] = args.host
