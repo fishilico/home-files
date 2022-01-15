@@ -1185,6 +1185,17 @@ class Tpm20EccCurve(enum.IntEnum):
 
 
 @enum.unique
+class Tpm20SessionType(enum.IntEnum):
+    """TPM_SE: authorization session types"""
+    TPM_SE_HMAC = 0x00
+    TPM_SE_POLICY = 0x01
+    TPM_SE_TRIAL = 0x03
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.value})"
+
+
+@enum.unique
 class Tpm20Capability(enum.IntEnum):
     """TPM_CAP: capabilities in TPM 2.0"""
     TPM_CAP_ALGS = 0x00000000
@@ -1492,6 +1503,9 @@ class Tpm20Handle(enum.IntEnum):
     def __repr__(self) -> str:
         """Represent the value in hexadecimal"""
         return f"<{self.name}: {self.value:#010x}>"
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.value:#010x})"
 
 
 # Well-known Enhanced Authorization policy digests in TPM 2.0
@@ -2377,6 +2391,181 @@ TPM20_NV_ATTR_DESC: Tuple[Tuple[int, str], ...] = (
 
 
 @dataclass
+class Tpm20StartAuthSessionCmdParams:
+    """Parameters of a TPM2_CC_StartAuthSession comand"""
+    tpm_key: Tpm20Handle
+    bind: Tpm20Handle
+    nonce_caller: bytes
+    encrypted_salt: bytes
+    session_type: Tpm20SessionType
+    symmetric: Tpm20SymDefObjectStruct
+    auth_hash: TpmAlgId
+
+    @classmethod
+    def new_with_hmac(cls, nonce_caller: bytes, auth_hash: TpmAlgId) -> 'Tpm20StartAuthSessionCmdParams':
+        """Starts an unbound and unsalted HMAC session"""
+        return cls(
+            tpm_key=Tpm20Handle.TPM_RH_NULL,
+            bind=Tpm20Handle.TPM_RH_NULL,
+            nonce_caller=nonce_caller,
+            encrypted_salt=b"",
+            session_type=Tpm20SessionType.TPM_SE_HMAC,
+            symmetric=Tpm20SymDefObjectStruct(TpmAlgId.TPM_ALG_NULL, None, None),
+            auth_hash=auth_hash,
+        )
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20StartAuthSessionCmdParams':
+        tpm_key = buf.read_tpm20_handle()
+        bind = buf.read_tpm20_handle()
+        nonce_caller = buf.read_tpm2b()
+        encrypted_salt = buf.read_tpm2b()
+        session_type = Tpm20SessionType(buf.read_u8())
+        symmetric = Tpm20SymDefObjectStruct.from_buffer(buf)
+        auth_hash = buf.read_tpm_algid()
+        return cls(tpm_key, bind, nonce_caller, encrypted_salt, session_type, symmetric, auth_hash)
+
+    def to_buffer(self, buf: OutputBuffer) -> None:
+        buf.write_u32(self.tpm_key)
+        buf.write_u32(self.bind)
+        buf.write_tpm2b(self.nonce_caller)
+        buf.write_tpm2b(self.encrypted_salt)
+        buf.write_u8(self.session_type)
+        self.symmetric.to_buffer(buf)
+        buf.write_u16(self.auth_hash)
+
+    def to_bytes(self) -> bytes:
+        buf = OutputBuffer()
+        self.to_buffer(buf)
+        return buf.finalize()
+
+    def print(self, indent: str = "") -> None:
+        print(f"{indent}- tpm key: {self.tpm_key}")
+        print(f"{indent}- bind: {self.bind}")
+        print(f"{indent}- nonce caller: {self.nonce_caller.hex()}")
+        print(f"{indent}- encrypted salt: {self.encrypted_salt.hex()}")
+        print(f"{indent}- session type: {self.session_type}")
+        print(f"{indent}- symmetric: {self.symmetric}")
+        print(f"{indent}- auth hash: {self.auth_hash}")
+
+
+@dataclass
+class Tpm20StartAuthSessionResponse:
+    """Response of a TPM2_CC_StartAuthSession comand"""
+    session_handle: int
+    nonce_tpm: bytes
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20StartAuthSessionResponse':
+        session_handle = buf.read_u32()
+        nonce_tpm = buf.read_tpm2b()
+        return cls(session_handle, nonce_tpm)
+
+    def print(self, indent: str = "") -> None:
+        try:
+            session_handle = Tpm20Handle(self.session_handle)
+        except ValueError:
+            print(f"{indent}- session handle: {self.session_handle:#010x} (unknown)")
+        else:
+            print(f"{indent}- session handle: {session_handle}")
+        print(f"{indent}- nonce tpm: {self.nonce_tpm.hex()}")
+
+
+@dataclass
+class Tpm20AuthSessionContext:
+    """Context of a TPM 2.0 authorization session"""
+    session_handle: int
+    hash_alg: TpmAlgId
+    nonce_caller: bytes
+    nonce_tpm: bytes
+    session_key: bytes
+
+
+@dataclass
+class Tpm20CmdAuthArea:
+    """Authorization area for a TPM 2.0 command"""
+    session_handle: int
+    nonce_caller: bytes
+    session_attributes: int
+    cphash: bytes  # Comand HMAC
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20CmdAuthArea':
+        session_handle = buf.read_u32()
+        nonce_caller = buf.read_tpm2b()
+        session_attributes = buf.read_u8()
+        cphash = buf.read_tpm2b()
+        return cls(session_handle, nonce_caller, session_attributes, cphash)
+
+    @classmethod
+    def from_buffer_with_size(cls, buf: ParsedBuffer) -> 'Tpm20CmdAuthArea':
+        auth_area_size = buf.read_u32()
+        with ParsedBuffer(buf.read_bytes(auth_area_size)) as auth_area_buf:
+            return cls.from_buffer(auth_area_buf)
+
+    @classmethod
+    def from_buffer_2b(cls, buf: ParsedBuffer) -> 'Tpm20CmdAuthArea':
+        data = buf.read_tpm2b()
+        with ParsedBuffer(data) as buf:
+            return cls.from_buffer(buf)
+
+    def to_buffer_with_size(self, buf: OutputBuffer) -> None:
+        # NB. the size of the Authorization Area is 32-bit wide, not 16-bit like TPM2B
+        buf.write_u32(9 + len(self.nonce_caller) + len(self.cphash))
+        buf.write_u32(self.session_handle)
+        buf.write_tpm2b(self.nonce_caller)
+        buf.write_u8(self.session_attributes)
+        buf.write_tpm2b(self.cphash)
+
+    def to_bytes_with_size(self) -> bytes:
+        buf = OutputBuffer()
+        self.to_buffer_with_size(buf)
+        return buf.finalize()
+
+    def print(self, indent: str = "") -> None:
+        try:
+            session_handle = Tpm20Handle(self.session_handle)
+        except ValueError:
+            print(f"{indent}- session handle: {self.session_handle:#010x} (unknown)")
+        else:
+            print(f"{indent}- session handle: {session_handle}")
+        print(f"{indent}- nonce caller: {self.nonce_caller.hex()}")
+        print(f"{indent}- session attributes: {self.session_attributes:#04x}")
+        print(f"{indent}- command hmac: {self.cphash.hex()}")
+
+
+@dataclass
+class Tpm20RespAuth:
+    """Authorization response for a TPM 2.0 command"""
+    data: bytes
+    nonce_tpm: bytes
+    session_attributes: int
+    resp_hmac: bytes
+    buffer_name: Optional[str]
+
+    @classmethod
+    def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20RespAuth':
+        data_size = buf.read_u32()
+        data = buf.read_bytes(data_size)
+        nonce_tpm = buf.read_tpm2b()
+        session_attributes = buf.read_u8()
+        rphash = buf.read_tpm2b()
+        return cls(data, nonce_tpm, session_attributes, rphash, buf.name)
+
+    def print(self, indent: str = "") -> None:
+        print(f"{indent}- data (response parameters, {len(self.data)} bytes):")
+        hexdump(self.data, indent=f"{indent}  ")
+        print(f"{indent}- nonce tpm: {self.nonce_tpm.hex()}")
+        print(f"{indent}- session attributes: {self.session_attributes:#04x}")
+        print(f"{indent}- response hmac: {self.resp_hmac.hex()}")
+
+    def into_buffer(self, name: Optional[str] = None, ensure_end_on_exit: bool = True) -> ParsedBuffer:
+        if name is None and self.buffer_name:
+            name = f"Decapsulated {self.buffer_name}"
+        return ParsedBuffer(self.data, name=name, ensure_end_on_exit=ensure_end_on_exit)
+
+
+@dataclass
 class Tpm20ReadPublicResponse:
     """Response of a TPM2_CC_ReadPublic command"""
     public: Tpm20PublicStruct
@@ -2449,17 +2638,6 @@ def print_file(file_type: str, in_file: Optional[Path]) -> None:
         else:
             print(f"Error: unknown type {file_type}", file=sys.stderr)
             sys.exit(1)
-
-
-class Tpm20AuthSessionContext:
-    """Context of an authorization session"""
-    def __init__(self, session_handle: int, hash_alg: TpmAlgId,
-                 nonce_caller: bytes, nonce_tpm: bytes, session_key: bytes):
-        self.session_handle = session_handle
-        self.hash_alg = hash_alg
-        self.nonce_caller = nonce_caller
-        self.nonce_tpm = nonce_tpm
-        self.session_key = session_key
 
 
 TPM2_MAX_CAP_BUFFER = 1024
@@ -3453,25 +3631,14 @@ class TpmDevice:
         TPM2B_ENCRYPTED_SECRET is also struct {UINT16 size; BYTE secret[sizeof(TPMU_ENCRYPTED_SECRET)];}
         """
         nonce_caller: bytes = secrets.token_bytes(0x20)
+        params = Tpm20StartAuthSessionCmdParams.new_with_hmac(nonce_caller, TpmAlgId.TPM_ALG_SHA256)
         resp = self.tpm20_run(
             Tpm20Tag.TPM2_ST_NO_SESSIONS,
             Tpm20CommandCode.TPM2_CC_StartAuthSession,
-            struct.pack(
-                '>IIH',
-                Tpm20Handle.TPM_RH_NULL.value,  # tpmKey
-                Tpm20Handle.TPM_RH_NULL.value,  # bind
-                len(nonce_caller)) +  # nonceCaller.size
-            nonce_caller +  # nonceCaller.buffer
-            struct.pack(
-                '>HBHH',
-                0,  # encryptedSalt.size
-                0,  # sessionType = TPM_SE_HMAC
-                TpmAlgId.TPM_ALG_NULL.value,  # symmetric
-                TpmAlgId.TPM_ALG_SHA256))  # authHash
+            params.to_bytes())
         with ParsedBuffer(resp, "TPM2_CC_StartAuthSession response") as buf:
-            session_handle = buf.read_u32()
-            nonce_tpm = buf.read_tpm2b()
-        return Tpm20AuthSessionContext(session_handle, TpmAlgId.TPM_ALG_SHA256, nonce_caller, nonce_tpm, b'')
+            obj = Tpm20StartAuthSessionResponse.from_buffer(buf)
+        return Tpm20AuthSessionContext(obj.session_handle, TpmAlgId.TPM_ALG_SHA256, nonce_caller, obj.nonce_tpm, b"")
 
     def tpm20_flush_context(self, handle: int) -> None:
         """Remove from the TPM memory the context associated with a loaded
@@ -3507,45 +3674,44 @@ class TpmDevice:
             auth_session.session_key,
             cphash + auth_session.nonce_caller + auth_session.nonce_tpm + session_attributes)
 
+        auth_area = Tpm20CmdAuthArea(
+            session_handle=auth_session.session_handle,
+            nonce_caller=auth_session.nonce_caller,
+            session_attributes=1,  # 1 means "continueSession"
+            cphash=hmac_command,
+        )
+
         # Transmit an authenticated command
         resp = self.tpm20_run(
             Tpm20Tag.TPM2_ST_SESSIONS,
             Tpm20CommandCode.TPM2_CC_NV_Read,
             struct.pack(
-                '>IIIIH',
+                '>II',
                 handle,  # parameter @authHandle
                 handle,  # parameter nvIndex
-                9 + len(auth_session.nonce_caller) + len(hmac_command),  # Authorization_area.size
-                auth_session.session_handle,
-                len(auth_session.nonce_caller)) +
-            auth_session.nonce_caller +
-            session_attributes +
-            struct.pack('>H', len(hmac_command)) +
-            hmac_command +
+            ) +
+            auth_area.to_bytes_with_size() +
             parameters)
         with ParsedBuffer(resp, "TPM2_CC_NV_Read response") as buf:
-            data_size = buf.read_u32()
-            resp_data = buf.read_bytes(data_size)
-            auth_session.nonce_tpm = buf.read_tpm2b()
-            resp_session_attr = buf.read_u8()
-            resp_hmac = buf.read_tpm2b()
-
-        if resp_session_attr != 1:
-            raise RuntimeError(f"Unexpected response session attribute for TPM2_CC_NV_Read: {resp_session_attr:#x}")
+            auth_resp = Tpm20RespAuth.from_buffer(buf)
+        auth_session.nonce_tpm = auth_resp.nonce_tpm
+        if auth_resp.session_attributes != 1:
+            raise RuntimeError(f"Unexpected response session attributes for TPM2_CC_NV_Read: {auth_resp.session_attributes:#x}")  # noqa
 
         # Compute the rpHash (Response Parameter Hash)
         rphash = auth_session.hash_alg.compute_hash(
             struct.pack('>II', Tpm20ResponseCode.TPM2_RC_SUCCESS, Tpm20CommandCode.TPM2_CC_NV_Read) +
-            resp_data)
+            auth_resp.data)
 
         # Verify the HMAC
+        sess_attr_byte = struct.pack('B', auth_resp.session_attributes)
         hmac_response = auth_session.hash_alg.compute_hmac(
             auth_session.session_key,
-            rphash + auth_session.nonce_tpm + auth_session.nonce_caller + struct.pack('B', resp_session_attr))
-        if not hmac.compare_digest(hmac_response, resp_hmac):
+            rphash + auth_session.nonce_tpm + auth_session.nonce_caller + sess_attr_byte)
+        if not hmac.compare_digest(hmac_response, auth_resp.resp_hmac):
             raise RuntimeError("Invalid HMAC in response")
 
-        with ParsedBuffer(resp_data, "TPM2_CC_NV_Read decapsulated response") as buf:
+        with auth_resp.into_buffer() as buf:
             return buf.read_tpm2b()
 
     def tpm20_nv_read_all(self, handle: int, auth_session: Tpm20AuthSessionContext,
