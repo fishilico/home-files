@@ -1425,6 +1425,10 @@ class Tpm20Handle(enum.IntEnum):
     #     HKEY_LOCAL_MACHINE System\CurrentControlSet\Services\TPM\WMI\FirmwareVersionAtLastProvision
     #     (if TpmRegDriverPersistedData tells to write such a key)
     TPM_NV_WINDOWS_NV_INDEX = 0x01410004
+    # Intel defines some indexes in Kernelflinger:
+    # https://github.com/intel/kernelflinger/blob/9a84515a0f2b6b5697c49c770513b8c432b6f9d4/libkernelflinger/tpm2_security.c  # noqa
+    TPM_NV_INTEL_KERNELFLINGER_TRUSTYOS_SEED = 0x01500047
+    TPM_NV_INTEL_KERNELFLINGER_BOOTLOADER = 0x01500048
     TPM_OLD_NV_INTEL_TXT_PLATFORM_SUPPLIER = 0x01800001  # LCP Platform Supplier (Intel TXT "PS", old)
     TPM_OLD_NV_INTEL_TXT_LAUNCH_AUXILIARY = 0x01800003  # Launch Auxiliary (Intel TXT "AUX", old)
     TPM_OLD_NV_INTEL_TXT_SGX_SVN = 0x01800004  # SGX Software Version Number (Intel TXT "SGX", old)
@@ -1502,6 +1506,12 @@ class Tpm20Handle(enum.IntEnum):
     TPM_RESERVED_HANDLE_EK_NV_POLICY_SHA512 = 0x01c07f03  # Policy Index I-3 with nameAlg = SHA512
     TPM_RESERVED_HANDLE_EK_NV_POLICY_SM3_256 = 0x01c07f04  # Policy Index I-4 with nameAlg = SM3_256
     TPM_RESERVED_HANDLE_PLATFORM_CERTIFICATE = 0x01c08000  # Platform certificate
+    # Intel uses 0x01c10100 for SGX "EPID (Enhanced Privacy ID) Membership Credential":
+    # https://github.com/intel/linux-sgx/blob/sgx_2.15/external/epid-sdk/epid/member/src/startup.c#L43
+    # https://github.com/intel/linux-sgx/blob/sgx_2.15/external/epid-sdk/epid/member/src/provision_join.c#L36
+    # https://github.com/intel/linux-sgx/blob/sgx_2.15/external/epid-sdk/epid/member/src/provision_bulk.c#L36
+    # https://github.com/intel/linux-sgx/blob/sgx_2.15/external/epid-sdk/epid/member/src/storage.c
+    TPM_NV_INTEL_SGX_EPID_MEMBERSIP_CREDENTIAL = 0x01c10100  # SGX EPID Membership Credential
     TPM_NV_INTEL_TXT_LAUNCH_AUXILIARY = 0x01c10102  # Launch Auxiliary (Intel TXT "AUX")
     TPM_NV_INTEL_TXT_PLATFORM_SUPPLIER = 0x01c10103  # LCP Structure for Platform Supplier (Intel TXT "PS")
     TPM_NV_INTEL_TXT_SGX_SVN = 0x01c10104  # SGX Software Version Number (Intel TXT "SGX")
