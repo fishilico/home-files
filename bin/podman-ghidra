@@ -22,6 +22,8 @@
 # THE SOFTWARE.
 #
 # Run https://github.com/NationalSecurityAgency/ghidra in a podman container
+#
+# Use the last release OpenJDK version from https://jdk.java.net/
 
 set -e
 
@@ -29,8 +31,8 @@ set -e
 mkdir -p "$HOME/home-ghidra"
 
 # Copy information from https://github.com/NationalSecurityAgency/ghidra/releases
-ZIPNAME='ghidra_10.0.4_PUBLIC_20210928.zip'
-SHA256='1ce9bdf2d7f6bdfe5dccd06da828af31bc74acfd800f71ade021d5211e820d5e'
+ZIPNAME='ghidra_10.1.1_PUBLIC_20211221.zip'
+SHA256='d4ee61ed669cec7e20748462f57f011b84b1e8777b327704f1646c0d47a5a0e8'
 VERSION="$(printf %s "$ZIPNAME" | cut -d_ -f2)"
 
 # Build a container for Ghidra from the latest release
@@ -91,8 +93,8 @@ EOF
 # Build a container for Ghidra using some patches
 build_container_with_patches() {
     # Update the base image
-    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/openjdk:11-slim)
-    podman pull docker.io/library/openjdk:11-slim
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/openjdk:16-slim)
+    podman pull docker.io/library/openjdk:16-slim
     for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
         if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
             echo "Removing old podman base image ${OLD_BASE_IMAGE}"
@@ -115,7 +117,7 @@ build_container_with_patches() {
 # building and docker.io/library/openjdk:16-slim (Debian 10) when running,
 # /opt/ghidra_10.0.1_DEV/Ghidra/Features/Decompiler/os/linux64/decompile is
 # missing version GLIBCXX_3.4.26 from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.
-FROM docker.io/library/openjdk:11-slim as stage0
+FROM docker.io/library/openjdk:16-slim as stage0
 
 # Add custom patch
 # sed "s:\(.*\):echo '\1' >> /custom.patch \&\& \\\\:" exported.patch
@@ -165,10 +167,11 @@ RUN \
 # Install Gradle from https://gradle.org/releases/
 # Apply patches from:
 # * https://github.com/NationalSecurityAgency/ghidra/pull/1407 (for Xtensa files)
-# * https://github.com/NationalSecurityAgency/ghidra/pull/3006 (for ARCompact files), using git rebase as "patch" does not support renamed files.
-# * https://github.com/NationalSecurityAgency/ghidra/pull/3212 (for MIPS32el files)
-# * https://github.com/NationalSecurityAgency/ghidra/pull/3220 (for Android DEX files)
+# * https://github.com/NationalSecurityAgency/ghidra/pull/3006 (for ARCompact files), using git rebase as "patch" does not support renamed files
+#   and patching build.gradle to support Gradle 7 (https://github.com/NationalSecurityAgency/ghidra/commit/3a0ae8ee39a08277c623dc954560e343c7efe3d9)
+# * https://github.com/NationalSecurityAgency/ghidra/pull/3220 (for Android DEX files), no longer useful in 10.1
 # * https://github.com/pietroborrello/ghidra-atom-microcode (for Intel microcode, as "x86ucode" architecture)
+# * https://github.com/niooss-ledger/ghidra/commits/sparc-dwarf-registers (for Sparc 32 DWARF register definitions ; this needs more tests before being submitted as Pull Request)
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qq update && \
     apt-get install --no-install-recommends --no-install-suggests -qqy \
@@ -184,36 +187,36 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/ /var/log/* && \
     cd /opt && \
-    curl -sSL --output gradle.zip https://services.gradle.org/distributions/gradle-6.9-bin.zip && \
-    echo '765442b8069c6bee2ea70713861c027587591c6b1df2c857a23361512560894e  gradle.zip' | sha256sum -c && \
+    curl -sSL --output gradle.zip https://services.gradle.org/distributions/gradle-7.3.3-bin.zip && \
+    echo 'b586e04868a22fd817c8971330fec37e298f3242eb85c374181b12d637f80302  gradle.zip' | sha256sum -c && \
     unzip gradle.zip && \
     rm gradle.zip && \
-    export PATH="/opt/gradle-6.9/bin:\$PATH" && \
+    export PATH="/opt/gradle-7.3.3/bin:\$PATH" && \
     git clone --branch "Ghidra_${VERSION}_build" https://github.com/NationalSecurityAgency/ghidra.git && \
     cd /opt/ghidra && \
     git fetch origin pull/3006/head:pr/3006 && \
     git checkout pr/3006 && \
     git config user.email build@localhost && \
     git rebase "Ghidra_${VERSION}_build" && \
+    sed "s/compile project(':Base')/api project(':Base')/" -i Ghidra/Processors/ARC/build.gradle && \
     curl -sSL --output 1407.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/1407.patch && \
     patch -Np1 -i 1407.patch && \
-    curl -sSL --output 3212.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/3212.patch && \
-    patch -Np1 -i 3212.patch && \
-    curl -sSL --output 3220.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/3220.patch && \
-    patch -Np1 -i 3220.patch && \
+    sed "s/compile project(':Base')/api project(':Base')/" -i Ghidra/Processors/Xtensa/build.gradle && \
     git -C Ghidra/Processors/ clone https://github.com/pietroborrello/ghidra-atom-microcode && \
     cp -f Ghidra/Processors/ARC/build.gradle Ghidra/Processors/ghidra-atom-microcode/build.gradle && \
+    curl -sSL --output sparc-dwarf-registers.patch https://github.com/niooss-ledger/ghidra/commit/afb5f00104ed48c6e6a9c5caa731a9057e2a2d1a.patch && \
+    patch -Np1 -i sparc-dwarf-registers.patch && \
     patch -Np1 -i /custom.patch && \
     rm /opt/ghidra/Ghidra/Extensions/SleighDevTools/pcodetest/pcode_defs.py.orig && \
     gradle -I gradle/support/fetchDependencies.gradle init && \
     gradle buildGhidra && \
     ls -l /opt/ghidra/build/dist && \
-    unzip -d /opt "build/dist/ghidra_${VERSION}_DEV_"*"_linux64.zip" && \
+    unzip -d /opt "build/dist/ghidra_${VERSION}_DEV_"*"_linux_x86_64.zip" && \
     cd / && \
     rm -rf /opt/ghidra /opt/gradle-6.9 /root/.ghidra /custom.patch
 
 # Second stage, without build dependencies
-FROM docker.io/library/openjdk:11-slim
+FROM docker.io/library/openjdk:16-slim
 
 COPY --from=stage0 /opt/ghidra_${VERSION}_DEV /opt/ghidra_${VERSION}_DEV
 
@@ -336,8 +339,12 @@ SECCOMP_PROFILE='
                 "sched_getaffinity",
                 "sched_yield",
                 "select",
+                "sendmmsg",
+                "sendmsg",
+                "sendto",
                 "set_robust_list",
                 "set_tid_address",
+                "setgroups",
                 "setpgid",
                 "setresgid",
                 "setresuid",
@@ -351,6 +358,7 @@ SECCOMP_PROFILE='
                 "socketpair",
                 "stat",
                 "statfs",
+                "statx",
                 "sysinfo",
                 "umask",
                 "uname",
