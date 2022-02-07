@@ -117,12 +117,58 @@ build_container_with_patches() {
 # missing version GLIBCXX_3.4.26 from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.
 FROM docker.io/library/openjdk:11-slim as stage0
 
+# Add custom patch
+# sed "s:\(.*\):echo '\1' >> /custom.patch \&\& \\\\:" exported.patch
+RUN \
+    echo 'diff --git a/Ghidra/Processors/ARC/data/languages/ARCompact.slaspec b/Ghidra/Processors/ARC/data/languages/ARCompact.slaspec' > /custom.patch && \
+    echo 'index 8b3bf39c7ba1..a8bf5b33ccde 100644' >> /custom.patch && \
+    echo '--- a/Ghidra/Processors/ARC/data/languages/ARCompact.slaspec' >> /custom.patch && \
+    echo '+++ b/Ghidra/Processors/ARC/data/languages/ARCompact.slaspec' >> /custom.patch && \
+    echo '@@ -1873,6 +1873,34 @@ with : l_major_opcode=0x05 ... {' >> /custom.patch && \
+    echo '   }' >> /custom.patch && \
+    echo ' }' >> /custom.patch && \
+    echo ' ' >> /custom.patch && \
+    echo '+# Not sure, from ARCv2 HS instruction set' >> /custom.patch && \
+    echo '+with : l_major_opcode=0x06 ... {' >> /custom.patch && \
+    echo '+  :fsmul op4_a, op4_b_src, op4_c_src is (l_sub_opcode6=0x00 & l_flag=0 & op4_a) ... & op4_b_src & op4_c_src {' >> /custom.patch && \
+    echo '+    op4_a = op4_b_src f* op4_c_src;' >> /custom.patch && \
+    echo '+  }' >> /custom.patch && \
+    echo '+  :fsmul.^l_cc_not_value op4_a, op4_b_src, op4_c_src is (l_sub_opcode6=0x00 & l_flag=0 & l_op_format=3 & l_cc_not_value & op4_a) ... & op4_b_src & op4_c_src {' >> /custom.patch && \
+    echo '+    if (l_cc_not_value) goto <next>;' >> /custom.patch && \
+    echo '+    op4_a = op4_b_src f* op4_c_src;' >> /custom.patch && \
+    echo '+  <next>' >> /custom.patch && \
+    echo '+  }' >> /custom.patch && \
+    echo '+  :fsadd op4_a, op4_b_src, op4_c_src is (l_sub_opcode6=0x01 & l_flag=0 & op4_a) ... & op4_b_src & op4_c_src {' >> /custom.patch && \
+    echo '+    op4_a = op4_b_src f+ op4_c_src;' >> /custom.patch && \
+    echo '+  }' >> /custom.patch && \
+    echo '+  :fsadd.^l_cc_not_value op4_a, op4_b_src, op4_c_src is (l_sub_opcode6=0x01 & l_flag=0 & l_op_format=3 & l_cc_not_value & op4_a) ... & op4_b_src & op4_c_src {' >> /custom.patch && \
+    echo '+    if (l_cc_not_value) goto <next>;' >> /custom.patch && \
+    echo '+    op4_a = op4_b_src f+ op4_c_src;' >> /custom.patch && \
+    echo '+  <next>' >> /custom.patch && \
+    echo '+  }' >> /custom.patch && \
+    echo '+  :fssub op4_a, op4_b_src, op4_c_src is (l_sub_opcode6=0x02 & l_flag=0 & op4_a) ... & op4_b_src & op4_c_src {' >> /custom.patch && \
+    echo '+    op4_a = op4_b_src f- op4_c_src;' >> /custom.patch && \
+    echo '+  }' >> /custom.patch && \
+    echo '+  :fssub.^l_cc_not_value op4_a, op4_b_src, op4_c_src is (l_sub_opcode6=0x02 & l_flag=0 & l_op_format=3 & l_cc_not_value & op4_a) ... & op4_b_src & op4_c_src {' >> /custom.patch && \
+    echo '+    if (l_cc_not_value) goto <next>;' >> /custom.patch && \
+    echo '+    op4_a = op4_b_src f- op4_c_src;' >> /custom.patch && \
+    echo '+  <next>' >> /custom.patch && \
+    echo '+  }' >> /custom.patch && \
+    echo '+}' >> /custom.patch && \
+    echo '+' >> /custom.patch && \
+    echo ' # Mark unknown operations as extensions' >> /custom.patch && \
+    echo ' :EXT04 l_sub_opcode6, op4_a, op4_b_src, op4_c_src is (l_major_opcode=0x04 & l_flag=0 & l_sub_opcode6 & op4_a) ... & op4_b_src & op4_c_src {' >> /custom.patch && \
+    echo '   local operation:1 = l_sub_opcode6;' >> /custom.patch && \
+    echo '-- ' >> /custom.patch
+
+
 # Install Gradle from https://gradle.org/releases/
 # Apply patches from:
 # * https://github.com/NationalSecurityAgency/ghidra/pull/1407 (for Xtensa files)
 # * https://github.com/NationalSecurityAgency/ghidra/pull/3006 (for ARCompact files), using git rebase as "patch" does not support renamed files.
 # * https://github.com/NationalSecurityAgency/ghidra/pull/3212 (for MIPS32el files)
 # * https://github.com/NationalSecurityAgency/ghidra/pull/3220 (for Android DEX files)
+# * https://github.com/pietroborrello/ghidra-atom-microcode (for Intel microcode, as "x86ucode" architecture)
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qq update && \
     apt-get install --no-install-recommends --no-install-suggests -qqy \
@@ -153,15 +199,18 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     patch -Np1 -i 1407.patch && \
     curl -sSL --output 3212.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/3212.patch && \
     patch -Np1 -i 3212.patch && \
-    curl -sSL --output 3220.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/3220.patch &&  \
+    curl -sSL --output 3220.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/3220.patch && \
     patch -Np1 -i 3220.patch && \
+    git -C Ghidra/Processors/ clone https://github.com/pietroborrello/ghidra-atom-microcode && \
+    cp -f Ghidra/Processors/ARC/build.gradle Ghidra/Processors/ghidra-atom-microcode/build.gradle && \
+    patch -Np1 -i /custom.patch && \
     rm /opt/ghidra/Ghidra/Extensions/SleighDevTools/pcodetest/pcode_defs.py.orig && \
     gradle -I gradle/support/fetchDependencies.gradle init && \
     gradle buildGhidra && \
     ls -l /opt/ghidra/build/dist && \
     unzip -d /opt "build/dist/ghidra_${VERSION}_DEV_"*"_linux64.zip" && \
     cd / && \
-    rm -rf /opt/ghidra /opt/gradle-6.9 /root/.ghidra
+    rm -rf /opt/ghidra /opt/gradle-6.9 /root/.ghidra /custom.patch
 
 # Second stage, without build dependencies
 FROM docker.io/library/openjdk:11-slim
