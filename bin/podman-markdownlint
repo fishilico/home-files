@@ -83,6 +83,7 @@ SECCOMP_PROFILE='
                 "exit_group",
                 "fchown",
                 "fcntl",
+                "flock",
                 "fstat",
                 "fstatfs",
                 "futex",
