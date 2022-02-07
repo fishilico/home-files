@@ -1316,6 +1316,7 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         93: 'fchown',
         94: 'lchown',
         95: 'umask',
+        96: 'gettimeofday',
         98: 'getrusage',
         99: 'sysinfo',
         101: 'ptrace',
