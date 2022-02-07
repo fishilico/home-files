@@ -103,7 +103,7 @@ class ElfCheckSec(gdb.Command):
                 # GNU_STACK in program header
                 # Retrieve "RWE" permissions in the 7th column
                 perms = line.split(None, 6)[6][:3]
-                if perms == 'RWX':
+                if perms in ('RWE', 'RWX'):
                     status_nx = 0
                 elif perms == 'RW ':
                     status_nx = 1
