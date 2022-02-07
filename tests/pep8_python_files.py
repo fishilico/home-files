@@ -95,6 +95,10 @@ def test():
             if filename == 'toprc' and dirpath.endswith('dotfiles'):
                 continue
 
+            # Skip GEF, which is maintained externally
+            if filename == 'gef.py' and dirpath.endswith('/dotfiles/gdb'):
+                continue
+
             filepath = os.path.join(dirpath, filename)
 
             # If there is no extension, the first line is used to find

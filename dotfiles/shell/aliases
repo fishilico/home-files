@@ -476,6 +476,8 @@ if type alias > /dev/null 2>&1 ; then
     # Run a program into gdb and break on Address Sanitizer errors
     alias gdb-run='gdb -q -ex run --args'
     alias gdb-asan-run='gdb -q -ex "tbreak _start" -ex run -ex "break __asan_report_error" -ex continue --args'
+    # Use GDB Enhanced Features (https://github.com/hugsy/gef)
+    alias gdb-gef='gdb -q -ex "source ~/.gdb/gef.py"'
 
     # Read the internal Flash content (options verbose, programmer, read)
     alias myflashrom='flashrom -V -p internal -r'

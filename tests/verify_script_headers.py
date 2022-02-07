@@ -268,6 +268,9 @@ def test():
                 elif dirpath.endswith(('/specific/irssi/scripts/autorun', '\\specific\\irssi\\scripts\\autorun')):
                     # Irssi scripts are perl scripts without shebang
                     pass
+                elif filename == 'gef.py' and dirpath.endswith(('/dotfiles/gdb', '\\dotfiles\\gdb')):
+                    # GDB Enhanced Features
+                    pass
                 elif ext == 'pl':
                     verify_pl(filepath)
                 elif ext == 'py':
