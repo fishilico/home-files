@@ -31,8 +31,8 @@ set -e
 mkdir -p "$HOME/home-ghidra"
 
 # Copy information from https://github.com/NationalSecurityAgency/ghidra/releases
-ZIPNAME='ghidra_10.1.1_PUBLIC_20211221.zip'
-SHA256='d4ee61ed669cec7e20748462f57f011b84b1e8777b327704f1646c0d47a5a0e8'
+ZIPNAME='ghidra_10.1.2_PUBLIC_20220125.zip'
+SHA256='ac96fbdde7f754e0eb9ed51db020e77208cdb12cf58c08657a2ab87cb2694940'
 VERSION="$(printf %s "$ZIPNAME" | cut -d_ -f2)"
 
 # Build a container for Ghidra from the latest release
