@@ -96,7 +96,7 @@ def test():
                 continue
 
             # Skip GEF, which is maintained externally
-            if filename == 'gef.py' and dirpath.endswith('/dotfiles/gdb'):
+            if filename == 'gef.py' and dirpath.endswith(('/dotfiles/gdb', '\\dotfiles\\gdb')):
                 continue
 
             filepath = os.path.join(dirpath, filename)
