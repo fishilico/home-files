@@ -83,7 +83,6 @@ BIN_SCRIPTS = {
     'gcore_everything': 'never',
     'getaddr': 'args[localhost]',
     'get-power-rights': '(dbus-send|gdbus)direct',
-    'ghidra': 'never',
     'git-single-fixup': 'args[-h]',
     'graph-hw': 'direct',
     'gsettings-dump': '(gsettings)direct',
