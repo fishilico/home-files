@@ -145,6 +145,62 @@ def hexdump(data: bytes, indent: str = '') -> None:
         print("{}{:06x}:  {} {}".format(indent, iline, hexline, ascline))
 
 
+# TCG TPM Vendor Registry from https://trustedcomputinggroup.org/resource/vendor-id-registry/
+TPM_VENDOR_BY_ID: Mapping[int, str] = {
+    0x100B: "National Semiconductor",
+    0x1011: "Qualcomm",
+    0x1014: "IBM",  # International Business Machines
+    0x1022: "AMD",  # Advanced Micro Devices
+    0x104A: "STMicroelectronics",
+    0x104C: "Texas Instruments",
+    0x1050: "Nuvoton Technology",  # Formerly Winbond
+    0x1055: "SMSC",  # Standard Microsystems Corporation
+    0x1114: "Atmel",
+    0x1414: "Microsoft",
+    0x144D: "Samsung",
+    0x14E4: "Broadcom",
+    0x1590: "HPE",  # Hewlett Packard Enterprise
+    0x15D1: "Infineon",
+    0x17AA: "Lenovo",
+    0x19FA: "Sinosun",
+    0x1B4E: "Nationz",
+    0x232A: "Fuzhou Rockchip",
+    0x232B: "FlySlice Technologies",
+    0x6666: "Google",
+    0x8086: "Intel",
+    0x8888: "Huawei",
+    0xC5C0: "Cisco",
+}
+
+# From https://trustedcomputinggroup.org/wp-content/uploads/TCG_TPM_VendorIDRegistry_v1p06_r0p91_11july2021.pdf
+TPM_MANUFACTURERS: Mapping[bytes, str] = {
+    b'AMD\0': "AMD",  # Advanced Micro Devices
+    b'ATML': "Atmel",
+    b'BRCM': "Broadcom",
+    b'CSCO': "Cisco",
+    b'FLYS': "Flyslice Technologies",
+    b'GOOG': "Google",
+    b'HISI': "Huawei",
+    b'HPE\0': "HPE",  # Hewlett Packard Enterprise
+    b'IBM\0': "IBM",  # International Business Machines
+    b'IFX\0': "Infineon",
+    b'INTC': "Intel",
+    b'LEN\0': "Lenovo",
+    b'MSFT': "Microsoft",
+    b'NSM ': "National Semiconductor",
+    b'NTC\0': "Nuvoton Technology",  # Formerly Winbond
+    b'NTZ\0': "Nationz",
+    b'QCOM': "Qualcomm",
+    b'ROCC': "Fuzhou Rockchip",
+    b'SMSC': "SMSC",  # Standard Microsystems Corporation
+    b'SMSN': "Samsung",
+    b'SNS\0': "Sinosun",
+    b'STM ': "STMicroelectronics",
+    b'TXN\0': "Texas Instruments",
+    b'WEC\0': "Winbond",
+}
+
+
 @enum.unique
 class Tpm12Tag(enum.IntEnum):
     """TPM_STRUCTURE_TAG: tags in structures and in command/response header in TPM 1.2"""
@@ -1462,7 +1518,7 @@ class Tpm20Handle(enum.IntEnum):
     #   - TpmApiReadDrtmSvnCounter20 reads the content (using owner authorization) and count its bits
     #   - SvnpSetDrtmSvnValue writes the content, setting it to 1
     #   - BlSiPerformDrtmSvnCheck calls the previous functions
-    #   - Tpm20pExecDirectPolicyAuthorization performs Policy comands according to TPM_API_PA_BLOB information:
+    #   - Tpm20pExecDirectPolicyAuthorization performs Policy commands according to TPM_API_PA_BLOB information:
     #     - validates PCR values (TPM2_CC_PolicyPCR)
     #     - ensures that the SVN is lower than a threshold (TPM2_CC_PolicyNV with TPM_EO_UNSIGNED_LE = 0x0009)
     #     - in order to use an object
@@ -2498,7 +2554,7 @@ TPM20_NV_ATTR_DESC: Tuple[Tuple[int, str], ...] = (
 
 @dataclass
 class Tpm20StartAuthSessionCmdParams:
-    """Parameters of a TPM2_CC_StartAuthSession comand"""
+    """Parameters of a TPM2_CC_StartAuthSession command"""
     tpm_key: Tpm20Handle
     bind: Tpm20Handle
     nonce_caller: bytes
@@ -2557,7 +2613,7 @@ class Tpm20StartAuthSessionCmdParams:
 
 @dataclass
 class Tpm20StartAuthSessionResponse:
-    """Response of a TPM2_CC_StartAuthSession comand"""
+    """Response of a TPM2_CC_StartAuthSession command"""
     session_handle: int
     nonce_tpm: bytes
 
@@ -2593,7 +2649,7 @@ class Tpm20CmdAuthArea:
     session_handle: int
     nonce_caller: bytes
     session_attributes: int
-    cphash: bytes  # Comand HMAC
+    cphash: bytes  # Command HMAC
 
     @classmethod
     def from_buffer(cls, buf: ParsedBuffer) -> 'Tpm20CmdAuthArea':
@@ -3856,12 +3912,14 @@ def show_tpm_dev(dev: TpmDevice) -> None:
         print(f"    - Number of PCR: {prop_pcr}")
         print(f"    - Number of DIR: {dev.tpm12_get_capability_prop(Tpm12CapabilityArea.TPM_CAP_PROP_DIR)}")
         manuf = dev.tpm12_get_capability_prop(Tpm12CapabilityArea.TPM_CAP_PROP_MANUFACTURER)
-        bytes_manuf = struct.pack('>I', manuf).rstrip(b'\0')
+        bytes_manuf = struct.pack('>I', manuf)
+        manuf_name = TPM_MANUFACTURERS.get(bytes_manuf, "?")
+        bytes_manuf = bytes_manuf.rstrip(b'\0')
         try:
             repr_manuf = repr(bytes_manuf.decode('ascii'))
         except UnicodeDecodeError:
             repr_manuf = repr(bytes_manuf)
-        print(f"    - Manufacturer: {repr_manuf} ({manuf:#x})")
+        print(f"    - Manufacturer: {repr_manuf} ({manuf:#x}, {manuf_name})")
         for prop, desc in (
                 (Tpm12CapabilityArea.TPM_CAP_PROP_KEYS, 'Number of loadable RSA-2048 keys'),
                 (Tpm12CapabilityArea.TPM_CAP_PROP_MIN_COUNTER, "Minimum 10ths of seconds between monotonic counter increments"),  # noqa
@@ -4011,7 +4069,6 @@ def show_tpm_dev(dev: TpmDevice) -> None:
             repr_prop_value = hex(prop_value)
             if prop_id in (
                     Tpm20Property.TPM2_PT_FAMILY_INDICATOR.value,
-                    Tpm20Property.TPM2_PT_MANUFACTURER.value,
                     Tpm20Property.TPM2_PT_VENDOR_STRING_1.value,
                     Tpm20Property.TPM2_PT_VENDOR_STRING_2.value,
                     Tpm20Property.TPM2_PT_VENDOR_STRING_3.value,
@@ -4022,6 +4079,16 @@ def show_tpm_dev(dev: TpmDevice) -> None:
                     repr_prop_value = repr(bytes_value.decode('ascii'))
                 except UnicodeDecodeError:
                     repr_prop_value = repr(bytes_value)
+            elif prop_id == Tpm20Property.TPM2_PT_MANUFACTURER.value:
+                # Manufacturer property
+                bytes_value = struct.pack('>I', prop_value)
+                manuf_name = TPM_MANUFACTURERS.get(bytes_value, "?")
+                bytes_value = bytes_value.rstrip(b'\0')
+                try:
+                    repr_prop_value = repr(bytes_value.decode('ascii'))
+                except UnicodeDecodeError:
+                    repr_prop_value = repr(bytes_value)
+                repr_prop_value += f" ({manuf_name})"
             elif prop_id == Tpm20Property.TPM2_PT_REVISION.value:
                 # Version property
                 repr_prop_value = f"{prop_value // 100}.{prop_value % 100}"
