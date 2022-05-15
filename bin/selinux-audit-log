@@ -1401,6 +1401,8 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         318: 'getrandom',
         321: 'bpf',
         324: 'membarrier',
+        330: 'pkey_alloc',
+        331: 'pkey_free',
         332: 'statx',
         439: 'faccessat2',
     },
