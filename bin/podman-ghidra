@@ -172,6 +172,8 @@ RUN \
 # * https://github.com/pietroborrello/ghidra-atom-microcode (for Intel microcode, as "x86ucode" architecture)
 # * https://github.com/niooss-ledger/ghidra/commits/sparc-dwarf-registers (for Sparc 32 DWARF register definitions ; this needs more tests before being submitted as Pull Request)
 # * https://github.com/NationalSecurityAgency/ghidra/pull/1778 (for NDS32 files)
+# * https://github.com/threatrack/ghidra-patchdiff-correlator extension, to have bulk correlators in Ghidra Version Tracking
+# * https://github.com/google/binexport extension, to enable using BinDiff
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qq update && \
     apt-get install --no-install-recommends --no-install-suggests -qqy \
@@ -216,8 +218,17 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     gradle buildGhidra && \
     ls -l /opt/ghidra/build/dist && \
     unzip -d /opt "build/dist/ghidra_${VERSION}_DEV_"*"_linux_x86_64.zip" && \
+    export "GHIDRA_INSTALL_DIR=/opt/ghidra_${VERSION}_DEV" && \
+    git -C /opt clone --depth 1 --branch v0.5 https://github.com/threatrack/ghidra-patchdiff-correlator && \
+    (cd /opt/ghidra-patchdiff-correlator/PatchDiffCorrelator && gradle) && \
+    cp "/opt/ghidra-patchdiff-correlator/PatchDiffCorrelator/dist/ghidra_${VERSION}_DEV_"*"_PatchDiffCorrelator.zip" "/opt/ghidra_${VERSION}_DEV/Extensions/Ghidra/" && \
+    git -C /opt clone --depth 1 --branch v12 https://github.com/google/binexport && \
+    (cd /opt/binexport/java && gradle) && \
+    cp "/opt/binexport/java/dist/ghidra_${VERSION}_DEV_"*"_BinExport.zip" "/opt/ghidra_${VERSION}_DEV/Extensions/Ghidra/" && \
     cd / && \
-    rm -rf /opt/ghidra /opt/gradle-6.9 /root/.ghidra /custom.patch
+    rm -rf /opt/ghidra /opt/gradle-6.9 /root/.ghidra /custom.patch && \
+    rm -rf /opt/ghidra-patchdiff-correlator && \
+    rm -rf /opt/binexport
 
 # Second stage, without build dependencies
 FROM docker.io/library/openjdk:16-slim
