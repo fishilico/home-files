@@ -171,6 +171,7 @@ RUN \
 #   and patching build.gradle to support Gradle 7 (https://github.com/NationalSecurityAgency/ghidra/commit/3a0ae8ee39a08277c623dc954560e343c7efe3d9)
 # * https://github.com/pietroborrello/ghidra-atom-microcode (for Intel microcode, as "x86ucode" architecture)
 # * https://github.com/niooss-ledger/ghidra/commits/sparc-dwarf-registers (for Sparc 32 DWARF register definitions ; this needs more tests before being submitted as Pull Request)
+# * https://github.com/NationalSecurityAgency/ghidra/pull/1778 (for NDS32 files)
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qq update && \
     apt-get install --no-install-recommends --no-install-suggests -qqy \
@@ -205,6 +206,10 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     cp -f Ghidra/Processors/ARC/build.gradle Ghidra/Processors/ghidra-atom-microcode/build.gradle && \
     curl -sSL --output sparc-dwarf-registers.patch https://github.com/niooss-ledger/ghidra/commit/afb5f00104ed48c6e6a9c5caa731a9057e2a2d1a.patch && \
     patch -Np1 -i sparc-dwarf-registers.patch && \
+    curl -sSL --output 1778.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/1778.patch && \
+    patch -Np1 -i 1778.patch && \
+    sed "s/compile project(':Base')/api project(':Base')/" -i Ghidra/Processors/NDS32/build.gradle && \
+    sed "s/compile project(':Decompiler')//" -i Ghidra/Processors/NDS32/build.gradle && \
     patch -Np1 -i /custom.patch && \
     rm /opt/ghidra/Ghidra/Extensions/SleighDevTools/pcodetest/pcode_defs.py.orig && \
     gradle -I gradle/support/fetchDependencies.gradle init && \
