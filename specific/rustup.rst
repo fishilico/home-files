@@ -20,6 +20,7 @@ Install commands in order to install a stable toolchain with ``rustup`` (as advi
     # * cargo-deps to graph the dependencies of a project
     # * cargo-geiger to list the dependencies with unsafe code
     # * cargo-tarpaulin to report the code coverage of tests (with "cargo tarpaulin -v -o Html")
+    # * cargo-asm to view the generated ASM code (with "cargo asm --asm-style=intel --rust my_crate::my_function")
     rustup component add rustfmt
     rustup component add clippy
     cargo install cargo-outdated
@@ -27,6 +28,7 @@ Install commands in order to install a stable toolchain with ``rustup`` (as advi
     cargo install cargo-deps
     cargo install cargo-geiger
     cargo install cargo-tarpaulin
+    cargo install cargo-asm
 
     # Install miri to catch issues in Rust's mid-level intermediate representation (MIR)
     MIRI_NIGHTLY="nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/miri)"
