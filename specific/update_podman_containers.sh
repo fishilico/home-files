@@ -49,6 +49,9 @@ fi
 if podman image exists localhost/podman-markdownlint ; then
     "${HOME_FILES_BIN}/podman-markdownlint" --update /dev/null
 fi
+if podman image exists localhost/podman-vscodium ; then
+    "${HOME_FILES_BIN}/podman-vscodium" --update codium --version
+fi
 
 # After these updates, update all the other standard images
 "${HOME_FILES_BIN}/podman-update"

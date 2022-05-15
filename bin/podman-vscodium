@@ -1,0 +1,279 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2021-2022 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Run Visual Studio Codium in a podman container (https://vscodium.com/)
+#
+# Use install instructions from
+# https://gitlab.com/paulcarroty/vscodium-deb-rpm-repo#option-3-debian-only
+
+set -e
+
+build_container() {
+    # Update the base image
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/debian:bullseye-slim)
+    podman pull docker.io/library/debian:bullseye-slim
+    for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman base image ${OLD_BASE_IMAGE}"
+            podman image rm -- "${OLD_BASE_IMAGE}"
+        fi
+    done
+
+    # Map the user ID to the same one in the container
+    VSCODIUM_USER_ID="$(id -u)"
+
+    # Install iproute2 to be able to use "ip" to debug
+    # Install procps to be able to use "ps" to debug
+    # Install curl and wget to be able to install rustup
+    # Install build-essential, cmake... to compile projects
+    # Install npm for NodeJS
+    podman build --no-cache -t localhost/podman-vscodium -f /dev/stdin << EOF
+FROM docker.io/library/debian:bullseye-slim
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get -qq update && \
+    apt-get install --no-install-recommends --no-install-suggests -qqy extrepo && \
+    extrepo enable vscodium && \
+    apt-get -qq update && \
+    apt-get install --no-install-recommends --no-install-suggests -y \
+        build-essential \
+        cmake \
+        codium \
+        curl \
+        git \
+        iproute2 \
+        libasound2 \
+        libx11-xcb1 \
+        libxshmfence1 \
+        npm \
+        procps \
+        wget \
+        && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/ /var/log/* && \
+    useradd --uid "${VSCODIUM_USER_ID}" --user-group --no-create-home user
+EOF
+
+}
+
+# Option --update updates the container if it already exists
+if [ $# -ge 1 ] && [ "$1" = '--update' ] ; then
+    shift
+    mapfile -t OLD_IMAGES < <(podman image list '--format={{.Id}}' localhost/podman-vscodium)
+    build_container
+    for OLD_IMAGE in "${OLD_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman image ${OLD_IMAGE}"
+            podman image rm -- "${OLD_IMAGE}"
+        fi
+    done
+elif ! podman image exists localhost/podman-vscodium ; then
+    build_container
+fi
+
+# Mount ~/Downloads too, to easily transmit files
+PODMAN_ARGS=()
+if [ -d "$HOME/Downloads" ] ; then
+    PODMAN_ARGS+=(--volume "$HOME/Downloads/:/home/user/Downloads/:rw")
+fi
+
+# Add specific volumes
+#PODMAN_ARGS+=(--volume "$HOME/myproject/:/home/user/myproject/:rw")
+
+# By default, launch VSCodium in a DBus session, to be able to click on links
+if [ $# -eq 0 ] ; then
+    set dbus-run-session codium --verbose --log warn
+fi
+
+# Create a custom HOME directory for VSCodium
+mkdir -p "$HOME/home-vscodium"
+
+# Use SCMP_ACT_LOG to record the denied syscalls
+SECCOMP_PROFILE='
+{
+    "defaultAction": "SCMP_ACT_ERRNO",
+    "syscalls": [
+        {
+            "names": [
+                "accept4",
+                "access",
+                "arch_prctl",
+                "bind",
+                "brk",
+                "capget",
+                "capset",
+                "chdir",
+                "chmod",
+                "chroot",
+                "clock_getres",
+                "clock_gettime",
+                "clock_nanosleep",
+                "clone",
+                "close",
+                "connect",
+                "copy_file_range",
+                "creat",
+                "dup",
+                "dup2",
+                "dup3",
+                "epoll_create",
+                "epoll_create1",
+                "epoll_ctl",
+                "epoll_wait",
+                "eventfd2",
+                "execve",
+                "exit",
+                "exit_group",
+                "faccessat",
+                "fadvise64",
+                "fallocate",
+                "fchdir",
+                "fchmod",
+                "fcntl",
+                "fdatasync",
+                "flock",
+                "fstat",
+                "fstatfs",
+                "fsync",
+                "ftruncate",
+                "futex",
+                "getcwd",
+                "getdents64",
+                "getegid",
+                "geteuid",
+                "getgid",
+                "getpeername",
+                "getpgrp",
+                "getpid",
+                "getppid",
+                "getpriority",
+                "getrandom",
+                "getresgid",
+                "getresuid",
+                "getrusage",
+                "getsockname",
+                "getsockopt",
+                "gettid",
+                "getuid",
+                "inotify_add_watch",
+                "inotify_init",
+                "inotify_init1",
+                "inotify_rm_watch",
+                "ioctl",
+                "kill",
+                "link",
+                "linkat",
+                "listen",
+                "lseek",
+                "lstat",
+                "madvise",
+                "memfd_create",
+                "mincore",
+                "mkdir",
+                "mmap",
+                "mprotect",
+                "mremap",
+                "munmap",
+                "newfstatat",
+                "open",
+                "openat",
+                "pipe",
+                "pipe2",
+                "pkey_alloc",
+                "poll",
+                "ppoll",
+                "prctl",
+                "pread64",
+                "prlimit64",
+                "pselect6",
+                "pwrite64",
+                "read",
+                "readlink",
+                "recvfrom",
+                "recvmsg",
+                "rename",
+                "rmdir",
+                "rt_sigaction",
+                "rt_sigprocmask",
+                "rt_sigreturn",
+                "sched_getaffinity",
+                "sched_getattr",
+                "sched_setaffinity",
+                "sched_setattr",
+                "sched_yield",
+                "seccomp",
+                "select",
+                "sendmmsg",
+                "sendmsg",
+                "sendto",
+                "set_robust_list",
+                "set_tid_address",
+                "setpgid",
+                "setpriority",
+                "setresgid",
+                "setresuid",
+                "setsid",
+                "setsockopt",
+                "shmat",
+                "shmctl",
+                "shmdt",
+                "shmget",
+                "shutdown",
+                "sigaltstack",
+                "socket",
+                "socketpair",
+                "stat",
+                "statfs",
+                "statx",
+                "sysinfo",
+                "tgkill",
+                "umask",
+                "uname",
+                "unlink",
+                "unshare",
+                "utimensat",
+                "vfork",
+                "wait4",
+                "waitid",
+                "write",
+                "writev"
+            ],
+            "action": "SCMP_ACT_ALLOW"
+        }
+    ]
+}'
+
+# N.B. If there are graphical issues, add QT_X11_NO_MITSHM=1
+# Modify PATH to include Rust programs
+exec podman run --rm \
+    --network=private \
+    --env "DISPLAY=$DISPLAY" \
+    --env "PATH=/home/user/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+    --volume /tmp/.X11-unix/:/tmp/.X11-unix/:rw \
+    --volume "$HOME/home-vscodium:/home/user:rw" \
+    "${PODMAN_ARGS[@]}" \
+    --userns keep-id \
+    --user user \
+    --workdir /home/user \
+    --shm-size 256M \
+    --security-opt seccomp=<(printf %s "$SECCOMP_PROFILE") \
+    -ti "localhost/podman-vscodium" "$@"

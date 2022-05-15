@@ -114,6 +114,7 @@ BIN_SCRIPTS = {
     'podman-markdownlint': 'never',
     'podman-purge': 'never',
     'podman-update': 'never',
+    'podman-vscodium': 'never',
     'rm-temp': 'never',
     'ruby-gem-home': '(ruby)args[ruby --version]',
     'scan-ip4priv': 'never',
