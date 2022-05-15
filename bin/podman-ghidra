@@ -31,8 +31,8 @@ set -e
 mkdir -p "$HOME/home-ghidra"
 
 # Copy information from https://github.com/NationalSecurityAgency/ghidra/releases
-ZIPNAME='ghidra_10.1.2_PUBLIC_20220125.zip'
-SHA256='ac96fbdde7f754e0eb9ed51db020e77208cdb12cf58c08657a2ab87cb2694940'
+ZIPNAME='ghidra_10.1.3_PUBLIC_20220421.zip'
+SHA256='9c73b6657413686c0af85909c20581e764107add2a789038ebc6eca49dc4e812'
 VERSION="$(printf %s "$ZIPNAME" | cut -d_ -f2)"
 
 # Build a container for Ghidra from the latest release
@@ -169,7 +169,6 @@ RUN \
 # * https://github.com/NationalSecurityAgency/ghidra/pull/1407 (for Xtensa files)
 # * https://github.com/NationalSecurityAgency/ghidra/pull/3006 (for ARCompact files), using git rebase as "patch" does not support renamed files
 #   and patching build.gradle to support Gradle 7 (https://github.com/NationalSecurityAgency/ghidra/commit/3a0ae8ee39a08277c623dc954560e343c7efe3d9)
-# * https://github.com/NationalSecurityAgency/ghidra/pull/3220 (for Android DEX files), no longer useful in 10.1
 # * https://github.com/pietroborrello/ghidra-atom-microcode (for Intel microcode, as "x86ucode" architecture)
 # * https://github.com/niooss-ledger/ghidra/commits/sparc-dwarf-registers (for Sparc 32 DWARF register definitions ; this needs more tests before being submitted as Pull Request)
 RUN export DEBIAN_FRONTEND=noninteractive && \
