@@ -66,7 +66,26 @@ COLOR_NORM: str = '\033[m'
 # (https://github.com/linux-audit/audit-userspace/blob/v2.8.5/lib/libaudit.h)
 AUDIT_TYPES: Mapping[int, str] = {
     # 1000 - 1099 are for commanding the audit system
+    1000: 'GET',
+    1001: 'SET',
+    1002: 'LIST',
+    1003: 'ADD',
+    1004: 'DEL',
+    1005: 'USER',
     1006: 'LOGIN',
+    1007: 'WATCH_INS',
+    1008: 'WATCH_REM',
+    1009: 'WATCH_LIST',
+    1010: 'SIGNAL_INFO',
+    1011: 'ADD_RULE',
+    1012: 'DEL_RULE',
+    1013: 'LIST_RULES',
+    1014: 'TRIM',
+    1015: 'MAKE_EQUIV',
+    1016: 'TTY_GET',
+    1017: 'TTY_SET',
+    1018: 'SET_FEATURE',
+    1019: 'GET_FEATURE',
 
     # 1100 - 1199 user space trusted application messages
     1100: 'USER_AUTH',
@@ -156,6 +175,10 @@ AUDIT_TYPES: Mapping[int, str] = {
     1333: 'TIME_ADJNTPVAL',
     1334: 'BPF',
     1335: 'AUDIT_EVENT_LISTENER',
+    1336: 'URINGOP',
+    1337: 'OPENAT2',
+    1338: 'DM_CTRL',
+    1339: 'DM_EVENT',
 
     # 1400 - 1499 SELinux use
     1400: 'AVC',
