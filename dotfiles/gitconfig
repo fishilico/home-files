@@ -71,7 +71,9 @@
 	excludesfile = ~/.gitignore_global
 	# Git is not power-cut-safe by default:
 	# http://marc.info/?l=git&m=143489570403305&w=4
-	fsyncObjectFiles = yes
+	#fsyncObjectFiles = yes
+	# ... replaced with "sync" since git 2.36.0
+	#sync = added
 # convert binary to text using pandoc, for example with DOCX files.
 # To use this, add a .gitattributes file in the project with:
 #    *.docx diff=pandoc
