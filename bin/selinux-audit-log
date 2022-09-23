@@ -201,6 +201,7 @@ AUDIT_TYPES: Mapping[int, str] = {
     1417: 'MAC_UNLBL_STCDEL',
     1418: 'MAC_CALIPSO_ADD',
     1419: 'MAC_CALIPSO_DEL',
+    1420: 'MAC_TASK_CONTEXTS',
 
     # 1500 - 1599 kernel LSPP events
     1500: 'AA',
