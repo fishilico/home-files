@@ -1382,6 +1382,7 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         190: 'fsetxattr',
         191: 'getxattr',
         192: 'lgetxattr',
+        196: 'flistxattr',
         202: 'futex',
         203: 'sched_setaffinity',
         204: 'sched_getaffinity',
