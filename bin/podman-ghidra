@@ -236,6 +236,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 # Second stage, without build dependencies
 FROM docker.io/library/openjdk:16-slim
 
+ENV GHIDRA_INSTALL_DIR=/opt/ghidra_${VERSION}_DEV
+
 COPY --from=stage0 /opt/ghidra_${VERSION}_DEV /opt/ghidra_${VERSION}_DEV
 
 # Create our own launcher instead of using ghidraRun, in order to launch Ghidra in foreground
@@ -243,12 +245,17 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qq update && \
     apt-get install --no-install-recommends --no-install-suggests -qqy \
         ca-certificates \
+        git \
         libfontconfig1 \
         libfreetype6 \
         libx11-6 \
         libxi6 \
         libxrender1 \
-        libxtst6 && \
+        libxtst6 \
+        ipython3 \
+        python3 \
+        python3-pip \
+        python3-wheel && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/ /var/log/* && \
     useradd --uid "${GHIDRA_USER_ID}" --user-group --no-create-home user && \
@@ -257,6 +264,22 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     chmod +x /usr/local/bin/ghidra && \
     ln -s "/opt/ghidra_${VERSION}_DEV/support/sleigh" /usr/local/bin/sleigh && \
     echo "VMARGS=-Duser.name=${GHIDRA_USER_NAME}" >> "/opt/ghidra_${VERSION}_DEV/support/launch.properties"
+
+# Install Pyhidra from https://github.com/dod-cyber-crime-center/pyhidra
+# Interactive example:
+#   import pyhidra, IPython
+#   with pyhidra.open_program("binary_file.exe") as flat_api: IPython.embed()
+#   program = flat_api.getCurrentProgram()
+#   listing = program.getListing()
+#   entry_addr = program.symbolTable.getGlobalSymbols("entry")[0].getAddress()
+#   entry_fct = listing.getFunctionAt(entry_addr)
+#   import ghidra.app.decompiler.DecompInterface
+#   decomp = ghidra.app.decompiler.DecompInterface()
+#   decomp.openProgram(program)
+#   decomp_result = decomp.decompileFunction(entry_fct, 10000, None)
+#   print(decomp_result.getDecompiledFunction().getC())  # C code as string
+#   print(decomp_result.getCCodeMarkup()) # C nodes
+RUN pip3 install "git+https://github.com/dod-cyber-crime-center/pyhidra@0.1.4"
 EOF
 }
 
@@ -287,6 +310,7 @@ SECCOMP_PROFILE='
                 "bind",
                 "brk",
                 "capset",
+                "chdir",
                 "chmod",
                 "clock_getres",
                 "clock_gettime",
@@ -296,6 +320,9 @@ SECCOMP_PROFILE='
                 "connect",
                 "dup",
                 "dup2",
+                "epoll_create1",
+                "epoll_ctl",
+                "epoll_wait",
                 "execve",
                 "exit",
                 "exit_group",
@@ -303,6 +330,7 @@ SECCOMP_PROFILE='
                 "fadvise64",
                 "fchdir",
                 "fcntl",
+                "fdatasync",
                 "fstat",
                 "fstatfs",
                 "fsync",
@@ -332,18 +360,22 @@ SECCOMP_PROFILE='
                 "lseek",
                 "lstat",
                 "madvise",
+                "mincore",
                 "mkdir",
                 "mmap",
                 "mprotect",
                 "munmap",
                 "nanosleep",
+                "newfstatat",
                 "openat",
                 "pipe",
+                "pipe2",
                 "poll",
                 "prctl",
                 "pread64",
                 "prlimit64",
                 "pselect6",
+                "pwrite64",
                 "read",
                 "readlink",
                 "recvfrom",
@@ -357,6 +389,7 @@ SECCOMP_PROFILE='
                 "sched_getaffinity",
                 "sched_yield",
                 "select",
+                "sendfile",
                 "sendmmsg",
                 "sendmsg",
                 "sendto",
@@ -381,6 +414,8 @@ SECCOMP_PROFILE='
                 "umask",
                 "uname",
                 "unlink",
+                "unlinkat",
+                "utimensat",
                 "vfork",
                 "wait4",
                 "write",
