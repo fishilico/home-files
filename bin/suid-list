@@ -374,6 +374,8 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib/policykit-1/polkit-agent-helper-1'),
     LinkToSuidFile('/lib/policykit-1/polkit-agent-helper-1',
                    '/libexec/polkit-agent-helper-1'),
+    LinkToSuidFile('/lib/polkit-1/polkit-agent-helper-1',
+                   '/libexec/polkit-agent-helper-1'),
     SuidFile('/lib(exec)?/polkit-1/polkit-agent-helper-1'),
     SuidFile('/libexec/polkit-agent-helper-1'),
 
@@ -594,6 +596,11 @@ TRUSTED_SGID_FILES = [
     # mutt, http://www.mutt.org/
     # http://dev.mutt.org/hg/mutt/file/tip
     SuidFile('/bin/mutt_dotlock', groups=('mail', )),
+
+    # plocate, https://plocate.sesse.net/
+    # https://git.sesse.net/?p=plocate;a=tree
+    LinkToSuidFile('/bin/locate', '/bin/plocate', groups=('plocate', )),
+    SuidFile('/bin/plocate', groups=('plocate', )),
 
     # postfix, http://www.postfix.org/
     # https://github.com/vdukhovni/postfix
