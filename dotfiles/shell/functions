@@ -440,11 +440,11 @@ public_ipv6_dns() {
 public_ipv4_https() {
     # https://ipv4.wtfismyip.com/json is also possible
     # https://ipinfo.io/ip too
-    curl --silent -4 'https://diagnostic.opendns.com/myip' && echo ''
+    curl --silent -4 'https://myipv4.p1.opendns.com/get_my_ip' | sed 's/^{"ip":"\([0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\)"}$/\1/'
 }
 public_ipv6_https() {
     # https://ipv6.wtfismyip.com/json is also possible
-    curl --silent -6 'https://diagnostic.opendns.com/myip' && echo ''
+    curl --silent -6 'https://myipv6.p1.opendns.com/get_my_ip' | sed 's/^{"ip":"\([0-9a-f:]\+\)"}$/\1/'
 }
 # Test the functions above
 all_public_ips() {
