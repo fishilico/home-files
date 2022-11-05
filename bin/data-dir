@@ -48,7 +48,7 @@ else:
 
 @lru_cache()
 def mode_str(mode):
-    """Get a string respresentation of a file mode"""
+    """Get a string representation of a file mode"""
     return (
         ('r' if mode & stat.S_IRUSR else '-') +
         ('w' if mode & stat.S_IWUSR else '-') +
