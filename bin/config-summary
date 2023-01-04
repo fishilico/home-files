@@ -374,6 +374,10 @@ if has_command net.exe ; then
     net.exe view 2>&1 | indent_out
     echo '* net view /domain::'
     net.exe view /domain 2>&1 | indent_out
+    echo '* net share::'
+    net.exe share 2>&1 | indent_out
+    echo '* net use::'
+    net.exe use 2>&1 | indent_out
     echo '* net start::'
     net.exe start 2>&1 | indent_out
 fi
