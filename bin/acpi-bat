@@ -111,8 +111,18 @@ class BatteryChargingState(object):
         return res
 
 
+class BatteryNotChargingState(object):
+    """Represent a battery which is not charging (for example at 99%)"""
+
+    def __init__(self, percent):
+        self.percent = percent
+
+    def __str__(self):
+        return "Not charging, {0}%".format(self.percent)
+
+
 class BatteryUnknownState(object):
-    """Represent a battery which is full"""
+    """Represent a battery which is in unknown state"""
 
     def __init__(self, percent):
         self.percent = percent
@@ -134,7 +144,7 @@ class LastAcpiStates(object):
         if self.window <= 1:
             return
         for name, state in acpi_result:
-            if isinstance(state, (BatteryFullState, BatteryUnknownState)):
+            if isinstance(state, (BatteryFullState, BatteryNotChargingState, BatteryUnknownState)):
                 # Reset results when battery is full or unknown
                 if name in self.states:
                     del self.states[name]
@@ -219,6 +229,9 @@ def run_acpi(name_filter=None):
                 hours, minutes, seconds = matches.groups()
                 remaining = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
             result.append((name, BatteryChargingState(percent, remaining)))
+        elif status == 'Not charging':
+            # For example: "Not charging, 99%"
+            result.append((name, BatteryNotChargingState(percent)))
         elif status == 'Unknown':
             result.append((name, BatteryUnknownState(percent)))
         else:
