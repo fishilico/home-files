@@ -1,0 +1,275 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2021-2023 Nicolas Iooss
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# Run https://github.com/SecureAuthCorp/impacket in a podman container, to serve
+# directories using the SMB protocol
+#
+# Usage:
+#
+#   # Enable listenning on TCP port 445
+#   sudo sysctl -w net.ipv4.ip_unprivileged_port_start=0
+#   podman-impacket-smbserver --here
+#
+# Test with: smbclient -m smb3 -U user%secret //127.0.0.1/share --command=ls
+
+build_container() {
+    # Update the base image
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/python:3.9-alpine)
+    podman pull docker.io/library/python:3.9-alpine
+    for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman base image ${OLD_BASE_IMAGE}"
+            podman image rm -- "${OLD_BASE_IMAGE}"
+        fi
+    done
+
+    podman build --no-cache -t localhost/podman-impacket -f /dev/stdin << EOF
+FROM docker.io/library/python:3.9-alpine
+RUN apk --update --no-cache add \
+    gcc \
+    git \
+    libc-dev \
+    musl-dev \
+    libffi-dev \
+    openssl-dev \
+    zlib-dev && \
+    rm -rf /var/cache/apk/* && \
+    pip install impacket
+EOF
+}
+
+LISTEN_PORT=445
+DO_UPDATE=false
+NO_START=false
+SMB_USER=user
+SMB_PASS=
+
+while getopts ":hp:P:nuU:-:" OPT
+do
+    case "$OPT" in
+        h)
+            echo "Usage: $0 [OPTIONS] [DIR...]"
+            echo "Launch a SMB server to serve the given directories (by default the current one)"
+            echo ""
+            echo "Options:"
+            echo "  -p [IP:]PORT, --port [IP:]PORT  use PORT instead of port 445"
+            echo "  -n, --no-start          do not start the container (only build it)"
+            echo "  -u, --update            update the container"
+            echo "  -U USER, --user USER    authenticate SMB connections with USER (default: ${SMB_USER})"
+            echo "  -P PASS, --pass PASS    authenticate SMB connections with PASS (default: ${SMB_PASS})"
+            exit
+            ;;
+        p)
+            LISTEN_PORT="$OPTARG"
+            ;;
+        n)
+            NO_START=true
+            ;;
+        u)
+            DO_UPDATE=true
+            ;;
+        U)
+            SMB_USER="$OPTARG"
+            ;;
+        P)
+            SMB_PASS="$OPTARG"
+            ;;
+        -)
+            case "$OPTARG" in
+                port)
+                    LISTEN_PORT="${!OPTIND}"
+                    OPTIND=$((OPTIND + 1))
+                    ;;
+                port=*)
+                    LISTEN_PORT="${OPTARG#*=}"
+                    ;;
+                no-start)
+                    NO_START=true
+                    ;;
+                update)
+                    DO_UPDATE=true
+                    ;;
+                user)
+                    SMB_USER="${!OPTIND}"
+                    OPTIND=$((OPTIND + 1))
+                    ;;
+                user=*)
+                    SMB_USER="${OPTARG#*=}"
+                    ;;
+                pass)
+                    SMB_PASS="${!OPTIND}"
+                    OPTIND=$((OPTIND + 1))
+                    ;;
+                pass=*)
+                    SMB_PASS="${OPTARG#*=}"
+                    ;;
+                *)
+                    printf >&2 "%s: invalid option '--%s'"\\n "$0" "$OPTARG"
+                    echo >&2 "Try '$0 -h' for more information."
+                    exit 1
+                    ;;
+            esac
+            ;;
+        \?)
+            printf >&2 "%s: invalid option '%s'"\\n "$0" "$OPTARG"
+            echo >&2 "Try '$0 -h' for more information."
+            exit 1
+            ;;
+        :)
+            printf >&2 "%s: missing parameter for option '%s'"\\n "$0" "$OPTARG"
+            echo >&2 "Try '$0 -h' for more information."
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+if [ $# -eq 0 ] ; then
+    # Share the current directory
+    VOLUME_OPTIONS=(--volume "$(pwd):/tmp/serve")
+else
+    VOLUME_OPTIONS=()
+    while [ $# -ge 1 ] ; do
+        DIR_NAME="${1##*/}"
+        VOLUME_OPTIONS+=(--volume "$1:/tmp/serve/${DIR_NAME}")
+        shift
+    done
+fi
+
+# Publish on localhost by default, or the given IP address with option "--port IP:PORT"
+if [[ "$LISTEN_PORT" =~ : ]] ; then
+    PUBLISH_OPTION="${LISTEN_PORT}:4445/tcp"
+else
+    PUBLISH_OPTION="127.0.0.1:${LISTEN_PORT}:4445/tcp"
+fi
+
+if [ -z "$SMB_USER" ] ; then
+    # If empty user, accept any authentication
+    SMBLOGIN_OPTIONS=()
+else
+    SMBLOGIN_OPTIONS=(-username "$SMB_USER" -password "$SMB_PASS")
+fi
+
+if "$DO_UPDATE" ; then
+    mapfile -t OLD_IMAGES < <(podman image list '--format={{.Id}}' localhost/podman-impacket)
+    build_container
+    for OLD_IMAGE in "${OLD_IMAGES[@]}" ; do
+        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_IMAGE}")" = 'true' ] ; then
+            echo "Removing old podman image ${OLD_IMAGE}"
+            podman image rm -- "${OLD_IMAGE}"
+        fi
+    done
+elif ! podman image exists localhost/podman-impacket ; then
+    build_container
+fi
+
+if "$NO_START" ; then
+    exit
+fi
+
+# Use SCMP_ACT_LOG to record the denied syscalls
+SECCOMP_PROFILE='
+{
+    "defaultAction": "SCMP_ACT_ERRNO",
+    "syscalls": [
+        {
+            "names": [
+                "accept4",
+                "arch_prctl",
+                "bind",
+                "brk",
+                "capset",
+                "clone",
+                "close",
+                "connect",
+                "dup",
+                "epoll_create1",
+                "execve",
+                "exit",
+                "exit_group",
+                "fcntl",
+                "fstat",
+                "futex",
+                "getcwd",
+                "getdents64",
+                "getegid",
+                "geteuid",
+                "getgid",
+                "getpeername",
+                "getpid",
+                "getrandom",
+                "getsockname",
+                "gettid",
+                "getuid",
+                "ioctl",
+                "kill",
+                "listen",
+                "lseek",
+                "lstat",
+                "madvise",
+                "membarrier",
+                "mkdir",
+                "mmap",
+                "mprotect",
+                "mremap",
+                "munmap",
+                "open",
+                "poll",
+                "prctl",
+                "pselect6",
+                "read",
+                "readlink",
+                "readv",
+                "recvfrom",
+                "rename",
+                "rmdir",
+                "rt_sigaction",
+                "rt_sigprocmask",
+                "rt_sigreturn",
+                "sendto",
+                "set_tid_address",
+                "setresgid",
+                "setresuid",
+                "setsockopt",
+                "shutdown",
+                "socket",
+                "stat",
+                "uname",
+                "unlink",
+                "utimensat",
+                "write"
+            ],
+            "action": "SCMP_ACT_ALLOW"
+        }
+    ]
+}'
+
+echo "Launching podman --publish $PUBLISH_OPTION ${VOLUME_OPTIONS[*]}..."
+podman run --rm \
+    --publish "$PUBLISH_OPTION" \
+    --userns keep-id \
+    "${VOLUME_OPTIONS[@]}" \
+    --workdir / \
+    --security-opt seccomp=<(printf %s "$SECCOMP_PROFILE") \
+    -ti localhost/podman-impacket \
+    smbserver.py -port 4445 -smb2support "${SMBLOGIN_OPTIONS[@]}" share /tmp/serve

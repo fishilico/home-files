@@ -110,6 +110,7 @@ BIN_SCRIPTS = {
     'podman-bpytop': 'never',
     'podman-codespell': 'never',
     'podman-ghidra': 'never',
+    'podman-impacket-smbserver': 'never',
     'podman-infer': 'never',
     'podman-markdownlint': 'never',
     'podman-purge': 'never',
