@@ -454,6 +454,22 @@ all_public_ips() {
     echo "public_ipv6_https: $(public_ipv6_https)"
 }
 
+# Get the local printers using mDNS
+query_mdns_printers() {
+    # 224.0.0.251 is multicast mDNS. It is also possible to query a target IP directly
+    # A printer will reply to _printer._tcp.local with:
+    # - a PTR record for _printer._tcp.local to NAME._printer._tcp.local
+    # - a SRV record for NAME._printer._tcp.local which targets NAME.local
+    # - possibly a TXT record for NAME._printer._tcp.local with additional information
+    # - A and AAAA records for NAME.local to get its IP addresses
+    #
+    # _printer port is 515 (Spooler), _ipp and _ipps port is 631 (IPP) and _pdl-datastream port is 9100 (JetDirect)
+    #
+    # Specifications: https://developer.apple.com/bonjour/printing-specification/bonjourprinting-1.2.1.pdf
+    dig @224.0.0.251 -p 5353 -t PTR _printer._tcp.local. _ipp._tcp.local. _ipps._tcp.local. _pdl-datastream._tcp.local. | \
+        grep -v -e '^;' -e '^$'
+}
+
 # Some X-Window functions
 xwinlist() {
     xwininfo -root -tree
