@@ -101,6 +101,7 @@ BIN_SCRIPTS = {
     'mount-tree': '(/proc)direct',
     'musickbd': 'never',
     'nft-dump': '(nft)direct',
+    'nsenter-podman-net': 'args[-h]',
     'nonet': 'never',
     'noproxy': 'args[true]',
     'ntpd-stats': '(ntpdc)direct',
