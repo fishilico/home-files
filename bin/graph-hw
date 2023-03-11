@@ -1024,7 +1024,7 @@ def add_acpi_path_names(device_tree):
 # Known ACPI device IDs, as described by:
 # * http://www.acpi.info/DOWNLOADS/ACPIspec50.pdf
 # * https://uefi.org/sites/default/files/resources/ACPI_6_3_final_Jan30.pdf
-# * https://uefi.org/specs/ACPI/6.4/05_ACPI_Software_Programming_Model/ACPI_Software_Programming_Model.html
+# * https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html
 # * https://www.kernel.org/doc/Documentation/acpi/namespace.txt
 # * https://www.kernel.org/doc/Documentation/PCI/acpi-info.txt
 # * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/acpi/acpi_pnp.c?h=v4.20
@@ -1368,6 +1368,7 @@ KNOWN_ACPI_DEVICES = {
     'MSFT0002': 'Touchpad (HID Protocol Device) for Dell',  # Seen as \_SB_.PCI0.I2C1.TPD8
     'MSFT0003': 'PS/2 Port Compatible Pointing Device for Dell',  # Seen as \_SB_.PCI0.LPCB.PS2M
     'MSFT0101': 'Intel Platform Trust Technology (PTT) TPM 2.0',  # Documented as "TPM 2.0 Security Device"
+    'MSFT0200': 'Microsoft Pluton Security Processor',  # Also MHSP0001
     'MSFT1111': '(Unknown HID Device related to Dell Touchpad)',  # Seen as \_SB_.PCI0.I2C0.TPD4
     # https://docs.microsoft.com/en-us/windows/uwp/devices-sensors/enable-usermode-access : "devcon status *msft8000"
     'MSFT8000': 'Microsoft Resource Hub Proxy device (RHPX)',  # Seen as \_SB_.RHPX
