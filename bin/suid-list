@@ -271,6 +271,10 @@ TRUSTED_SUID_FILES = [
     # https://sourceware.org/git/?p=glibc.git;a=tree
     SuidFile('/lib(exec)?/pt_chown'),
 
+    # grub2 patch in Fedora, https://src.fedoraproject.org/rpms/grub2
+    # https://src.fedoraproject.org/rpms/grub2/blob/f38/f/0082-Add-grub-set-bootflag-utility.patch
+    SuidFile('/sbin/grub2-set-bootflag'),
+
     # gstreamer, https://gstreamer.freedesktop.org/
     # https://cgit.freedesktop.org/gstreamer/gstreamer/tree/
     SuidFile('/libexec/gstreamer-1.0/gst-ptp-helper'),
@@ -386,6 +390,7 @@ TRUSTED_SUID_FILES = [
     # qemu, http://wiki.qemu.org/Index.html
     # http://git.qemu.org/?p=qemu.git;a=tree
     SuidFile('/lib/qemu/qemu-bridge-helper'),
+    SuidFile('/libexec/qemu-bridge-helper'),
 
     # s-nail, http://sdaoden.users.sourceforge.net/code.html#s-nail
     # https://git.sdaoden.eu/cgit/s-nail.git/
@@ -801,8 +806,12 @@ TRUSTED_CAPS_FILES = [
     # https://github.com/iputils/iputils
     CapsFile('/s?bin/arping', '= cap_net_raw+ep'),
     CapsFile('/s?bin/arping', '= cap_net_raw+p'),
+    CapsFile('/s?bin/arping', 'cap_net_raw=p'),
+    LinkToCapsFile('/sbin/arping', '/bin/arping',
+                   'cap_net_raw=p'),
     CapsFile('/s?bin/clockdiff', '= cap_net_raw+ep'),
     CapsFile('/s?bin/clockdiff', '= cap_net_raw+p'),
+    CapsFile('/s?bin/clockdiff', 'cap_net_raw=p'),
     CapsFile('/bin/ping', '= cap_net_raw+ep'),
     CapsFile('/bin/ping', '= cap_net_admin,cap_net_raw+ep'),
     CapsFile('/bin/ping', '= cap_net_admin,cap_net_raw+p'),
