@@ -1351,6 +1351,12 @@ KNOWN_ACPI_DEVICES = {
     'LNRO001F': 'Linaro non-standard ITS frames',
     'LNRO0020': 'Linaro OP-TEE secure world OS',
 
+    # Linaro 96boards
+    'LNRO9601': 'Secure96 GPIO LED bank',
+    'LNRO9602': 'Secure96 ATmel SHA240A',
+    'LNRO9603': 'Secure96 ATmel ECC508A',
+    'LNRO9604': 'Secure96 infineon TPM',
+
     # Virtual devices
     'LNXCPU': 'Logical CPU',
     'LNXPOWER': 'Power',
