@@ -174,29 +174,29 @@ class LinkToCapsFile(object):
 # For each project, an URL to the project is given with an URL to online file
 # tree, is available.
 TRUSTED_SUID_FILES = [
-    # abrt-addon-ccpp, https://abrt.readthedocs.org/en/latest/
+    # abrt-addon-ccpp, https://abrt.readthedocs.io/en/latest/
     # https://github.com/abrt/abrt
     SuidFile('/libexec/abrt-action-install-debuginfo-to-abrt-cache',
              owners=('abrt', ), groups=('abrt', )),
 
-    # apache, http://httpd.apache.org/docs/trunk/suexec.html
-    # http://svn.apache.org/repos/asf/httpd/httpd/
+    # apache, https://httpd.apache.org/docs/trunk/suexec.html
+    # https://svn.apache.org/repos/asf/httpd/httpd/
     SuidFile('/s?bin/suexec'),
 
     # at, https://packages.qa.debian.org/a/at.html
-    # https://anonscm.debian.org/cgit/collab-maint/at.git/tree/
+    # https://salsa.debian.org/debian/at
     SuidFile('/bin/at', owners=('daemon', 'root'), groups=('daemon', )),
     LinkToSuidFile('/bin/atq', '/bin/at', owners=('daemon', 'root'),
                    groups=('daemon', )),
     LinkToSuidFile('/bin/atrm', '/bin/at', owners=('daemon', 'root'),
                    groups=('daemon', )),
 
-    # bubblewrap, https://www.projectatomic.io/blog/2017/07/unprivileged-containers-with-bwrap-oci-and-bubblewrap/
-    # https://github.com/projectatomic/bubblewrap
+    # bubblewrap, https://projectatomic.io/blog/2017/07/unprivileged-containers-with-bwrap-oci-and-bubblewrap/
+    # https://github.com/containers/bubblewrap
     SuidFile('/bin/bwrap'),
 
-    # busybox-suid, https://pkgs.alpinelinux.org/package/main/x86_64/busybox-suid
-    # http://git.alpinelinux.org/cgit/aports/tree/main/busybox/bbsuid.c
+    # busybox-suid, https://pkgs.alpinelinux.org/package/edge/main/x86/busybox-suid
+    # https://git.alpinelinux.org/aports/tree/main/busybox/bbsuid.c
     SuidFile('/bin/bbsuid'),
     LinkToSuidFile('/bin/crontab', '/bin/bbsuid'),
     LinkToSuidFile('/bin/mount', '/bin/bbsuid'),
@@ -207,7 +207,7 @@ TRUSTED_SUID_FILES = [
     LinkToSuidFile('/bin/traceroute', '/bin/bbsuid'),
     LinkToSuidFile('/bin/umount', '/bin/bbsuid'),
 
-    # chromium, http://www.chromium.org/Home
+    # chromium, https://www.chromium.org/Home/
     # https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master
     SuidFile('/lib/chromium/chrome-sandbox'),
     SuidFile('/lib/chromium-browser/chrome-sandbox'),
@@ -217,9 +217,8 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib/x86_64-linux-gnu/oxide-qt/chrome-sandbox'),
     SuidFile('/opt/google/chrome/chrome-sandbox'),
 
-    # cronie, https://fedorahosted.org/cronie/
-    # https://git.fedorahosted.org/git/cronie.git
-    # or http://ftp.isc.org/isc/cron/
+    # cronie, https://github.com/cronie-crond/cronie
+    # or https://ftp.isc.org/isc/cron/
     SuidFile('/bin/crontab'),
     SuidFile('/bin/crontab', groups=('crontab', )),
 
@@ -228,8 +227,8 @@ TRUSTED_SUID_FILES = [
     SuidFile('/s?bin/mount.davfs'),
     LinkToSuidFile('/s?bin/mount.davfs', '/s?bin/mount.davfs'),
 
-    # dbus, http://www.freedesktop.org/wiki/Software/dbus/
-    # http://cgit.freedesktop.org/dbus/dbus/tree/
+    # dbus, https://www.freedesktop.org/wiki/Software/dbus/
+    # https://cgit.freedesktop.org/dbus/dbus/tree/
     SuidFile('/lib(32|64|exec)?/dbus-1(.0)?/dbus-daemon-launch-helper'),
 
     # dma, DragonFly Mail Agent, https://www.dragonflybsd.org/handbook/mta/
@@ -237,13 +236,13 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib/dma/dma-mbox-create'),
 
     # ecryptfs-utils, https://launchpad.net/ecryptfs
-    # http://bazaar.launchpad.net/~ecryptfs/ecryptfs/trunk/files
+    # https://bazaar.launchpad.net/~ecryptfs/ecryptfs/trunk/files
     SuidFile('/s?bin/mount.ecryptfs_private',
              owners=('root', ), groups=('root', )),
     LinkToSuidFile('/s?bin/umount.ecryptfs_private', '/s?bin/mount.ecryptfs_private',
                    owners=('root', ), groups=('root', )),
 
-    # exim, http://www.exim.org/
+    # exim, https://www.exim.org/
     # https://github.com/Exim/exim
     SuidFile('/sbin/exim4'),
     LinkToSuidFile('/bin/mailq', '/sbin/exim4'),
@@ -267,7 +266,7 @@ TRUSTED_SUID_FILES = [
     SuidFile('/bin/fusermount3'),
     LinkToSuidFile('/bin/fusermount', '/bin/fusermount3'),
 
-    # glibc, http://www.gnu.org/software/libc/
+    # glibc, https://www.gnu.org/software/libc/
     # https://sourceware.org/git/?p=glibc.git;a=tree
     SuidFile('/lib(exec)?/pt_chown'),
 
@@ -300,7 +299,7 @@ TRUSTED_SUID_FILES = [
     LinkToSuidFile('/bin/traceroute6', '/bin/traceroute6.iputils'),
     LinkToSuidFile('/etc/alternatives/traceroute6', '/bin/traceroute6.iputils'),
 
-    # kdelibs, https://www.kde.org/
+    # kdelibs, https://kde.org/
     # https://invent.kde.org/frameworks/kdelibs4support/
     # (src/kio/fileshareset)
     SuidFile('/lib/kde4/libexec/fileshareset'),
@@ -312,13 +311,14 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib/kde4/libexec/start_kdeinit'),
 
     # lldpd, https://vincentbernat.github.io/lldpd/
-    # https://github.com/vincentbernat/lldpd
+    # https://github.com/lldpd/lldpd
     SuidFile('/s?bin/lldpcli', owners=('_lldpd', )),
     SuidFile('/s?bin/lldpctl', owners=('_lldpd', )),
     LinkToSuidFile('/s?bin/lldpctl', '/s?bin/lldpcli', owners=('_lldpd', )),
 
     # lpr, https://packages.qa.debian.org/l/lpr.html
-    # https://anonscm.debian.org/cgit/collab-maint/lpr.git/tree/
+    # https://anonscm.debian.org/cgit/collab-maint/lpr.git/tree/ (broken link)
+    # https://salsa.debian.org/debian/lprng
     SuidFile('/bin/lpq', owners=('root', ), groups=('lp', )),
     SuidFile('/bin/lpr', owners=('root', ), groups=('lp', )),
     SuidFile('/bin/lprm', owners=('root', ), groups=('lp', )),
@@ -329,35 +329,35 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib(exec)?/lxc/lxc-user-nic'),
     SuidFile('/lib/[a-zA-Z0-9_]+-linux-gnu/lxc/lxc-user-nic'),
 
-    # man-db, http://www.nongnu.org/man-db/
-    # http://git.savannah.gnu.org/cgit/man-db.git/tree/
+    # man-db, https://man-db.gitlab.io/man-db/
+    # https://gitlab.com/man-db/man-db
     SuidFile('/bin/man', owners=('man', )),
     SuidFile('/bin/mandb', owners=('man', )),
 
-    # mtr, http://www.bitwizard.nl/mtr/
+    # mtr, https://www.bitwizard.nl/mtr/
     # https://github.com/traviscross/mtr
     SuidFile('/bin/mtr'),
     SuidFile('/sbin/mtr-packet'),
 
-    # ndisc6, http://www.remlab.net/ndisc6/
-    # http://git.remlab.net/gitweb/?p=ndisc6.git;a=tree
+    # ndisc6, https://www.remlab.net/ndisc6/
+    # https://git.remlab.net/gitweb/?p=ndisc6.git;a=tree
     SuidFile('/bin/ndisc6'),
     SuidFile('/bin/rdisc6'),
     SuidFile('/bin/rltraceroute6'),
     LinkToSuidFile('/bin/traceroute6', '/bin/rltraceroute6'),
     LinkToSuidFile('/etc/alternatives/traceroute6', '/bin/rltraceroute6'),
 
-    # nfs-utils, http://nfs.sourceforge.net/
+    # nfs-utils, https://nfs.sourceforge.net/
     SuidFile('/s?bin/mount.nfs'),
     LinkToSuidFile('/s?bin/mount.nfs4', '/s?bin/mount.nfs'),
     LinkToSuidFile('/s?bin/umount.nfs', '/s?bin/mount.nfs'),
     LinkToSuidFile('/s?bin/umount.nfs4', '/s?bin/mount.nfs'),
 
-    # nspluginwrapper, http://nspluginwrapper.org/
+    # nspluginwrapper, https://web.archive.org/web/20180315015101/https://nspluginwrapper.org/
     # https://github.com/davidben/nspluginwrapper
     SuidFile('/lib(32|64)?/nspluginwrapper/plugin-config'),
 
-    # openssh, http://www.openssh.com/portable.html
+    # openssh, https://www.openssh.com/portable.html
     # https://anongit.mindrot.org/openssh.git/tree/
     SuidFile('/bin/ssh-agent', groups=('nobody', 'ssh', '_ssh', )),
     SuidFile('/lib/ssh/ssh-keysign'),
@@ -365,15 +365,16 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib(exec)?/openssh/ssh-keysign'),
     SuidFile('/lib(exec)?/openssh/ssh-keysign', groups=('ssh_keys', )),
 
-    # pam, http://linux-pam.org/
+    # pam, https://github.com/linux-pam/linux-pam
     # https://github.com/linux-pam/linux-pam
     SuidFile('/s?bin/pam_timestamp_check'),
     SuidFile('/s?bin/unix_chkpwd', owners=('root', ), groups=('root', )),
     SuidFile('/s?bin/unix_chkpwd', groups=('shadow', )),
     SuidFile('/s?bin/pam_extrausers_chkpwd', groups=('shadow', )),
 
-    # polkit, http://www.freedesktop.org/wiki/Software/polkit
-    # http://cgit.freedesktop.org/polkit/
+    # polkit, https://polkit.pages.freedesktop.org/polkit/
+    # https://gitlab.freedesktop.org/polkit/polkit/
+    # https://cgit.freedesktop.org/polkit/ (mirror)
     SuidFile('/bin/pkexec'),
     SuidFile('/lib/policykit-1/polkit-agent-helper-1'),
     LinkToSuidFile('/lib/policykit-1/polkit-agent-helper-1',
@@ -383,30 +384,30 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib(exec)?/polkit-1/polkit-agent-helper-1'),
     SuidFile('/libexec/polkit-agent-helper-1'),
 
-    # procmail, http://www.procmail.org/
+    # procmail, https://web.archive.org/web/20151013184044/http://www.procmail.org/
+    # https://github.com/BuGlessRB/procmail
     SuidFile('/bin/lockfile', groups=('mail', )),
     SuidFile('/bin/procmail', owners=('root', ), groups=('mail', )),
 
-    # qemu, http://wiki.qemu.org/Index.html
-    # http://git.qemu.org/?p=qemu.git;a=tree
+    # qemu, https://wiki.qemu.org/Main_Page
+    # https://gitlab.com/qemu-project/qemu
     SuidFile('/lib/qemu/qemu-bridge-helper'),
     SuidFile('/libexec/qemu-bridge-helper'),
 
-    # s-nail, http://sdaoden.users.sourceforge.net/code.html#s-nail
-    # https://git.sdaoden.eu/cgit/s-nail.git/
-    # http://sourceforge.net/p/s-nail/code/ci/master/tree/
+    # s-nail, https://www.sdaoden.eu/code.html#s-nail
+    # https://git.sdaoden.eu/browse/s-nail.git/ (moon:mars, as documented on the official website)
+    # https://sourceforge.net/p/s-nail/code/ci/master/tree/
     SuidFile('/lib/mail-dotlock'),
     SuidFile('/lib/mail-privsep'),
     SuidFile('/lib/s-nail/s-nail-privsep'),
 
-    # screen, http://www.gnu.org/software/screen/
-    # http://git.savannah.gnu.org/cgit/screen.git/tree/
+    # screen, https://www.gnu.org/software/screen/
+    # https://git.savannah.gnu.org/cgit/screen.git/tree/
     SuidFile('/bin/screen', groups=('screen', 'utmp', )),
     SuidFile('/bin/screen-[0-9.]+'),
     LinkToSuidFile('/bin/screen', '/bin/screen-[0-9.]+'),
 
-    # shadow, http://pkg-shadow.alioth.debian.org/
-    # https://github.com/shadow-maint/shadow
+    # shadow, https://github.com/shadow-maint/shadow
     SuidFile('/bin/chage'),
     SuidFile('/bin/chage', groups=('shadow', )),
     SuidFile('/bin/chfn'),  # also provided by util-linux
@@ -422,14 +423,15 @@ TRUSTED_SUID_FILES = [
     LinkToSuidFile('/bin/sg', '/bin/newgrp'),
     SuidFile('/bin/su'),  # also provided by util-linux
 
-    # snappy (snap-confine), http://snapcraft.io/
+    # snappy (snap-confine), https://snapcraft.io/
     # https://github.com/snapcore/snapd
     SuidFile('/bin/ubuntu-core-launcher'),
     LinkToSuidFile('/bin/ubuntu-core-launcher', '/lib/snapd/snap-confine',
                    owners=('root', ), groups=('root', )),
     SuidFile('/lib/snapd/snap-confine', owners=('root', ), groups=('root', )),
 
-    # spice-gtk3, http://spice-space.org
+    # spice-gtk3, https://spice-space.org/
+    # https://gitlab.freedesktop.org/spice/spice-gtk
     SuidFile('/bin/spice-client-glib-usb-acl-helper'),
     SuidFile('/lib/spice-gtk/spice-client-glib-usb-acl-helper'),
     SuidFile('/libexec/spice-client-glib-usb-acl-helper'),
@@ -448,8 +450,8 @@ TRUSTED_SUID_FILES = [
     SuidFile('/bin/sudoedit'),
     LinkToSuidFile('/bin/sudoedit', '/bin/sudo'),
 
-    # util-linux, https://www.kernel.org/pub/linux/utils/util-linux/
-    # https://git.kernel.org/cgit/utils/util-linux/util-linux.git/tree/
+    # util-linux, https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/
+    # https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git/tree/
     SuidFile('/bin/mount'),
     SuidFile('/bin/umount'),
     SuidFile('/s?bin/uuidd', owners=('libuuid', ), groups=('libuuid', )),
@@ -480,16 +482,16 @@ TRUSTED_SUID_FILES = [
     SuidFile('/lib/virtualbox/VirtualBoxVM'),
     SuidFile('/lib/virtualbox/VirtualBoxVM', owners=('root', ), groups=('root', )),
 
-    # weston, http://wayland.freedesktop.org
-    # http://cgit.freedesktop.org/wayland/weston/tree/
+    # weston, https://wayland.freedesktop.org
+    # https://cgit.freedesktop.org/wayland/weston/tree/
     SuidFile('/bin/weston-launch'),
 
-    # xf86-video-intel, http://www.x.org/wiki/
-    # http://cgit.freedesktop.org/xorg/driver/xf86-video-intel/tree/
+    # xf86-video-intel, https://www.x.org/wiki/
+    # https://cgit.freedesktop.org/xorg/driver/xf86-video-intel/tree/
     SuidFile('/lib/xf86-video-intel-backlight-helper'),
 
-    # xorg-server, http://www.x.org/wiki/XServer/
-    # http://cgit.freedesktop.org/xorg/xserver/tree/
+    # xorg-server, https://www.x.org/wiki/XServer/
+    # https://cgit.freedesktop.org/xorg/xserver/tree/
     # X was root-suid before rootless X11 server was possible
     LinkToSuidFile('/bin/X', '/bin/Xorg'),
     SuidFile('/bin/X', owners=('root', ), groups=('root', )),
@@ -509,7 +511,7 @@ TRUSTED_SUID_FILES = [
 # list.  Here are only projects with SGID files
 TRUSTED_SGID_FILES = [
     # bsdmainutils, https://packages.debian.org/sid/bsdmainutils
-    # https://anonscm.debian.org/cgit/bsdmainutils/bsdmainutils.git/tree/
+    # https://salsa.debian.org/meskes/bsdmainutils
     SuidFile('/bin/bsd-write', groups=('tty', )),
     LinkToSuidFile('/bin/write', '/bin/bsd-write', groups=('tty', )),
     LinkToSuidFile('/etc/alternatives/write', '/bin/bsd-write',
@@ -524,32 +526,33 @@ TRUSTED_SGID_FILES = [
     LinkToSuidFile('/sbin/sendmail', '/sbin/dma', groups=('mail', )),
 
     # emacs, https://www.gnu.org/software/emacs/
-    # http://git.savannah.gnu.org/cgit/emacs.git/tree/
+    # https://git.savannah.gnu.org/cgit/emacs.git/tree/
     SuidFile('/lib/emacs/[0-9]+.[0-9]+/[-_a-zA-Z0-9]+/movemail',
              groups=('mail', )),
 
     # evolution, https://wiki.gnome.org/Apps/Evolution
-    # https://git.gnome.org/browse/evolution-data-server/tree/
+    # https://gitlab.gnome.org/GNOME/evolution-data-server/tree/master/
     SuidFile('/lib/evolution/camel-lock-helper-[0-9]+.[0-9]+',
              groups=('mail', )),
     SuidFile('/libexec/camel-lock-helper-[0-9]+.[0-9]+',
              groups=('mail', )),
 
-    # kde-runtime, https://www.kde.org/
-    # https://cgit.kde.org/kdesu.git/tree/
+    # kde-runtime, https://kde.org/
+    # https://invent.kde.org/frameworks/kdesu
+    # https://github.com/KDE/kdesu (mirror)
     SuidFile('/lib/kde4/libexec/kdesud', groups=('nobody', 'nogroup', )),
 
-    # libcgroup, http://libcg.sourceforge.net
-    # http://sourceforge.net/p/libcg/libcg/ci/master/tree/
+    # libcgroup, https://libcg.sourceforge.net/
+    # https://sourceforge.net/p/libcg/libcg/ci/master/tree/
     SuidFile('/bin/cgclassify', groups=('cgred', )),
     SuidFile('/bin/cgexec', groups=('cgred', )),
 
     # liblockfile, https://packages.qa.debian.org/libl/liblockfile.html
-    # https://sources.debian.net/src/liblockfile/
+    # https://sources.debian.org/src/liblockfile/
     SuidFile('/bin/dotlockfile', groups=('mail', )),
 
-    # libutempter, ftp://ftp.altlinux.org/pub/people/ldv/utempter
-    # http://git.altlinux.org/people/ldv/packages/?p=libutempter.git;a=tree
+    # libutempter, https://github.com/altlinux/libutempter
+    # https://git.altlinux.org/people/ldv/packages/?p=libutempter.git;a=tree
     LinkToSuidFile('/sbin/utempter', '/lib64/misc/utempter/utempter',
                    groups=('utmp', )),
     SuidFile('/lib(exec)?/utempter/utempter', groups=('utmp', )),
@@ -557,12 +560,12 @@ TRUSTED_SGID_FILES = [
     SuidFile('/lib/[a-zA-Z0-9_]+-linux-gnu/utempter/utempter', groups=('utmp', )),
 
     # lockfile-progs, https://packages.qa.debian.org/l/lockfile-progs.html
-    # https://sources.debian.net/src/lockfile-progs/
+    # https://sources.debian.org/src/lockfile-progs/
     SuidFile('/bin/mail-lock', groups=('mail', )),
     SuidFile('/bin/mail-touchlock', groups=('mail', )),
     SuidFile('/bin/mail-unlock', groups=('mail', )),
 
-    # maildrop, http://www.courier-mta.org/maildrop/
+    # maildrop, https://www.courier-mta.org/maildrop/
     LinkToSuidFile('/bin/lockmail', '/bin/lockmail.maildrop',
                    groups=('mail', )),
     SuidFile('/bin/lockmail.maildrop', groups=('mail', )),
@@ -586,8 +589,8 @@ TRUSTED_SGID_FILES = [
     LinkToSuidFile('/etc/alternatives/dotlock', '/bin/dotlock.mailutils',
                    groups=('root', )),
 
-    # mlocate, https://fedorahosted.org/mlocate/
-    # https://fedorahosted.org/mlocate/browser
+    # mlocate, https://pagure.io/mlocate
+    # https://pagure.io/mlocate/tree/master
     LinkToSuidFile('/bin/locate', '/bin/mlocate', groups=('mlocate', )),
     SuidFile('/bin/locate', groups=('slocate', )),
     SuidFile('/bin/mlocate', groups=('mlocate', )),
@@ -595,7 +598,7 @@ TRUSTED_SGID_FILES = [
                    groups=('mlocate', )),
 
     # mutt, http://www.mutt.org/
-    # http://dev.mutt.org/hg/mutt/file/tip
+    # https://gitlab.com/muttmua/mutt/
     SuidFile('/bin/mutt_dotlock', groups=('mail', )),
 
     # plocate, https://plocate.sesse.net/
@@ -603,7 +606,7 @@ TRUSTED_SGID_FILES = [
     LinkToSuidFile('/bin/locate', '/bin/plocate', groups=('plocate', )),
     SuidFile('/bin/plocate', groups=('plocate', )),
 
-    # postfix, http://www.postfix.org/
+    # postfix, https://www.postfix.org/
     # https://github.com/vdukhovni/postfix
     SuidFile('/s?bin/postdrop', groups=('postdrop', )),
     SuidFile('/s?bin/postqueue', groups=('postdrop', )),
@@ -617,12 +620,13 @@ TRUSTED_SGID_FILES = [
     LinkToSuidFile('/etc/alternatives/rxvt', '/bin/urxvt',
                    groups=('utmp', )),
 
-    # uw-imap, https://www.washington.edu/imap/
-    # https://anonscm.debian.org/cgit/collab-maint/uw-imap.git/tree/
+    # uw-imap, https://web.archive.org/web/20081005002032/https://www.washington.edu/imap/
+    # https://salsa.debian.org/holmgren/uw-imap
     SuidFile('/bin/mlock', groups=('mail', )),
 
-    # vte, https://developer.gnome.org/vte/
-    # https://github.com/GNOME/vte
+    # vte, https://wiki.gnome.org/Apps/Terminal/VTE
+    # https://gitlab.gnome.org/GNOME/vte
+    # https://github.com/GNOME/vte (mirror)
     # Until https://github.com/GNOME/vte/commit/299c700c743c7d5dfd14e3b3a21417d9e9f35818 (0.42.0)
     SuidFile('/lib/libvte-[-.0-9]+/gnome-pty-helper', groups=('utmp', )),
     SuidFile('/lib/libvte9/gnome-pty-helper', groups=('utmp', )),
@@ -636,16 +640,16 @@ assert all(x.owners is None for x in TRUSTED_SGID_FILES)
 # administrator may decide to remove the SUID bit without breaking the entire
 # system, in order to squeeze the attack surface.
 KNOWN_SUID_FILES = [
-    # atop, http://www.atoptool.nl/
-    # http://www.atoptool.nl/downloadnetatop.php
+    # atop, https://www.atoptool.nl/
+    # https://www.atoptool.nl/downloadnetatop.php
     SuidFile('/bin/atop'),
     LinkToSuidFile('/bin/atopsar', '/bin/atop'),
 
-    # authbind, https://www.debian-administration.org/article/386/Running_network_services_as_a_non-root_user.
-    # http://www.chiark.greenend.org.uk/ucgi/~ian/git?p=authbind.git;a=tree
+    # authbind, https://web.archive.org/web/20190503081103/https://debian-administration.org/article/386/Running_network_services_as_a_non-root_user.  # noqa
+    # https://www.chiark.greenend.org.uk/ucgi/~ian/git?p=authbind.git;a=tree
     SuidFile('/lib/authbind/helper'),
 
-    # cdrtools, http://cdrtools.sourceforge.net/private/cdrecord.html
+    # cdrtools, https://cdrtools.sourceforge.net/private/cdrecord.html
     # https://sourceforge.net/projects/cdrtools/files/alpha/
     SuidFile('/bin/cdda2wav'),
     SuidFile('/bin/cdrecord'),
@@ -661,41 +665,43 @@ KNOWN_SUID_FILES = [
     LinkToSuidFile('/s?bin/mount.smb3', '/s?bin/mount.cifs',
                    owners=('root', ), groups=('root', )),
 
-    # eject, http://www.pobox.com/~tranter/eject.html
+    # eject, https://eject.sourceforge.net/
+    # https://salsa.debian.org/debian/eject
+    # https://security-tracker.debian.org/tracker/CVE-2017-6964
     SuidFile('/lib/eject/dmcrypt-get-device'),
 
     # glusterfs, https://www.gluster.org/
     # https://github.com/gluster/glusterfs/tree/master/contrib/fuse-util
     SuidFile('/bin/fusermount-glusterfs'),
 
-    # inetutils, http://www.gnu.org/software/inetutils/
-    # http://git.savannah.gnu.org/cgit/inetutils.git/tree/
+    # inetutils, https://www.gnu.org/software/inetutils/
+    # https://git.savannah.gnu.org/cgit/inetutils.git/tree/
     SuidFile('/bin/rcp', owners=('root', ), groups=('root', )),
     SuidFile('/bin/rlogin', owners=('root', ), groups=('root', )),
     SuidFile('/bin/rsh', owners=('root', ), groups=('root', )),
 
-    # initscripts, https://fedorahosted.org/releases/i/n/initscripts/
-    # https://git.fedorahosted.org/cgit/initscripts.git/tree/
+    # initscripts, https://github.com/fedora-sysv/initscripts
     SuidFile('/s?bin/netreport', groups=('root', )),
     SuidFile('/s?bin/usernetctl'),
 
     # kismet, https://www.kismetwireless.net/
-    # https://www.kismetwireless.net/gitweb/?p=kismet.git;a=tree
+    # https://github.com/kismetwireless/kismet
     SuidFile('/bin/kismet_capture'),
 
-    # krb5, http://web.mit.edu/kerberos/
+    # krb5, https://web.mit.edu/kerberos/
+    # https://github.com/krb5/krb5
     SuidFile('/bin/ksu'),
 
-    # landscape-client, http://www.ubuntu.com/management
-    # http://bazaar.launchpad.net/~landscape/landscape-client/trunk/files
+    # landscape-client, https://ubuntu.com/landscape
+    # https://bazaar.launchpad.net/~landscape/landscape-client/trunk/files
     SuidFile('/lib/landscape/apt-update'),
 
     # mariadb, https://mariadb.com/kb/en/authentication-plugin-pam/
     # https://github.com/MariaDB/server
     SuidFile('/lib/mysql/plugin/auth_pam_tool_dir/auth_pam_tool'),
 
-    # ntfs-3g, http://www.tuxera.com/community/open-source-ntfs-3g/
-    # https://sourceforge.net/p/ntfs-3g/ntfs-3g/ci/edge/tree/
+    # ntfs-3g, https://www.tuxera.com/company/open-source/
+    # https://github.com/tuxera/ntfs-3g
     SuidFile('/bin/ntfs-3g'),
     LinkToSuidFile('/s?bin/mount.ntfs', '/bin/ntfs-3g'),
     LinkToSuidFile('/s?bin/mount.ntfs-3g', '/bin/ntfs-3g'),
@@ -718,20 +724,19 @@ KNOWN_SUID_FILES = [
     # https://github.com/SELinuxProject/selinux/tree/master/policycoreutils
     SuidFile('/bin/seunshare'),
 
-    # ppp, http://www.samba.org/ppp/
-    # https://github.com/paulusmack/ppp/
+    # ppp, https://ppp.samba.org/
+    # https://github.com/ppp-project/ppp
     SuidFile('/s?bin/pppd'),
 
-    # pulseaudio-module-bluetooth, http://www.pulseaudio.org/
-    # http://cgit.freedesktop.org/pulseaudio/pulseaudio/tree/
+    # pulseaudio-module-bluetooth, https://www.freedesktop.org/wiki/Software/PulseAudio/
+    # https://cgit.freedesktop.org/pulseaudio/pulseaudio/tree/
     SuidFile('/libexec/pulse/proximity-helper'),
 
     # qubes, https://www.qubes-os.org/doc/qfilecopy/
     # https://github.com/QubesOS/qubes-core-agent-linux
     SuidFile('/lib/qubes/qfile-unpacker'),
 
-    # shadow, http://pkg-shadow.alioth.debian.org/
-    # https://github.com/shadow-maint/shadow
+    # shadow, https://github.com/shadow-maint/shadow
     # These files can work well without being setuid-root
     # ... and they were not intended to be setuid-root (CVE-2019-19882)
     # https://security.archlinux.org/ASA-201912-4
@@ -754,8 +759,8 @@ KNOWN_SUID_FILES = [
     # https://sourceware.org/git/gitweb.cgi?p=systemtap.git;a=tree
     SuidFile('/bin/staprun'),
 
-    # usermode, https://fedorahosted.org/usermode/
-    # https://fedorahosted.org/usermode/browser
+    # usermode, https://pagure.io/usermode/
+    # https://pagure.io/usermode/tree/master
     SuidFile('/s?bin/userhelper'),
 
     # vmware-workstation, https://www.vmware.com/products/workstation-player.html
@@ -781,17 +786,17 @@ assert all(x.owners is None for x in TRUSTED_SGID_FILES)
 # The text description of capabilities is explained in cap_to_text manpage.
 # The leading "=" indicates that is the capabilities are first reset.
 TRUSTED_CAPS_FILES = [
-    # apache, http://httpd.apache.org/docs/trunk/suexec.html
-    # http://svn.apache.org/repos/asf/httpd/httpd/
+    # apache, https://httpd.apache.org/docs/trunk/suexec.html
+    # https://svn.apache.org/repos/asf/httpd/httpd/
     CapsFile('/s?bin/suexec', '= cap_setgid,cap_setuid+ep'),
 
-    # fping, http://www.fping.org/
+    # fping, https://www.fping.org/
     # https://github.com/schweikert/fping
     CapsFile('/bin/fping', '= cap_net_raw+ep'),
     CapsFile('/bin/fping6', '= cap_net_raw+ep'),
 
     # gnome-keyring, https://www.gnome.org/
-    # https://git.gnome.org/browse/gnome-keyring/tree/
+    # https://gitlab.gnome.org/GNOME/gnome-keyring/tree/master/
     CapsFile('/bin/gnome-keyring-daemon', '= cap_ipc_lock+ep'),
 
     # gstreamer, https://gstreamer.freedesktop.org/
@@ -801,8 +806,8 @@ TRUSTED_CAPS_FILES = [
     CapsFile('/lib/[a-zA-Z0-9_]+-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-ptp-helper',
              '= cap_net_bind_service,cap_net_admin+ep'),
 
-    # inetutils, http://www.gnu.org/software/inetutils/
-    # http://git.savannah.gnu.org/cgit/inetutils.git/tree/
+    # inetutils, https://www.gnu.org/software/inetutils/
+    # https://git.savannah.gnu.org/cgit/inetutils.git/tree/
     CapsFile('/bin/rcp', '= cap_net_bind_service+ep'),
     CapsFile('/bin/rlogin', '= cap_net_bind_service+ep'),
     CapsFile('/bin/rsh', '= cap_net_bind_service+ep'),
@@ -843,7 +848,7 @@ TRUSTED_CAPS_FILES = [
     CapsFile('/lib/x86_64-linux-gnu/libexec/kf5/start_kdeinit', '= cap_sys_resource+ep'),
 
     # kismet, https://www.kismetwireless.net/
-    # https://github.com/kismetwireless/kismet.git
+    # https://github.com/kismetwireless/kismet
     CapsFile('/bin/kismet_cap_freaklabs_zigbee', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/kismet_cap_kismetdb', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/kismet_cap_linux_bluetooth', '= cap_net_admin,cap_net_raw+eip'),
@@ -862,7 +867,7 @@ TRUSTED_CAPS_FILES = [
     CapsFile('/bin/kismet_cap_ti_cc_2540', '= cap_net_admin,cap_net_raw+eip'),
 
     # ksysguard, https://userbase.kde.org/KSysGuard
-    # https://cgit.kde.org/ksysguard.git/tree/
+    # https://github.com/KDE/ksysguard
     CapsFile('/lib/x86_64-linux-gnu/libexec/ksysguard/ksgrd_network_helper',
              '= cap_net_raw+ep'),
 
@@ -876,7 +881,7 @@ TRUSTED_CAPS_FILES = [
     LinkToCapsFile('/lib/nagios/plugins/check_rta_multi',
                    '/lib/nagios/plugins/check_icmp', '= cap_net_raw+ep'),
 
-    # mtr, http://www.bitwizard.nl/mtr/
+    # mtr, https://www.bitwizard.nl/mtr/
     # https://github.com/traviscross/mtr
     CapsFile('/bin/mtr', '= cap_net_raw+ep'),
     CapsFile('/bin/mtr-packet', '= cap_net_bind_service,cap_net_raw+ep'),
@@ -888,21 +893,21 @@ TRUSTED_CAPS_FILES = [
              '= cap_chown,cap_dac_override,cap_dac_read_search,cap_fowner,' +
              'cap_setpcap,cap_sys_admin,cap_audit_write+ep'),
 
-    # shadow, http://pkg-shadow.alioth.debian.org/
-    # https://github.com/shadow-maint/shadow
+    # shadow, https://github.com/shadow-maint/shadow
     CapsFile('/bin/newgidmap', '= cap_setgid+ep'),
     CapsFile('/bin/newuidmap', '= cap_setuid+ep'),
 
-    # spice-gtk3, http://spice-space.org
+    # spice-gtk3, https://spice-space.org/
+    # https://gitlab.freedesktop.org/spice/spice-gtk
     CapsFile('/lib/spice-client-glib-usb-acl-helper', 'cap_fowner=ep'),
 
-    # systemd, http://www.freedesktop.org/wiki/Software/systemd/
+    # systemd, https://www.freedesktop.org/wiki/Software/systemd/
     # https://github.com/systemd/systemd
     CapsFile('/bin/systemd-detect-virt',
              '= cap_dac_override,cap_sys_ptrace+ep'),
 
     # wireshark, https://www.wireshark.org/
-    # https://code.wireshark.org/review/gitweb?p=wireshark.git;a=tree
+    # https://gitlab.com/wireshark/wireshark
     # cap_dac_override is for usbmon, https://bugs.archlinux.org/task/44465
     CapsFile('/bin/dumpcap', '= cap_net_admin,cap_net_raw+eip'),
     CapsFile('/bin/dumpcap', '= cap_net_admin,cap_net_raw+ep'),
