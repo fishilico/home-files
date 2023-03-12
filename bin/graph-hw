@@ -766,10 +766,8 @@ def fill_vmbus_names(device_tree):
 # using bmf2mof from https://github.com/pali/bmfdec
 # and UUIDs found in:
 # - Linux kernel
-# - https://bitbucket.org/tuxedocomputers/clevo-xsm-wmi/src/
-#       37c470bc8c3c31c7487964c26861a4ee5969ff2b/module/clevo-xsm-wmi.c
-# - https://github.com/iksaif/thinkpad-wmi/blob/8818f69faddb315b76adcf1a2b44eab5faf48393/
-#       drivers/platform/x86/thinkpad-wmi.c
+# - https://bitbucket.org/tuxedocomputers/clevo-xsm-wmi/src/37c470bc8c3c31c7487964c26861a4ee5969ff2b/module/clevo-xsm-wmi.c  # noqa
+# - https://github.com/iksaif/thinkpad-wmi/blob/8818f69faddb315b76adcf1a2b44eab5faf48393/drivers/platform/x86/thinkpad-wmi.c  # noqa
 KNOWN_WMI_UUIDS = {
     '02314822-307C-4F66-BF0E-48AEAEB26CC8': 'Dell All-In-One WMI Event (Linux)',
     '05901221-D566-11D1-B2F0-00A0C9062910': 'BMOF (Embedded Binary Managed Object Format)',
@@ -1028,8 +1026,8 @@ def add_acpi_path_names(device_tree):
 # * https://www.kernel.org/doc/Documentation/acpi/namespace.txt
 # * https://www.kernel.org/doc/Documentation/PCI/acpi-info.txt
 # * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/acpi/acpi_pnp.c?h=v4.20
-# * https://docs.microsoft.com/en-gb/windows-hardware/drivers/hid/acpi-button-device
-# * http://download.microsoft.com/download/1/6/1/161ba512-40e2-4cc9-843a-923143f3456c/devids.txt
+# * https://learn.microsoft.com/en-gb/windows-hardware/drivers/hid/acpi-button-device
+# * https://download.microsoft.com/download/1/6/1/161ba512-40e2-4cc9-843a-923143f3456c/devids.txt
 #   (from https://uefi.org/PNP_ACPI_Registry )
 # * http://cvsweb.netbsd.org/bsdweb.cgi/src/sys/dev/acpi/acpidevs?rev=1.35
 # * https://github.com/acpica/acpica/blob/R01_08_19/source/common/ahids.c
@@ -1037,7 +1035,7 @@ def add_acpi_path_names(device_tree):
 # * /proc/acpi/*
 # * System Information Viewer (provides pnpdevs.txt):
 #   * http://rh-software.com/index_arc.html
-#   * https://chocolatey.org/packages/siv/5.36
+#   * https://community.chocolatey.org/packages/siv/5.36
 KNOWN_ACPI_DEVICES = {
     '10EC5640': 'Realtek I2S Audio Codec',  # Seen as \_SB_.I2C2.RTEK
 
@@ -1370,7 +1368,7 @@ KNOWN_ACPI_DEVICES = {
     'MSFT0101': 'Intel Platform Trust Technology (PTT) TPM 2.0',  # Documented as "TPM 2.0 Security Device"
     'MSFT0200': 'Microsoft Pluton Security Processor',  # Also MHSP0001
     'MSFT1111': '(Unknown HID Device related to Dell Touchpad)',  # Seen as \_SB_.PCI0.I2C0.TPD4
-    # https://docs.microsoft.com/en-us/windows/uwp/devices-sensors/enable-usermode-access : "devcon status *msft8000"
+    # https://learn.microsoft.com/en-us/windows/uwp/devices-sensors/enable-usermode-access : "devcon status *msft8000"
     'MSFT8000': 'Microsoft Resource Hub Proxy device (RHPX)',  # Seen as \_SB_.RHPX
 
     # NTC: nuvoton (https://www.nuvoton.com/)

@@ -26,10 +26,9 @@
 #   https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git/tree/login-utils/last.c
 #   https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git/tree/login-utils/utmpdump.c
 # - "w" from procps-ng
-#   https://gitlab.com/procps-ng/procps/blob/master/w.c
-#   https://gitlab.com/procps-ng/procps/blob/master/contrib/utmp.c
+#   https://gitlab.com/procps-ng/procps/-/blob/master/src/w.c
 # - "who" from coreutils
-#   http://git.savannah.gnu.org/cgit/coreutils.git/tree/src/who.c
+#   https://git.savannah.gnu.org/cgit/coreutils.git/tree/src/who.c
 #
 # All these tools use /var/run/utmp and /var/log/wtmp
 

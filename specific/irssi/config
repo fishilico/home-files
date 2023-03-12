@@ -76,7 +76,7 @@ aliases = {
   WC = "window close";
   WM = "window move";
   WN = "window new hide";
-  SV = "say Irssi $J ($V) - http://irssi.org/";
+  SV = "say Irssi $J ($V) - https://irssi.org/";
   GOTO = "sb goto";
   CHAT = "dcc chat";
   RUN = "SCRIPT LOAD";
@@ -122,7 +122,7 @@ statusbar = {
     prompt = "{prompt $[.15]itemname}";
     prompt_empty = "{prompt $winname}";
     topic = " $topic";
-    topic_empty = " Irssi v$J - http://irssi.org/help/";
+    topic_empty = " Irssi v$J - https://irssi.org/help/";
     # all of these treated specially, they're only displayed when needed
     lag = "{sb Lag: $0-}";
     act = "{sb Act: $0-}";

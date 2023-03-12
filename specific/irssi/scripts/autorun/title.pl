@@ -6,7 +6,7 @@ $VERSION = "3.2";
     name        => 'title',
     description => 'Display configurable title as XTerm title',
     license     => 'GNU GPL',
-    url         => 'http://irssi.dgl.cx/',
+    url         => 'https://dgl.cx/irssi/',
 );
 
 

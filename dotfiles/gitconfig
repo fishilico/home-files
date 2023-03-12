@@ -70,7 +70,7 @@
 	abbrev = 12
 	excludesfile = ~/.gitignore_global
 	# Git is not power-cut-safe by default:
-	# http://marc.info/?l=git&m=143489570403305&w=4
+	# https://marc.info/?l=git&m=143489570403305&w=4
 	#fsyncObjectFiles = yes
 	# ... replaced with "sync" since git 2.36.0
 	#sync = added

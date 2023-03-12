@@ -3,7 +3,7 @@
      Copyright 2012 Guillaume Le Maout
 
      Authors:  Guillaume Le Maout
-     Contact: http://addons.videolan.org/messages/?action=newmessage&username=exebetche
+     Contact: https://addons.videolan.org/messages/?action=newmessage&username=exebetche
 
      This program is free software; you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@
                     local p = {}
                     local playlistID = get_url_param( vlc.path, "list" )
                     local videoID = get_url_param( vlc.path, "v" )
-                    local playlistURL = "http://www.youtube.com/list_ajax?action_get_list=1&style=xml&list="..playlistID
+                    local playlistURL = "https://www.youtube.com/list_ajax?action_get_list=1&style=xml&list="..playlistID
                     local s = vlc.stream(playlistURL)
                     local playlistData = ""
                     local line = ""
@@ -63,7 +63,7 @@
 
                     for i, video in ipairs(playlist_parsed) do
                             local item = {}
-                            item.path = "http://www.youtube.com/watch?v="..video.encrypted_id.CDATA
+                            item.path = "https://www.youtube.com/watch?v="..video.encrypted_id.CDATA
                             item.title = video.title.CDATA
                             item.artist = video.author.CDATA
                             item.arturl = video.thumbnail.CDATA

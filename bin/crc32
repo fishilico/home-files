@@ -65,7 +65,7 @@ Examples:
 Documentation:
 * https://en.wikipedia.org/wiki/Cyclic_redundancy_check
   Wikipedia article, which gives some polynomials
-* http://git.sv.gnu.org/gitweb/?p=coreutils.git;a=blob;f=src/cksum.c;hb=HEAD
+* https://git.savannah.gnu.org/gitweb/?p=coreutils.git;a=blob;f=src/cksum.c;hb=HEAD
   cksum source code
 """
 import argparse

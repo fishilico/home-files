@@ -26,7 +26,7 @@
 #
 # Documentation:
 #   https://wiki.gentoo.org/wiki/IOMMU_SWIOTLB
-#   https://wiki.archlinux.org/index.php/PCI_passthrough_via_OVMF#Setting_up_IOMMU
+#   https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Setting_up_IOMMU
 #
 # The result of this script can be used to better understand the output of the
 # following commands from chipsec (https://github.com/chipsec/chipsec):

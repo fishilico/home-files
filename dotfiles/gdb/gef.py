@@ -1,4 +1,4 @@
-# Downloaded from https://github.com/hugsy/gef/raw/master/gef.py
+# Downloaded from https://github.com/hugsy/gef/blob/main/gef.py
 # Usage: gdb -ex 'source ~/.gdb/gef.py'
 #######################################################################################
 # GEF - Multi-Architecture GDB Enhanced Features for Exploiters & Reverse-Engineers

@@ -22,7 +22,7 @@
 # THE SOFTWARE.
 #
 # This script has been written based on what can be found on
-# https://wiki.archlinux.org/index.php/pacman_Tips
+# https://wiki.archlinux.org/title/Pacman/Tips_and_tricks
 
 tmp="$(mktemp -d "${TMPDIR-/tmp}/pacman-disowned-XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT

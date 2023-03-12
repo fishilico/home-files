@@ -64,7 +64,7 @@ This script does not use TCTI libraries but it implements their protocols:
 On Windows, the TPM can be accessed using TPM Base Services (TBS):
 
 * https://trustedcomputinggroup.org/resource/microsoft-tpm-base-services/
-* https://docs.microsoft.com/en-us/windows/win32/api/_tbs/
+* https://learn.microsoft.com/en-us/windows/win32/api/_tbs/
 * https://github.com/microsoft/TSS.MSR
 * https://github.com/tpm2-software/tpm2-tss/blob/3.1.0/src/tss2-tcti/tcti-tbs.c
 * C:/Windows/System32/tbs.dll (device \\??\\TPM)
@@ -757,7 +757,7 @@ class Tpm20Tag(enum.IntEnum):
 class Tpm20CommandCode(enum.IntEnum):
     """TPM_CC: command codes in TPM 2.0
 
-    From https://github.com/microsoft/ms-tpm-20-ref/blob/master/TPMCmd/tpm/include/TpmTypes.h
+    From https://github.com/microsoft/ms-tpm-20-ref/blob/main/TPMCmd/tpm/include/TpmTypes.h
     """
     TPM2_CC_ACT_SetTimeout = 0x00000198
     TPM2_CC_AC_GetCapability = 0x00000194
@@ -4411,7 +4411,7 @@ class LinuxTpmDevice(TpmDevice):
 class TbsResult(enum.IntEnum):
     """TBS_RESULT: result from TBS commands
 
-    https://docs.microsoft.com/en-us/windows/win32/tbs/tbs-return-codes
+    https://learn.microsoft.com/en-us/windows/win32/tbs/tbs-return-codes
     """
     TBS_SUCCESS = 0x0
     TBS_E_INTERNAL_ERROR = 0x80284001
@@ -4465,20 +4465,20 @@ class WindowsTbsDevice(TpmDevice):
         else:
             self.tbslib = ctypes.WinDLL('Tbs')
 
-        # https://docs.microsoft.com/en-us/windows/win32/api/tbs/nf-tbs-tbsi_context_create
+        # https://learn.microsoft.com/en-us/windows/win32/api/tbs/nf-tbs-tbsi_context_create
         self.tbslib.Tbsi_Context_Create.argtypes = (
             ctypes.POINTER(ctypes.c_uint),  # PCTBS_CONTEXT_PARAMS pContextParams
             ctypes.POINTER(ctypes.c_void_p),  # PTBS_HCONTEXT phContext
         )
         self.tbslib.Tbsi_Context_Create.restype = ctypes.c_uint  # TBS_RESULT
 
-        # https://docs.microsoft.com/en-us/windows/win32/api/tbs/nf-tbs-tbsip_context_close
+        # https://learn.microsoft.com/en-us/windows/win32/api/tbs/nf-tbs-tbsip_context_close
         self.tbslib.Tbsip_Context_Close.argtypes = (
             ctypes.c_void_p,  # TBS_HCONTEXT hContext
         )
         self.tbslib.Tbsip_Context_Close.restype = ctypes.c_uint  # TBS_RESULT
 
-        # https://docs.microsoft.com/en-us/windows/win32/api/tbs/nf-tbs-tbsip_submit_command
+        # https://learn.microsoft.com/en-us/windows/win32/api/tbs/nf-tbs-tbsip_submit_command
         self.tbslib.Tbsip_Submit_Command.argtypes = (
             ctypes.c_void_p,  # TBS_HCONTEXT hContext
             ctypes.c_uint,  # TBS_COMMAND_LOCALITY Locality
@@ -4491,7 +4491,7 @@ class WindowsTbsDevice(TpmDevice):
         self.tbslib.Tbsip_Submit_Command.restype = ctypes.c_uint  # TBS_RESULT
 
         # Create a struct TBS_CONTEXT_PARAMS2,
-        # cf. https://docs.microsoft.com/en-us/windows/win32/api/tbs/ns-tbs-tbs_context_params2
+        # cf. https://learn.microsoft.com/en-us/windows/win32/api/tbs/ns-tbs-tbs_context_params2
         #     typedef struct tdTBS_CONTEXT_PARAMS2 {
         #       UINT32 version;
         #       union {

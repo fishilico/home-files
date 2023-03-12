@@ -157,7 +157,7 @@ def main(argv=None):
     if os.name == 'nt':
         # Fix ANSI color in Windows 10 version 10.0.14393 (Windows Anniversary Update)
         # The initial console mode is 3.
-        # Documentation: https://docs.microsoft.com/en-us/windows/console/setconsolemode
+        # Documentation: https://learn.microsoft.com/en-us/windows/console/setconsolemode
         # Constants:
         # * STD_OUTPUT_HANDLE = (DWORD)-11 (in winbase.h)
         # * ENABLE_PROCESSED_OUTPUT = 0x0001

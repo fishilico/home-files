@@ -23,5 +23,5 @@
 #
 # Open a new Firefox tab in private mode
 # It can be used for example with Python's webbrower module:
-#    $ BROWSER=firefox-private python -m webbrowser -t "http://www.python.org"
+#    $ BROWSER=firefox-private python -m webbrowser -t "https://www.python.org"
 exec firefox --private-window "$@"

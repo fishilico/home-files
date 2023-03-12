@@ -25,7 +25,7 @@
 #
 # Installation procedure:
 #
-# * doc: https://wiki.archlinux.org/index.php/steam#Alternative_Flatpak_installation
+# * doc: https://wiki.archlinux.org/title/steam#Flatpak
 #
 # * commands:
 #     flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo

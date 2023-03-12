@@ -8,7 +8,7 @@ $VERSION = "1";
     name        => "Nick Color",
     description => "assign a different color for each nick",
     license	=> "Public Domain",
-    url		=> "http://irssi.org/",
+    url		=> "https://irssi.org/",
     changed	=> "2002-03-04T22:47+0100"
 );
 

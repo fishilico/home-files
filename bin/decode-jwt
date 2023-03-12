@@ -23,7 +23,7 @@
 """Decode a base64-encoded token, such as an OAuth JWT (JSON web token) value
 
 Documentation:
-* https://tools.ietf.org/html/rfc7519 JSON Web Token (JWT)
+* https://www.rfc-editor.org/rfc/rfc7519 JSON Web Token (JWT)
 * https://jwt.io/
 
 @author: Nicolas Iooss

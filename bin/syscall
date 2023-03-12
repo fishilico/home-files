@@ -24,7 +24,7 @@
 
 Similar project:
 * ausyscall (a program that lets you map syscall names and numbers) from audit:
-  https://people.redhat.com/sgrubb/audit
+  https://people.redhat.com/sgrubb/audit/
   https://github.com/linux-audit/audit-userspace/blob/master/tools/ausyscall/ausyscall.c
 
 @author: Nicolas Iooss
@@ -42,7 +42,7 @@ import webbrowser
 
 # Well-known locations of syscall C headers per architecture
 # Kernel locations are relative to /usr/src/linux or
-# https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/
+# https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/
 SC_INCLUDE_LOCATIONS = {
     'arm': (
         ('kernel', 'arch/arm/tools/syscall.tbl'),
@@ -539,7 +539,7 @@ def main(argv=None):
 
     # Open man pages
     if args.browser:
-        url_pattern = 'http://man7.org/linux/man-pages/man2/{0}.2.html'
+        url_pattern = 'https://man7.org/linux/man-pages/man2/{0}.2.html'
         for sc_nr in syscalls_list:
             # Take first name of aliases, as man pages are anyway linked
             url = url_pattern.format(sorted(nr2name[sc_nr])[0])

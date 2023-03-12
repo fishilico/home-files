@@ -28,7 +28,7 @@ This is similar to Gentoo's revdep-rebuild script, in a much less powerful way:
 * https://cgit.gentoo.org/proj/gentoolkit.git/tree/pym/gentoolkit/revdep_rebuild
 
 This is similar to Arch Linux's lddd script:
-* https://git.archlinux.org/devtools.git/tree/lddd.in
+* https://gitlab.archlinux.org/archlinux/devtools/-/blob/master/src/lddd.in
 
 In order to test loading the output files with symbol resolutions, ldd can be
 used with options --data-relocs and --function-relocs:
@@ -633,7 +633,7 @@ class ElfFile:
                 self.library_paths.insert(0, os.path.join(m.group(1), 'lib64', 'qt', 'lib'))
 
             # Microsoft's ODBC Driver for SQL Server uses its custom libraries
-            # https://docs.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-2017
+            # https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-2017
             m = re.match(r'^(/opt/microsoft/msodbcsql/lib64)/', path)
             if m:
                 self.library_paths.insert(0, m.group(1))

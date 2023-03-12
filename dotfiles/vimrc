@@ -4,9 +4,9 @@ scriptencoding utf-8
 " This file is mostly based on Gentoo's /etc/vim/vimrc and ArchLinux's
 " /usr/share/vim/vimfiles/archlinux.vim files, with other slight customizations.
 " https://github.com/tpope/vim-sensible contains some commons vim configuration.
-" http://vimawesome.com/ provides a list of vim plugins but none is used here.
-" http://www.tuppervim.org/ (French) lists some tips and Github projects.
-" http://dougblack.io/words/a-good-vimrc.html an explained vimrc configuration.
+" https://vimawesome.com/ provides a list of vim plugins but none is used here.
+" https://tuppervim.org/ (French) lists some tips and Github projects.
+" https://dougblack.io/words/a-good-vimrc.html an explained vimrc configuration.
 
 " General settings
 set nocompatible " Use Vim defaults instead of 100% vi compatibility
@@ -138,7 +138,7 @@ augroup usercommands
 augroup END
 
 " Transparent editing of gpg encrypted files.
-" http://vim.wikia.com/wiki/Edit_gpg_encrypted_files
+" https://vim.fandom.com/wiki/Edit_gpg_encrypted_files
 augroup encrypted
   autocmd!
   " Make sure nothing is written to ~/.viminfo while editing an encrypted file
@@ -190,7 +190,7 @@ if &t_Co > 2 || has("gui_running")
   let g:m_extra_whitespace = matchadd('ExtraWhitespace', '\s\+$')
 endif
 
-" Spell correction with vim7 (http://www.cs.swarthmore.edu/help/vim/vim7.html)
+" Spell correction with vim7 (https://www.cs.swarthmore.edu/help/vim/vim7.html)
 if has("spell")
   " toggle spelling with F4 key
   map <F4> :set spell!<CR><Bar>:echo "Spell Check: " . strpart("OffOn", 3 * &spell, 3)<CR>

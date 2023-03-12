@@ -35,9 +35,9 @@
 #    sudo pacman --noconfirm -Sw base base-devel
 #
 # makechrootpkg documentation:
-#    https://wiki.archlinux.org/index.php/DeveloperWiki:Building_in_a_Clean_Chroot
+#    https://wiki.archlinux.org/title/DeveloperWiki:Building_in_a_clean_chroot
 #
-# Similar project: https://fsquillace.github.io/junest-site/
+# Similar project: https://web.archive.org/web/20171106100539/https://fsquillace.github.io/junest-site/
 #   "The Arch Linux based distro that runs upon any Linux distros without root access"
 
 # Exit if a command fails
@@ -157,7 +157,7 @@ echo '#!/bin/true' | cat_script "$CHROOTDIR/bin/umount"
 
 # Make "env -i" preserve fakeroot and fakechroot variables, in order to be
 # compatible after commit
-# https://git.archlinux.org/devtools.git/commit/?id=578a62f1e0713b0df9722470146fb85fb819202c
+# https://gitlab.archlinux.org/archlinux/devtools/-/commit/578a62f1e0713b0df9722470146fb85fb819202c
 cat_script "$CHROOTDIR/bin/env" << EOF
 #!/bin/bash
 if [ "\$1" = '-i' ] ; then

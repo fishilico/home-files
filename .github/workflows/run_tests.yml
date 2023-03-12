@@ -1,8 +1,8 @@
 # Documentation on GitHub Actions:
 # * Workflow syntax for GitHub Actions
-#   https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions
+#   https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
 # * Building and testing Python
-#   https://docs.github.com/en/free-pro-team@latest/actions/guides/building-and-testing-python
+#   https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: Run tests
 

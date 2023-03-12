@@ -26,7 +26,7 @@
 #
 # Similar projects:
 # * dracut rdosreport tool:
-#   https://git.kernel.org/cgit/boot/dracut/dracut.git/tree/modules.d/99base/rdsosreport.sh
+#   https://git.kernel.org/pub/scm/boot/dracut/dracut.git/tree/modules.d/99base/rdsosreport.sh
 # * inxi, full featured CLI system information tool:
 #   https://github.com/smxi/inxi
 

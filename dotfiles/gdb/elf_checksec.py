@@ -23,7 +23,7 @@
 """Display various security settings for the currently debugged ELF file
 
 See also checksec script:
-http://www.trapkit.de/tools/checksec.html (.sh to download the script)
+https://www.trapkit.de/tools/checksec/
 https://github.com/slimm609/checksec.sh : updated version
 
 @author: Nicolas Iooss

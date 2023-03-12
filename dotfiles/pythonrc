@@ -1,4 +1,4 @@
-# Source: http://docs.python.org/2/tutorial/interactive.html
+# Source: https://web.archive.org/web/20230228073756/https://docs.python.org/2/tutorial/interactive.html
 # Please export PYTHONSTARTUP=~/.pythonrc to use Python completion
 import readline
 import rlcompleter  # noqa

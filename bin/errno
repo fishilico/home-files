@@ -34,11 +34,11 @@ Usage example:
 
 Here are some list of error numbers:
 * Linux kernel:
-  - https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/include/uapi/asm-generic/errno-base.h
-  - https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/include/uapi/asm-generic/errno.h
+  - https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/asm-generic/errno-base.h
+  - https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/asm-generic/errno.h
 
 * strace:
-  http://sourceforge.net/p/strace/code/ci/master/tree/linux/errnoent.h
+  https://github.com/strace/strace/blob/master/src/linux/generic/errnoent.h
 
 @author: Nicolas Iooss
 @license: MIT

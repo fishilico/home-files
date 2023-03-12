@@ -10,7 +10,7 @@ $VERSION = "1.14";
     name	=> 'Figlet',
     description	=> 'Safe figlet implementation (with color support!)',
     license	=> 'Public Domain',
-    url		=> 'http://juerd.nl/irssi/',
+    url		=> 'https://juerd.nl/site.plp/irssi',
     changed	=> 'Sun 10 Mar 14:46 CET 2002',
     changes	=> 'No more zombie processes',
 );

@@ -33,7 +33,7 @@
 #
 # Documentation:
 # - https://en.wikipedia.org/wiki/SOCKS
-# - https://tools.ietf.org/html/rfc1928 SOCKS Protocol Version 5 (March 1996)
+# - https://www.rfc-editor.org/rfc/rfc1928 SOCKS Protocol Version 5 (March 1996)
 
 # Default SOCKS port is 1080, but TOR uses 9050 by default
 SOCKS_PROXY_HOST="${SOCKS_PROXY_HOST:-127.0.0.1}"

@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# Run https://github.com/SecureAuthCorp/impacket in a podman container, to serve
+# Run https://github.com/fortra/impacket in a podman container, to serve
 # directories using the SMB protocol
 #
 # Usage:

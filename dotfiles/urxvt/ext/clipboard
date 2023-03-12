@@ -1,6 +1,6 @@
 #! perl -w
 # Author:   Bert Muennich
-# Website:  http://www.github.com/muennich/urxvt-perls
+# Website:  https://github.com/xyb3rt/urxvt-perls
 # License:  GPLv2
 
 # Use keyboard shortcuts to copy the selection to the clipboard and to paste

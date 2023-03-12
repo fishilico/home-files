@@ -27,7 +27,7 @@ $VERSION = "1.4";
     name        => 'rainbow',
     description => 'Prints colored text. Rather simple than sophisticated.',
     license     => 'GNU GPLv2 or later',
-    url         => 'http://irssi.atn.pl/',
+    url         => 'https://www.atn.pl/',
 );
 
 use Irssi;

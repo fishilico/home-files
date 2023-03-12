@@ -1,11 +1,11 @@
 ! X resources configuration file
 ! Load it with "xrdb ~/.Xresources"
 ! Query current configuration with "xrdb -query -all"
-! Arch Linux documentation: https://wiki.archlinux.org/index.php/X_resources
+! Arch Linux documentation: https://wiki.archlinux.org/title/X_resources
 !
 ! uxrvt documentations:
-! * Arch Linux https://wiki.archlinux.org/index.php/Rxvt-unicode
-! * Gentoo http://wiki.gentoo.org/wiki/Rxvt-unicode
+! * Arch Linux https://wiki.archlinux.org/title/Rxvt-unicode
+! * Gentoo https://wiki.gentoo.org/wiki/Rxvt-unicode
 
 ! Start in Unicode
 XTerm*utf8: 1
@@ -115,7 +115,7 @@ URxvt.keysym.Control-Right: \033[1;5C
 *URxvt*keysym.F3: \033OR
 *URxvt*keysym.F4: \033OS
 
-! Fix backspace key according to http://www.hypexr.org/linux_ruboff.php
+! Fix backspace key according to https://www.hypexr.org/linux_ruboff.php
 XTerm*ttyModes: erase ^?
 XTerm*VT100.Translations: \
         #override <Key>BackSpace: string(0x7f) \n\

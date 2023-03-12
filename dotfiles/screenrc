@@ -18,7 +18,7 @@ hardstatus string "%?%F%{= kG}%:%{= Wk}%? [$USER@%H] %n : %t"
 caption string "%{= g}[ %{G}${USER}@%H%{g} ][%= %{= w}%?%-Lw%?%{r}(%{W}%n*%f %t%?(%u)%?%{r})%{w}%?%+Lw%?%?%= %{g}][%{B} %d/%m %{W}%c:%s %{g}][%{Y}%l%{g}]%{=b C}%{W}"
 
 # Turn off ti/te entries (= smcup/rmcup) to keep screen content on log out
-# Source: http://www.shallowsky.com/linux/noaltscreen.html
+# Source: https://shallowsky.com/linux/noaltscreen.html
 #termcapinfo xterm* ti@:te@
 # Allow scrollback in xterm
 #termcap xterm* LP

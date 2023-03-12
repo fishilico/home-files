@@ -102,7 +102,7 @@ To cross-compile a project for Windows, from a system that has MinGW-w64:
     rustup target add i686-pc-windows-gnu
     cargo build --release --target i686-pc-windows-gnu
 
-    # If it fails, follow instructions from https://wiki.archlinux.org/index.php/Rust#Windows
+    # If it fails, follow instructions from https://wiki.archlinux.org/title/Rust#Windows
     for LIB in crt2.o dllcrt2.o libmsvcrt.a; do
         for CHANNELDIR in "$HOME/.rustup/toolchains/"*-linux-gnu/lib/rustlib/x86_64-pc-windows-gnu; do
             cp -v "/usr/x86_64-w64-mingw32/lib/$LIB" "$CHANNELDIR/lib/";

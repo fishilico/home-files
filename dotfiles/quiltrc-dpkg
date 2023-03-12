@@ -1,4 +1,4 @@
-# Source: http://www.debian.org/doc/manuals/maint-guide/modify.en.html
+# Source: https://www.debian.org/doc/manuals/maint-guide/modify.en.html
 # and https://wiki.debian.org/UsingQuilt
 d=.
 while [ ! -d "$d/debian" ] && [ "$(readlink -e $d)" != / ]

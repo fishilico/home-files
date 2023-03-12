@@ -17,7 +17,7 @@ $VERSION = "0.02";
     name        => "hilightwin",
     description => "Print hilighted messages to window named \"hilight\"",
     license     => "Public Domain",
-    url         => "http://irssi.org/",
+    url         => "https://irssi.org/",
     changed     => "Sun May 25 18:59:57 BST 2008"
 );
 

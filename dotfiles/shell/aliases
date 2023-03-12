@@ -380,7 +380,7 @@ if type alias > /dev/null 2>&1 ; then
     if command -v drill > /dev/null 2>&1 ; then
         if [ -r '/etc/trusted-key.key' ] ; then
             # Arch Linux package dnssec-anchors provides /etc/trusted-key.key
-            # https://www.archlinux.org/packages/core/any/dnssec-anchors/files/
+            # https://archlinux.org/packages/core/any/dnssec-anchors/files/
             # Fedora package bind-utils provides /etc/trusted-key.key
             alias dnssec-check='drill -TD -k /etc/trusted-key.key'
         elif [ -r '/usr/share/dns/root.key' ] ; then
