@@ -1020,12 +1020,13 @@ def add_acpi_path_names(device_tree):
 
 
 # Known ACPI device IDs, as described by:
-# * http://www.acpi.info/DOWNLOADS/ACPIspec50.pdf
+# * https://web.archive.org/web/20160312052257/http://www.acpi.info/DOWNLOADS/ACPIspec50.pdf
 # * https://uefi.org/sites/default/files/resources/ACPI_6_3_final_Jan30.pdf
 # * https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html
 # * https://www.kernel.org/doc/Documentation/acpi/namespace.txt
 # * https://www.kernel.org/doc/Documentation/PCI/acpi-info.txt
 # * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/acpi/acpi_pnp.c?h=v4.20
+# * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/tty/serial/8250/8250_pnp.c?h=v6.2
 # * https://learn.microsoft.com/en-gb/windows-hardware/drivers/hid/acpi-button-device
 # * https://download.microsoft.com/download/1/6/1/161ba512-40e2-4cc9-843a-923143f3456c/devids.txt
 #   (from https://uefi.org/PNP_ACPI_Registry )
@@ -1047,6 +1048,9 @@ KNOWN_ACPI_DEVICES = {
     '80860F16': 'Intel SD Card Controller (SD Host Controller)',  # Seen as \_SB_.SDHC
     '80860F28': 'Intel SST Audio DSP',  # Seen as \_SB_.LPEA
     '80860F41': 'Intel Atom Processor I2C Controller',  # Seen as \_SB_.I2C1, \_SB_.I2C2, etc.
+
+    # Archtek America Corp
+    'AAC000F': 'Archtek SmartLink Modem 3334BT',
 
     'ABCD0000': 'Dock',
 
@@ -1074,33 +1078,111 @@ KNOWN_ACPI_DEVICES = {
     'ACPI0016': 'Compute Express Link Host Bridge (CXL)',
     'ACPI0017': 'Compute Express Link Interconnect (CXL)',
 
+    # Anchor Datacomm BV
+    'ADC0001': 'SXPro 144 External Data Fax Modem',
+    'ADC0002': 'SXPro 288 External Data Fax Modem',
+
+    'ADS7183': 'AOpen FX-3D/Pro Radio',
+
+    'AEI0250': 'PROLiNK 1456VH ISA PnP K56flex Fax Modem',
+    'AEI1240': 'Actiontec ISA PNP 56K X2 Fax Modem',
+
+    'AKY1021': 'Rockwell 56K ACF II Fax+Data+Voice Modem',
+
+    # https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?h=v6.2&id=1d7002777a8fe8188caaa98d4a8eb4ed298fcdae
+    'ALI5123': 'ALi Fast Infrared Controller',
+
     # Alps Electric Company Ltd
     'ALP0001': 'ALPS Touchpad',  # Seen as \_SB_.PCI0.I2C1.TPD2
     'ALPS0001': 'ALPS Touchpad',  # Seen as \_SB_.PCI0.I2C4.TPD0
 
     'APP0001': 'Apple System Management Controller (SMC)',  # Seen as \_SB_.PCI0.SBRG.SMC_
+    'APP000B': 'Apple graphics mux',
 
     'ARMH0011': 'ARM PrimeCell UART (PL011 model)',
     'ARMH0061': 'ARM PrimeCell GPIO (PL061 model)',
 
+    'ASB16FD': 'AdLib NSC16',
+
+    # Atmel
+    'ATM1200': 'Atmel Trusted Platform Module (TPM)',
     'ATML1000': 'Atmel Touchscreen Controller',
 
+    # ALPS
+    'AUI0200': 'NX PAD PS/2 Port Mouse',
+
+    'AVM0900': 'Fritz!Card PnP',
+
+    'AZT3001': 'AZT1008',
+    'AZT4001': 'AZT3005 PnP Sound Device',
+
     # Broadcom
+    'BCM0101': 'Broadcom Trusted Platform Module (TPM)',
+    'BCM0102': 'Broadcom Trusted Platform Module (TPM)',
     'BCM2E20': 'Broadcom Serial Bus Driver over UART Bus Enumerator',  # \_SB_.PCI0.UA01.BTH2
     'BCM2F1A': 'Broadcom NFC SMBus Device',  # Seen as \_SB_.PCI0.SMBU.NFC_
     'BCM4752': 'Broadcom Integrated Multi-Constellation GNSS Receiver',  # Seen as \_SB_.PCI0.URT2.GPS1
 
-    'DELLABCE': 'Dell Airplane Mode Switch',
+    'BDP3336': 'Best Data Products Inc. Smart One 336F PnP Modem',
 
+    # Boca Research
+    'BRI0A49': 'Boca Complete Ofc Communicator 14.4 Data-FAX',
+    'BRI1400': 'Boca Research 33,600 ACF Modem',
+    'BRI3400': 'Boca 33.6 Kbps Internal FD34FSVD',
+
+    'CDC0001': 'Opl3-SAx',
+
+    # Computer Peripherals Inc
+    'CPI4050': 'EuroViVa CommCenter-33.6 SP',
+
+    'CPQA0D7': 'Compaq Enhanced PS/2 Keyboard',
+
+    'CSC0000': 'Crystal WDM Audio Codec IBM',
+    'CSC0001': 'CS4232',
+    'CSC000F': 'CS4236',
+    'CSC0100': 'Crystal PnP Audio System Codec IBM',
+    'CSC0101': 'CS4327',
+    'CSC0103': 'Crystal PnP Audio System MPU-401 Compatible',
+    'CSC0110': 'Crystal WDM Audio Control Registers',
+
+    # Creative Labs
+    'CTL3001': 'Creative Labs Phone Blaster 28.8 DSVD PnP Voice',
+    'CTL3011': 'Creative Labs Modem Blaster 28.8 DSVD PnP Voice',
+    'CTL7001': 'SB16',
+    'CTL7002': 'AWE64',
+    'CTL7005': 'Vibra16',
+
+    # Davicom
+    'DAV0336': 'Davicom ISA 33.6K Modem',
+
+    # Dell
+    'DELLABCE': 'Dell Airplane Mode Switch',
     'DLL05CB': 'Dell Mouse',
     'DLLK05CB': 'Samsung PS/2 Keyboard or Dell Latitude E7440 keyboard',
 
     'DMA0F28': 'Intel Audio DMA0',  # Seen as \_SB_.LPA2.ADMA
 
+    # Creative
+    'DMB1032': 'Creative Modem Blaster Flash56 DI5601-1',
+    'DMB2001': 'Creative Modem Blaster V.90 DI5660',
+
     # ELAN Microelectronics Corp.
     'ELAN1000': 'ELAN Touchpad',  # Seen as \_SB_.PCI0.I2C1.TPD0',
     'ELAN1001': 'ELAN Touch Panel',  # Seen as \_SB_.PCI0.I2C1.TPL1',
     'ELAN1010': 'ELAN Touchpad',  # Seen as \_SB_.PCI0.I2C1.TPD7',
+
+    'ENE0100': 'ENE CIR Infrared Receiver',
+    'ENE0200': 'ENE CIR Infrared Receiver',
+    'ENE0201': 'ENE CIR Infrared Receiver',
+    'ENE0202': 'ENE CIR Infrared Receiver',
+
+    'ENS2020': 'SoundscapeVIVO',
+
+    'ESS0001': 'ES1869',
+    'ESS0005': 'ES1878',
+    'ESS1869': 'ESS ESS1869 Audio',
+    'ESS1879': 'ESS ESS1879 Audio',
+    'ESS6880': 'ES688',
 
     'ETD0000': 'ELAN PS/2 Port Input Device',
     'ETD0400': 'Clevo ELAN PS/2 Port Smart-Pad',
@@ -1157,15 +1239,70 @@ KNOWN_ACPI_DEVICES = {
     'ETD0610': 'ELAN PS/2 Port Smart-Pad',
     'ETD0702': 'ELAN PS/2 Port Smart-Pad',
 
+    # E-Tech
+    'ETT0002': 'E-Tech CyberBULLET PC56RVP',
+
+    'FIT0002': 'Fintek CIR',
+
+    'FJC6000': 'Touchpad',
+    'FJC6001': 'Touchpad',
+
+    'FPI2002': 'Compaq touchscreen',
+
     # Synaptics Fingerprint Sensor
     'FS4304': 'Synaptics biometric fingerprint sensor',  # Seen as \_SB_.PCI0.SPI1.FPNT
 
+    # FUJITSU
+    'FUJ0202': 'Fujitsu 33600 PnP-I2 R',
+    'FUJ0205': 'Fujitsu FMV-FX431',
+    'FUJ0206': 'Fujitsu 33600 PnP-I4 R',
+    'FUJ0209': 'Fujitsu Fax Voice 33600 PNP-I5 R',
+    'FUJ02B1': 'Fujitsu CELSIUS H710 vPro',
+    'FUJ02B2': 'Fujitsu Stylistic 2300 touchscreen',
+    'FUJ02B3': 'Fujitsu Point 1600 Pen Tablet',
+    'FUJ02B4': 'Fujitsu Stylistic LT touchscreens',
+    'FUJ02B6': 'Passive Fujitsu Stylistic LT C-500 Pen',
+    'FUJ02B7': 'Passive Fujitsu Stylistic 3400 Pen Drivers',
+    'FUJ02B8': 'Passive Fujitsu Stylistic 3500',
+    'FUJ02B9': 'Passive Fujitsu Stylistic LT P-600',
+    'FUJ02BB': 'Fujitsu Stylistic ST4000 Tablet Pen Device',
+    'FUJ02BC': 'Passive Fujitsu Stylistic LT8xxP Tablet Pen Device',
+    'FUJ02BD': 'Fujitsu Stylistic ST4000 Tablet PC Buttons',
+    'FUJ02E5': 'Fujitsu Wacom Tablet PC device',
+    'FUJ02E6': 'Fujitsu P-series tablet PC device',
+    'FUJ02E7': 'Fujitsu Wacom 2FGT Tablet PC device',
+    'FUJ02E9': 'Fujitsu Wacom 1FGT Tablet PC device',
+
+    'GIC1000': 'General Instruments SB1000',
+
+    'GIM0100': 'Guillemot Turtlebeach something appears to be cs4232 compatible',
+
+    # Archtek America Corp.
+    'GVC000F': 'Archtek SmartLink Modem 3334BT',
+    'GVC0303': 'Archtek SmartLink Modem 3334BRV 33.6K Data Fax Voice',
+
+    # Hayes
+    'HAY0001': 'Hayes Optima 288 V.34-V.FC + FAX + Voice',
+    'HAY000C': 'Hayes Optima 336 V.34 + FAX + Voice',
+    'HAY000D': 'Hayes Optima 336B V.34 + FAX + Voice',
+    'HAY5670': 'Hayes Accura 56K Ext Fax Modem',
+    'HAY5674': 'Hayes Accura 56K Ext Fax Modem',
+    'HAY5675': 'Hayes Accura 56K Fax Modem',
+    'HAYF000': 'Hayes 288, V.34 + FAX',
+    'HAYF001': 'Hayes Optima 288 V.34 + FAX + Voice,',
+
     'HPQ0004': 'Hewlett-Packard 3D DriveGuard accelerometer',
+
+    'HWPC224': 'HP Fast Infrared Port',
 
     'HYPER_V_GEN_COUN': 'Microsoft Hyper-V Generation Counter',
     'HYPER_V_GEN_COUNTER_V1': 'Microsoft Hyper-V Generation Counter v1',
 
+    # IBM
+    'IBM0012': 'CS4232',
+    'IBM0033': 'IBM Thinkpad 701 Internal Modem Voice',
     'IBM0068': 'IBM Hotkey HID',
+    'IBM0071': 'IBM ThinkPad Fast Infrared Port',
     'IBM0079': 'IBM Docking Station',
 
     'ICO0102': 'Intel Trusted Platform Module (TPM)',
@@ -1287,8 +1424,30 @@ KNOWN_ACPI_DEVICES = {
     # * \_SB_.PCI0.LPC0.KCS_ on a HP server (for iLO)
     'IPI0001': 'Intelligent Platform Management Interface (IPMI)',
 
-    'ITE8708': 'ITECIR Infrared Receiver (EC)',  # Seen as \_SB_.PCI0.SBRG.CIR_
+    'ITE8704': 'ITECIR Infrared Receiver',
+    'ITE8708': 'ITECIR Infrared Receiver (EC), Bridged IT8512',  # Seen as \_SB_.PCI0.SBRG.CIR_
+    'ITE8709': 'ITECIR Infrared Receiver (EC PMC), SRAM-Bridged IT8512',
+    'ITE8713': 'ITECIR Infrared Receiver (SIO2)',
 
+    # Intertex
+    'IXDC801': 'Intertex 28k8 33k6 Voice EXT',
+    'IXDC901': 'Intertex 33k6 56k Voice EXT',
+    'IXDD801': 'Intertex 28k8 33k6 Voice SP EXT',
+    'IXDD901': 'Intertex 33k6 56k Voice SP EXT',
+    'IXDF401': 'Intertex 28k8 33k6 Voice SP INT',
+    'IXDF801': 'Intertex 28k8 33k6 Voice SP EXT',
+    'IXDF901': 'Intertex 33k6 56k Voice SP EXT',
+
+    # Kortex International
+    'KOR4522': 'KORTEX 28800 Externe',
+    'KORF661': 'KXPro 33.6 Vocal ASVD',
+
+    # Lasat
+    'LAS4040': 'LASAT Internet 33600',
+    'LAS4540': 'Lasat Safire 560',
+    'LAS5440': 'Lasat Safire 336 ',
+
+    # Lenovo
     'LEN0017': 'Synaptics touchpad for Lenovo',
     'LEN0018': 'Synaptics touchpad for Lenovo',
     'LEN0019': 'Synaptics touchpad for Lenovo',
@@ -1340,8 +1499,6 @@ KNOWN_ACPI_DEVICES = {
     'LEN200F': 'Synaptics touchpad for Lenovo T450s',
     'LEN205B': 'Synaptics Pointing Device for Lenovo',  # Seen as \_SB_.PCI0.LPCB.MOU_
 
-    'LPE0F28': 'Intel(R) SST Audio device',  # Seen as \_SB_.LPA2
-
     # Linaro ACPI Registry
     'LNRO0003': 'Linaro smc91x',
     'LNRO0005': 'Linaro Virtio MMIO device',  # Seen on AArch64 QEMU virtual machine
@@ -1367,6 +1524,41 @@ KNOWN_ACPI_DEVICES = {
     'LNXTHERM': 'Thermal Zone',
     'LNXVIDEO': 'Video Controller',
 
+    'LPE0F28': 'Intel(R) SST Audio device',  # Seen as \_SB_.LPA2
+
+    'LTS0001': 'LG C1 EXPRESS DUAL (C1-PB11A3) touch screen (actually a FUJ02E6 in disguise)',
+
+    'MFRad13': 'tuner subdevice of SF16-FMD2',
+
+    # Microcom, Inc.
+    'MNP0281': 'Microcom TravelPorte FAST V.34',
+    'MNP0336': 'Microcom DeskPorte V.34 FAST or FAST+',
+    'MNP0339': 'Microcom DeskPorte FAST EP 28.8',
+    'MNP0342': 'Microcom DeskPorte 28.8P',
+    'MNP0500': 'Microcom DeskPorte FAST ES 28.8',
+    'MNP0501': 'Microcom DeskPorte FAST ES 28.8',
+    'MNP0502': 'Microcom DeskPorte 28.8S Internal',
+
+    # Motorola
+    'MOT1105': 'Motorola BitSURFR',
+    'MOT1111': 'Motorola TA210',
+    'MOT1114': 'Motorola HMTA 200 (ISDN)',
+    'MOT1115': 'Motorola BitSURFR',
+    'MOT1190': 'Motorola Lifestyle 28.8 Internal',
+    'MOT1501': 'Motorola V.3400',
+    'MOT1502': 'Motorola Lifestyle 28.8 V.34',
+    'MOT1505': 'Motorola Power 28.8 V.34',
+    'MOT1509': 'Motorola ModemSURFR External 28.8',
+    'MOT150A': 'Motorola Premier 33.6 Desktop',
+    'MOT150F': 'Motorola VoiceSURFR 56K External',
+    'MOT1510': 'Motorola ModemSURFR 56K External',
+    'MOT1550': 'Motorola ModemSURFR 56K Internal',
+    'MOT1560': 'Motorola ModemSURFR Internal 28.8',
+    'MOT1580': 'Motorola Premier 33.6 Internal',
+    'MOT15B0': 'Motorola OnlineSURFR 28.8 Internal',
+    'MOT15F0': 'Motorola VoiceSURFR 56K Internal',
+
+    # Microsoft
     # Seen as \_SB_.PCI0.LPCB.PS2K and \_SB_.PCI0.I2C1.TPD1
     'MSFT0001': 'PS/2 Keyboard (106 Keys Ctrl+Caps) Device for Dell',
     'MSFT0002': 'Touchpad (HID Protocol Device) for Dell',  # Seen as \_SB_.PCI0.I2C1.TPD8
@@ -1377,8 +1569,25 @@ KNOWN_ACPI_DEVICES = {
     # https://learn.microsoft.com/en-us/windows/uwp/devices-sensors/enable-usermode-access : "devcon status *msft8000"
     'MSFT8000': 'Microsoft Resource Hub Proxy device (RHPX)',  # Seen as \_SB_.RHPX
 
+    'MSM0C24': 'ADS Cadet AM/FM Radio Card',
+
+    # Com 1
+    'MVX00A1': 'Deskline K56 Phone System',
+    'MVX00F2': 'PC Rider K56 Phone System',
+
+    'nEC8241': 'NEC 98NOTE SPEAKER PHONE FAX MODEM(33600bps)',
+
+    'NMX2210': 'Gateway Solo 2500',
+
+    # National
+    'NSC0800': 'National Semiconductor PC87307/PC97307 watchdog component',
+    'NSC1200': 'Winbond Trusted Platform Module (TPM)',
+    'NSC6001': 'IrDA Fast Infrared Port',
+
     # NTC: nuvoton (https://www.nuvoton.com/)
     'NTC0702': 'nuvoton SafeKeeper TPM',  # NPCT75x0 (nuvoton SafeKeeper TPM 2.0) seen as \_SB_.TPM_
+
+    'NTN0530': "Nuvoton CIR",
 
     'NTRG0001': 'Touchscreen',  # Seen as \_SB_.PCI0.I2C1.TPL2
 
@@ -1388,9 +1597,13 @@ KNOWN_ACPI_DEVICES = {
     'NXP6020': 'NXP NFC',
     'NXP6022': 'NXP NFC',
 
+    'OPT0001': 'OPTi Audio16',
+
     'OVTI8856': 'Camera Sensor ov8856',  # Seen as \_SB_.PCI0.LNK2
     'OVTI9234': 'Camera Sensor ov9234',  # Seen as \_SB_.PCI0.LNK1 and \_SB_.PCI0.LNK3
     'OVTIF860': 'Camera Sensor ovF860',  # Seen as \_SB_.PCI0.LNK0, Linux driver IPU3 (Image Processing Unit 3)
+
+    'PMC2430': 'Pace 56 Voice Internal Plug & Play Modem',
 
     # PNP0xxx are system devices
     'PNP0000': 'Programmable Interrupt Controller (ISA 8259 PIC)',
@@ -1579,6 +1792,11 @@ KNOWN_ACPI_DEVICES = {
     'PNP0FFC': 'Reserved (temporarily) by Microsoft Kernel team',
     'PNP0FFF': 'Reserved by Microsoft Systems (SDA Standard Compliant SD Host Controller Vendor)',
 
+    'PNP2000': 'Standard PCMCIA Card Modem',
+
+    # Intermec
+    'PNP4972': 'Intermec CV60 touchscreen port',
+
     # PNP8xxx are network adapters
     'PNP8001': 'Novell/Anthem NE3200',
     'PNP8004': 'Compaq NE3200',
@@ -1587,8 +1805,8 @@ KNOWN_ACPI_DEVICES = {
     'PNP8065': 'Ungermann-Bass NIUps or NIUps/EOTP',
     'PNP8072': 'DEC (DE211) EtherWorks MC/TP',
     'PNP8073': 'DEC (DE212) EtherWorks MC/TP_BNC',
-    'PNP8078': 'DCA 10 Mb MCA',
     'PNP8074': 'HP MC LAN Adapter/16 TP (PC27246)',
+    'PNP8078': 'DCA 10 Mb MCA',
     'PNP80C9': 'IBM Token Ring',
     'PNP80CA': 'IBM Token Ring II',
     'PNP80CB': 'IBM Token Ring II/Short',
@@ -1747,6 +1965,24 @@ KNOWN_ACPI_DEVICES = {
     # PNPCxxx and PNPDxxx are modems
     'PNPC000': 'Compaq 14400 Modem (TBD)',
     'PNPC001': 'Compaq 2400/9600 Modem (TBD)',
+    'PNPC031': 'Dial-Up Networking Serial Cable between 2 PCs',
+    'PNPC032': 'Dial-Up Networking Parallel Cable between 2 PCs',
+    'PNPC100': 'Standard 9600 bps Modem',
+    'PNPC101': 'Standard 14400 bps Modem',
+    'PNPC102': 'Standard 28800 bps Modem',
+    'PNPC103': 'Standard Modem',
+    'PNPC104': 'Standard 9600 bps Modem',
+    'PNPC105': 'Standard 14400 bps Modem',
+    'PNPC106': 'Standard 28800 bps Modem',
+    'PNPC107': 'Standard Modem',
+    'PNPC108': 'Standard 9600 bps Modem',
+    'PNPC109': 'Standard 14400 bps Modem',
+    'PNPC10A': 'Standard 28800 bps Modem',
+    'PNPC10B': 'Standard Modem',
+    'PNPC10C': 'Standard 9600 bps Modem',
+    'PNPC10D': 'Standard 14400 bps Modem',
+    'PNPC10E': 'Standard 28800 bps Modem',
+    'PNPC10F': 'Standard Modem',
 
     'PRP00001': 'Generic Container Device',  # Share _CID=PNP0A05, seen as \_SB_.PCI0.HDAS.SNDW
 
@@ -1754,11 +1990,31 @@ KNOWN_ACPI_DEVICES = {
     'QEMU0002': 'QEMU\'s Firmware Configuration',
     'QEMUVGID': 'QEMU Virtual Machine Generation ID',  # Compatible with _CID=VM_Gen_Counter
 
+    # Rockwell
+    'ROK0030': ' Rockwell Modular Technology 33.6 DPF Internal',
+
+    # Kortex International
+    'ROK0100': 'KORTEX 14400 Externe',
+    'ROK4120': 'Rockwell 28.8',
+
+    # Viking Components, Inc
+    'ROK4920': 'Viking 28.8 INTERNAL Fax+Data+Voice',
+
+    # Rockwell British Telecom Modular Technology
+    'RSS00A0': 'Rockwell BT Modular Technology 33.6 External',
+    'RSS00B0': 'Leadtek WinSurf K56SVD V90+K56Flex External Modem',
+    'RSS0161': 'Leadtek WinSurf K56SVD Internal Modem',
+    'RSS0240': 'Leadtek WinSurf K56SVD External Modem',
+    'RSS0250': 'Leadtek WinSurf K56SVD Internal Modem',  # in Linux: K56 par,VV,Voice,Speakphone,AudioSpan,PnP
+    'RSS0262': 'Leadtek WinSurf K56SVD V90+K56Flex Internal Modem',  # in Linux: Viking 56K FAX INT
+
     'RTL8723': 'Realtek Wireless Controller',
 
     'SKTD000': 'Intel NFC Device',
 
     'SMB0349': 'Charger',
+
+    'SMCF010': 'SMSC IrCC SIR/FIR Fast Infrared',
 
     # STMicroelectronics
     'SMO1200': 'STMicroelectronics Trusted Platform Module',  # Seen as \_SB_.PCI0.LPC_.TPM_
@@ -2035,22 +2291,77 @@ KNOWN_ACPI_DEVICES = {
     'STU1B01': 'Finger Sensing Pad',
     'STU1B02': 'Finger Sensing Pad',
 
+    # SupraExpress
+    'SUP1310': 'SupraExpress 28.8 Data/Fax PnP modem',
+    'SUP1381': 'SupraExpress 336i PnP Voice Modem',
+    'SUP1421': 'SupraExpress 33.6 Data/Fax PnP modem',
+    'SUP1590': 'SupraExpress 33.6 Data/Fax PnP modem',
+    'SUP1620': 'SupraExpress 336i Sp ASVD',
+    'SUP1760': 'SupraExpress 33.6 Data/Fax PnP modem',
+    'SUP2171': 'SupraExpress 56i Sp Intl',
+
+    # Synaptics
     'SYN0159': 'Finger Sensing Pad',
+    'SYN0801': 'Synaptics SMBus Touchpad',
     'SYN0A01': 'Finger Sensing Pad',
     'SYN0A06': 'Finger Sensing Pad',
     'SYN1B01': 'Finger Sensing Pad',
     'SYN1B1C': 'Finger Sensing Pad',
 
+    # 3Com
+    'TCM5090': '3Com Etherlink III (TP)',
+    'TCM5091': '3Com Etherlink III',
+    'TCM5094': '3Com Etherlink III (combo)',
+    'TCM5095': '3Com Etherlink III (TPO)',
+    'TCM5098': '3Com Etherlink III (TPC)',
+
+    # Phoebe Micro
+    'TEX0011': 'Phoebe Micro 33.6 Data Fax 1433VQH',
+
+    # Archtek America Corp.
+    'UAC000F': 'Archtek SmartLink Modem 3334BT',
+
     'USBC000': 'USB Type C',
+
+    # 3Com Corp.
+    'USR0000': 'Gateway Telepath IIvi 33.6',
+    'USR0002': 'U.S. Robotics Sporster 33.6K Fax INT',
+    'USR0004': 'Sportster Vi 14.4 PnP FAX Voicemail',
+    'USR0006': 'U.S. Robotics 33.6K Voice INT',
+    'USR0007': 'U.S. Robotics 33.6K Voice EXT',
+    'USR0009': 'U.S. Robotics Courier V.Everything INT',
+    'USR2002': 'U.S. Robotics 33.6K Voice INT',
+    'USR2070': 'U.S. Robotics 56K Voice INT',
+    'USR2080': 'U.S. Robotics 56K Voice EXT',
+    'USR3031': 'U.S. Robotics 56K FAX INT',
+    'USR3050': 'U.S. Robotics 56K FAX INT',
+    'USR3070': 'U.S. Robotics 56K Voice INT',
+    'USR3080': 'U.S. Robotics 56K Voice EXT',
+    'USR3090': 'U.S. Robotics 56K Voice INT',
+    'USR9100': 'U.S. Robotics 56K Message ',
+    'USR9160': 'U.S. Robotics 56K FAX EXT',
+    'USR9170': 'U.S. Robotics 56K FAX INT',
+    'USR9180': 'U.S. Robotics 56K Voice EXT',
+    'USR9190': 'U.S. Robotics 56K Voice INT',
 
     'VMBUS': 'Microsoft Hyper-V Virtual Machine Bus',
 
+    'WCI0003': "Rockwell's (PORALiNK) 33600 INT",
+
     # Wacom
+    # WACFxxx Wacom tablets
     'WCOM508E': 'Wacom Touch panel',  # Seen as \_SB_.PCI0.I2C7.TPL1
 
     # Winbond
     'WEC0001': 'Winbond LED',  # Seen as \_SB_.PCI0.LPCB.WPCN.LD15
+    'WEC0517': 'Winbond Secure Digital Storage (SD/MMC) Device',
+    'WEC0518': 'Winbond Secure Digital Storage (SD/MMC) Device',
+    'WEC0530': 'Nuvoton CIR',
     'WEC1022': 'Winbond CIR Transceiver',  # Seen as \_SB_.PCI0.LPCB.WPCN.ECIR
+
+    'YMH0006': 'YAMAHA Opl3-SA',
+    'YMH0021': 'YAMAHA OPL3-SAx WDM',
+    'YMH0022': 'YAMAHA Opl3-SAx',
 }
 
 # ACPI device IDs that have been seen but are not known
