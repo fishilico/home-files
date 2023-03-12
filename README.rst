@@ -50,14 +50,6 @@ Some commands
     ./run_tests
 
 
-`Travis-CI`_ status
--------------------
-
-.. _Travis-CI: https://travis-ci.org/
-
-.. image:: https://travis-ci.org/fishilico/home-files.png?branch=master
-  :target: https://travis-ci.org/fishilico/home-files
-
 `Circle-CI`_ status
 -------------------
 
