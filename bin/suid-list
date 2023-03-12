@@ -556,10 +556,6 @@ TRUSTED_SGID_FILES = [
     SuidFile('/lib64/misc/utempter/utempter', groups=('utmp', )),
     SuidFile('/lib/[a-zA-Z0-9_]+-linux-gnu/utempter/utempter', groups=('utmp', )),
 
-    # lockdev, https://alioth.debian.org/projects/lockdev/
-    # https://alioth.debian.org/plugins/scmgit/cgi-bin/gitweb.cgi?p=lockdev/lockdev.git;a=tree
-    SuidFile('/s?bin/lockdev', groups=('lock', )),
-
     # lockfile-progs, https://packages.qa.debian.org/l/lockfile-progs.html
     # https://sources.debian.net/src/lockfile-progs/
     SuidFile('/bin/mail-lock', groups=('mail', )),
@@ -771,6 +767,15 @@ KNOWN_SUID_FILES = [
     SuidFile('/lib/vmware/bin/vmware-vmx-stats',
              owners=('root', ), groups=('root', )),
 ]
+
+KNOWN_SGID_FILES = [
+    # lockdev, https://tracker.debian.org/pkg/lockdev
+    # https://web.archive.org/web/20170708233739/https://alioth.debian.org/projects/lockdev/
+    # Removed from Debian on 2016-01-08: https://tracker.debian.org/news/739011/lockdev-removed-from-testing/
+    SuidFile('/s?bin/lockdev', groups=('lock', )),
+]
+# Sanity check
+assert all(x.owners is None for x in TRUSTED_SGID_FILES)
 
 # Define similar things for files with capabilities
 # The text description of capabilities is explained in cap_to_text manpage.
@@ -997,6 +1002,10 @@ def analyze_suid_file(filepath, realpath, owner, group):
         return True
     elif any(known.is_match(filepath, realpath, owner, group)
              for known in KNOWN_SUID_FILES):
+        logger.warning("known but not-so-trusted %s", desc)
+        return True
+    elif any(known.is_match(filepath, realpath, owner, group)
+             for known in KNOWN_SGID_FILES):
         logger.warning("known but not-so-trusted %s", desc)
         return True
 
