@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2015-2023 Nicolas Iooss
@@ -145,7 +145,7 @@ def verify_py(filepath):
     """Verify the header of a python file"""
     with io.open(filepath, 'r', encoding='utf-8') as curfile:
         firstline = curfile.readline().rstrip()
-        if not re.match(r'#!/usr/bin/env python[23]?$', firstline):
+        if not re.match(r'#!/usr/bin/env python3$', firstline):
             raise CheckError("bad python shebang: {}".format(firstline))
 
         # While at it, verify coding:utf8
