@@ -31,15 +31,15 @@ set -e
 mkdir -p "$HOME/home-ghidra"
 
 # Copy information from https://github.com/NationalSecurityAgency/ghidra/releases
-ZIPNAME='ghidra_10.1.5_PUBLIC_20220519.zip'
-SHA256='17db4ba7d411d11b00d1638f163ab5d61ef38712cd68e462eb8c855ec5cfb5ed'
+ZIPNAME='ghidra_10.2.3_PUBLIC_20230208.zip'
+SHA256='daf4d85ec1a8ca55bf766e97ec43a14b519cbd1060168e4ec45d429d23c31c38'
 VERSION="$(printf %s "$ZIPNAME" | cut -d_ -f2)"
 
 # Build a container for Ghidra from the latest release
 build_container_from_release() {
     # Update the base image
-    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/openjdk:16-slim)
-    podman pull docker.io/library/openjdk:16-slim
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/openjdk:17-slim)
+    podman pull docker.io/library/openjdk:17-slim
     for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
         if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
             echo "Removing old podman base image ${OLD_BASE_IMAGE}"
@@ -57,7 +57,7 @@ build_container_from_release() {
     GHIDRA_USER_ID="$(id -u)"
 
     podman build -t "localhost/podman-ghidra:$VERSION" -f /dev/stdin << EOF
-FROM docker.io/library/openjdk:16-slim
+FROM docker.io/library/openjdk:17-slim
 
 # Create our own launcher instead of using ghidraRun, in order to launch Ghidra in foreground
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -93,8 +93,8 @@ EOF
 # Build a container for Ghidra using some patches
 build_container_with_patches() {
     # Update the base image
-    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/openjdk:16-slim)
-    podman pull docker.io/library/openjdk:16-slim
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/openjdk:17-slim)
+    podman pull docker.io/library/openjdk:17-slim
     for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
         if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
             echo "Removing old podman base image ${OLD_BASE_IMAGE}"
@@ -114,10 +114,10 @@ build_container_with_patches() {
     podman build -t "localhost/podman-ghidra:$VERSION" -f /dev/stdin << EOF
 # Use the same image as the "run" stage, in order to use the same C++ library.
 # Otherwise, when using docker.io/library/gradle:6.9-jdk11 (Ubuntu 20.04) when
-# building and docker.io/library/openjdk:16-slim (Debian 10) when running,
+# building and docker.io/library/openjdk:17-slim (Debian 10) when running,
 # /opt/ghidra_10.0.1_DEV/Ghidra/Features/Decompiler/os/linux64/decompile is
 # missing version GLIBCXX_3.4.26 from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.
-FROM docker.io/library/openjdk:16-slim as stage0
+FROM docker.io/library/openjdk:17-slim as stage0
 
 # Add custom patch
 # sed "s:\(.*\):echo '\1' >> /custom.patch \&\& \\\\:" exported.patch
@@ -173,6 +173,7 @@ RUN \
 # * https://github.com/niooss-ledger/ghidra/commits/sparc-dwarf-registers (for Sparc 32 DWARF register definitions ; this needs more tests before being submitted as Pull Request)
 # * https://github.com/NationalSecurityAgency/ghidra/pull/1778 (for NDS32 files)
 # * https://github.com/NationalSecurityAgency/ghidra/pull/4103 (for WebAssembly files)
+#   * https://github.com/nneonneo/ghidra-wasm-plugin/commit/361b82e565a4916c5b2473844182a9ad5fafcdb4 (fix for Ghidra 10.2)
 # * https://github.com/threatrack/ghidra-patchdiff-correlator extension, to have bulk correlators in Ghidra Version Tracking
 # * https://github.com/google/binexport extension, to enable using BinDiff
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -215,6 +216,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     sed "s/compile project(':Decompiler')//" -i Ghidra/Processors/NDS32/build.gradle && \
     curl -sSL --output 4103.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/4103.patch && \
     patch -Np1 -i 4103.patch && \
+    curl -sSL --output 4103-fix-for-10.2.patch https://github.com/nneonneo/ghidra-wasm-plugin/commit/361b82e565a4916c5b2473844182a9ad5fafcdb4.patch && \
+    patch --directory=Ghidra/Processors/WebAssembly -Np1 < 4103-fix-for-10.2.patch && \
     patch -Np1 -i /custom.patch && \
     rm /opt/ghidra/Ghidra/Extensions/SleighDevTools/pcodetest/pcode_defs.py.orig && \
     gradle -I gradle/support/fetchDependencies.gradle init && \
@@ -234,7 +237,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     rm -rf /opt/binexport
 
 # Second stage, without build dependencies
-FROM docker.io/library/openjdk:16-slim
+FROM docker.io/library/openjdk:17-slim
 
 ENV GHIDRA_INSTALL_DIR=/opt/ghidra_${VERSION}_DEV
 
@@ -260,7 +263,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     rm -rf /var/lib/apt/lists/ /var/log/* && \
     useradd --uid "${GHIDRA_USER_ID}" --user-group --no-create-home user && \
     echo '#!/bin/sh' > /usr/local/bin/ghidra && \
-    echo 'exec "/opt/ghidra_${VERSION}_DEV/support/launch.sh" fg Ghidra 2G "" ghidra.GhidraRun "\$@"' >> /usr/local/bin/ghidra && \
+    echo 'exec "/opt/ghidra_${VERSION}_DEV/support/launch.sh" fg jdk Ghidra 2G "" ghidra.GhidraRun "\$@"' >> /usr/local/bin/ghidra && \
     chmod +x /usr/local/bin/ghidra && \
     ln -s "/opt/ghidra_${VERSION}_DEV/support/sleigh" /usr/local/bin/sleigh && \
     echo "VMARGS=-Duser.name=${GHIDRA_USER_NAME}" >> "/opt/ghidra_${VERSION}_DEV/support/launch.properties"
