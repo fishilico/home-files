@@ -437,15 +437,17 @@ public_ipv6_dns() {
     fi
 }
 public_ipv4_https() {
+    # https://myipv4.p1.opendns.com/get_my_ip works but the domain resolution sometimes fail
     # https://ipv4.wtfismyip.com/json is also possible
     # https://ipinfo.io/ip too
     # https://checkip.amazonaws.com too
     # https://ifconfig.me/ too
-    curl --silent -4 'https://myipv4.p1.opendns.com/get_my_ip' | sed 's/^{"ip":"\([0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\)"}$/\1/'
+    curl --silent -4 --resolve myipv4.p1.opendns.com:443:67.215.70.201 'https://myipv4.p1.opendns.com/get_my_ip' | sed 's/^{"ip":"\([0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\)"}$/\1/'
 }
 public_ipv6_https() {
+    # https://myipv6.p1.opendns.com/get_my_ip works but the domain resolution sometimes fail
     # https://ipv6.wtfismyip.com/json is also possible
-    curl --silent -6 'https://myipv6.p1.opendns.com/get_my_ip' | sed 's/^{"ip":"\([0-9a-f:]\+\)"}$/\1/'
+    curl --silent -6 --resolve myipv6.p1.opendns.com:443:2620:0:cc6:11::2 'https://myipv6.p1.opendns.com/get_my_ip' | sed 's/^{"ip":"\([0-9a-f:]\+\)"}$/\1/'
 }
 # Test the functions above
 all_public_ips() {
