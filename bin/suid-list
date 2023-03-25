@@ -605,6 +605,8 @@ TRUSTED_SGID_FILES = [
     # https://git.sesse.net/?p=plocate;a=tree
     LinkToSuidFile('/bin/locate', '/bin/plocate', groups=('plocate', )),
     SuidFile('/bin/plocate', groups=('plocate', )),
+    LinkToSuidFile('/etc/alternatives/locate', '/bin/plocate',
+                   groups=('plocate', )),
 
     # postfix, https://www.postfix.org/
     # https://github.com/vdukhovni/postfix
