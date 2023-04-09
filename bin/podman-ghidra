@@ -282,7 +282,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 #   decomp_result = decomp.decompileFunction(entry_fct, 10000, None)
 #   print(decomp_result.getDecompiledFunction().getC())  # C code as string
 #   print(decomp_result.getCCodeMarkup()) # C nodes
-RUN pip3 install "git+https://github.com/dod-cyber-crime-center/pyhidra@0.1.4"
+RUN pip3 install "git+https://github.com/dod-cyber-crime-center/pyhidra@0.4.1"
 EOF
 }
 
