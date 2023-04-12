@@ -52,7 +52,7 @@ fi
 # * green for local machine, cyan for remote host
 # * magenta/purple for working directory
 if [ "$(id -u)" -eq 0 ] ; then
-    if [ -z "$SSH_CLIENT" ]; then
+    if [ -z "${SSH_CLIENT:-}" ]; then
         BASH_PROMPT="$BASH_PROMPT"'\[\e[1;31m\]\h\[\e[m\]'
         ZSH_PROMPT="$ZSH_PROMPT"'%B%F{red}%m%f%b'
     else
