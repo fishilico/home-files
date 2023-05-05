@@ -2962,9 +2962,9 @@ class TpmDevice:
     @cached_property
     def is_tpm20(self) -> bool:
         """Is the device a TPM 2.0?"""
-        # Try reading PCR 0
+        # Try reading PCRs capability
         try:
-            self.tpm20_pcr_read(0, TpmAlgId.TPM_ALG_SHA1)
+            self.tpm20_get_capability(Tpm20Capability.TPM_CAP_PCRS, 0)
         except IsNotTpm20Error:
             return False
         return True
