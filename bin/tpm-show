@@ -1463,7 +1463,7 @@ class Tpm20Handle(enum.IntEnum):
     TPM_OLD_NV_INTEL_TXT_LAUNCH_POLICY = 0x01200001  # Policy for Verified Launch (Intel TXT, old)
     TPM_OLD_NV_INTEL_TXT_LAUNCH_ERROR = 0x01200002  # Launch error (Intel TXT, old)
     TPM_OLD_NV_INTEL_TXT_PLATFORM_OWNER = 0x01400001  # LCP Platform Owner (Intel TXT "PO", old)
-    # Mictosoft uses NV index 0x01410004:
+    # Microsoft uses NV index 0x01410004:
     # - in C:\Windows\System32\TpmCoreProvisioning.dll:
     #   - Tpm2NVDefineIndex creates the index:
     #     - attributes=0x2020002 (ownerwrite|ownerread|no_da)
