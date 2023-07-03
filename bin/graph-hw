@@ -1350,7 +1350,7 @@ KNOWN_ACPI_DEVICES = {
     'INT33D6': 'Intel Virtual Buttons Device',
     # Seen as \_SB_.PCI0.UA00.BTH0 and \_SB_.PCI0.UA01.BTH1
     'INT33E0': 'Intel Bluetooth Serial Bus Driver over UART Bus Enumerator',
-    'INT33E1': 'Intel Bluetooth Serial Bus Driver over UART Bus Enumerator',  # Also "Intel Bluetooth HCI UART"
+    'INT33E1': 'Intel Bluetooth Serial Bus Driver over UART Bus Enumerator',  # Also "Intel Bluetooth HCI UART", seen as \_SB_.PC00.UA00.BTH0  # noqa
     'INT33E3': 'Intel Bluetooth Serial Bus Driver over UART Bus Enumerator',  # Seen as \_SB_.PCI0.BTH1
     'INT33E4': 'Intel Bluetooth Serial Bus Driver over UART Bus Enumerator',
     'INT33F4': 'X-Powers AXP288 PMIC (Battery)',
@@ -1368,7 +1368,7 @@ KNOWN_ACPI_DEVICES = {
     'INT340D': 'Intel Dynamic Tuning Multi-Chip Discrete Graphics(DGFX) Participant',
     'INT340E': 'Motherboard Resources',  # Seen as \_SB_.PTID
     'INT340F': 'Intel Collaborative Processor Performance Control (CPPC)',  # Seen as \_SB_.PCCD
-    'INT3420': 'Intel Bluetooth RF Kill (BTKL)',
+    'INT3420': 'Intel Bluetooth RF Kill (BTKL)',  # Seen as \PSM_
     'INT343A': 'Intel Smart Sound Technology Audio Codec',  # Seen as \_SB_.PCI0.I2C0.HDAC
     'INT343D': 'Intel Dynamic Platform and Thermal Framework PCH SPT ACPI Participant',  # Seen as \_SB_.PCI0.TERM
     'INT343E': 'Intel CSI2 Host Controller (CIO2)',  # Seen as \_SB_.PCI0.CIO2
@@ -1406,15 +1406,24 @@ KNOWN_ACPI_DEVICES = {
     'INT34BB': 'Intel Serial IO GPIO Host Controller',  # Seen as \_SB_.PCI0.GPI0
     'INT34BC': 'Intel Serial IO SPI Host Controller',  # Seen as \_SB_.PCI0.SPI2
     'INT34C1': 'Intel Smart Sound Technology Audio Codec',  # Seen as \_SB_.PCI0.I2C0.ACD0
+    'INT34C3': 'Intel(R) Serial IO GPIO Host Controller',
+    'INT34C4': 'Intel(R) Serial IO GPIO Host Controller',
+    'INT34C5': 'Intel(R) Serial IO GPIO Host Controller',  # Seen as \_SB_.GPI0
+    'INT34C6': 'Intel(R) Serial IO GPIO Host Controller',
+    'INT34C8': 'Intel(R) Serial IO GPIO Host Controller',
+    'INT34D1': 'Intel(R) Serial IO GPIO Host Controller',
     'INT3515': 'TI TPS6598x USB Power Delivery Controller (from USB Connection Manager, UCM)',
     'INT3519': 'Intel CoExistence Manager',  # Seen as \_SB_.COEX
-    'INT3F0D': 'Intel Watchdog Timer (CWDT)',  # documented as "ACPI Motherboard Resources"
+    'INT3F0D': 'Intel Watchdog Timer (CWDT)',  # documented as "ACPI Motherboard Resources", seen as \_SB_.PC00.LPCB.CWDT  # noqa
 
+    'INTC1000': 'Intel(R) Trace Hub Uncore',
+    'INTC1001': 'Intel(R) Trace Hub PCH',  # Seen as \_SB_.PTHH
     'INTC0102': 'Intel Trusted Platform Module (iTPM)',
     'INTC1040': 'Intel Thermal Device',
     'INTC1043': 'Intel Thermal Device',
     'INTC1044': 'Intel Thermal Device',
     'INTC1047': 'Intel Thermal Device',
+    'INTC1051': 'Intel(R) HID Event Filter',  # Seen as \_SB_.HIDD
     'INTC1234': 'Toshiba\'s Bluetooth ACPI',
 
     'INTL9C60': 'Intel Baytrail SOC DMA Controller',  # Seen as \_SB_.PCI0.SDMA
@@ -1448,6 +1457,8 @@ KNOWN_ACPI_DEVICES = {
     'LAS5440': 'Lasat Safire 336 ',
 
     # Lenovo
+    'LEN0013': 'Synaptics Pointing Device, ThinkPad UltraNav Pointing Device',
+    'LEN0015': 'Synaptics Pointing Device, ThinkPad UltraNav Pointing Device',
     'LEN0017': 'Synaptics touchpad for Lenovo',
     'LEN0018': 'Synaptics touchpad for Lenovo',
     'LEN0019': 'Synaptics touchpad for Lenovo',
@@ -1476,13 +1487,21 @@ KNOWN_ACPI_DEVICES = {
     'LEN005E': 'Synaptics touchpad for Lenovo T560',
     'LEN0068': 'Lenovo ThinkPad Hotkey HID',
     'LEN006E': 'Lenovo Synaptics Pointing Device (Mouse)',
-    'LEN0071': 'Synaptics touchpad for Lenovo T480',
+    'LEN0071': 'Synaptics touchpad for Lenovo T480',  # Seen as \_SB_.PC00.LPCB.KBD_
     'LEN0072': 'Synaptics Elan/ALPS trackpoint for Lenovo X1 Carbon Gen 5 (2017)',
     'LEN0073': 'Synaptics touchpad for Lenovo X1 Carbon G5 (Elantech)',
     'LEN0092': 'Synaptics touchpad for Lenovo X1 Carbon 6',
     'LEN0096': 'Synaptics touchpad for Lenovo X280',
     'LEN0097': 'Synaptics ALPS trackpoint for Lenovo X280',
+    'LEN009F': 'Qualcomm Thermal MDM Mitigation Device',  # Seen as \_SB_.MSKN
     'LEN0100': 'Lenovo Intelligent Thermal Solution',  # Seen as \_SB_.PCI0.LPCB.EC__.ITSD
+    'LEN0105': 'ThinkPad UltraNav',
+    'LEN0106': 'ThinkPad UltraNav',
+    'LEN0110': 'Lenovo Intelligent Sensing',
+    'LEN0111': 'Lenovo Smart Standby',  # Seen as \_SB_.PC00.LPCB.EC__.LSSD
+    'LEN0112': 'Lenovo Intelligent Sensing',
+    'LEN0113': 'Lenovo Intelligent Sensing',
+    'LEN0130': 'Lenovo Fn and function keys',  # Seen as \_SB_.PC00.LPCB.EC__.LHKF
     'LEN0268': 'Lenovo ThinkPad Hotkey v2 HID',
     'LEN2000': 'Synaptics touchpad for Lenovo S540',
     'LEN2001': 'Synaptics touchpad for Lenovo Edge E431',
@@ -1498,6 +1517,7 @@ KNOWN_ACPI_DEVICES = {
     'LEN200B': 'Synaptics touchpad for Lenovo',
     'LEN200F': 'Synaptics touchpad for Lenovo T450s',
     'LEN205B': 'Synaptics Pointing Device for Lenovo',  # Seen as \_SB_.PCI0.LPCB.MOU_
+    'LEN2072': 'Synaptics Pointing Device for Lenovo',  # Seen as \_SB_.PC00.LPCB.MOU_
 
     # Linaro ACPI Registry
     'LNRO0003': 'Linaro smc91x',
@@ -1591,7 +1611,7 @@ KNOWN_ACPI_DEVICES = {
 
     'NTRG0001': 'Touchscreen',  # Seen as \_SB_.PCI0.I2C1.TPL2
 
-    'NXP1001': 'NXP NFC',  # Seen as \_SB_.PCI0.I2C0.NFC1
+    'NXP1001': 'NXP NFC',  # Seen as \_SB_.PCI0.I2C0.NFC1 and \_SB_.PC00.I2C3.NFC1
     'NXP5442': 'NXP 5442 Near Field Communications Controller (NFC)',
     'NXP5472': 'NXP NFC',
     'NXP6020': 'NXP NFC',
@@ -1606,15 +1626,15 @@ KNOWN_ACPI_DEVICES = {
     'PMC2430': 'Pace 56 Voice Internal Plug & Play Modem',
 
     # PNP0xxx are system devices
-    'PNP0000': 'Programmable Interrupt Controller (ISA 8259 PIC)',
+    'PNP0000': 'Programmable Interrupt Controller (ISA 8259 PIC)',  # Seen as \_SB_.PC00.LPCB.IPIC
     'PNP0001': 'EISA Programmable Interrupt Controller',
     'PNP0002': 'MCA Programmable Interrupt Controller',
     'PNP0003': 'Advanced Programmable Interrupt Controller (IO-APIC)',
     'PNP0004': 'Cyrix SLiC MP interrupt controller',
-    'PNP0100': 'System Timer (ISA 8254 Timer)',
+    'PNP0100': 'System Timer (ISA 8254 Timer)',  # Seen as \_SB_.PC00.LPCB.TIMR
     'PNP0101': 'EISA System Timer',
     'PNP0102': 'MCA System Timer',
-    'PNP0103': 'Intel High Precision Event Timer (HPET)',
+    'PNP0103': 'Intel High Precision Event Timer (HPET)',  # Seen as \_SB_.PC00.LPCB.HPET
     'PNP0200': 'AT Direct Memory Access Controller (ISA 8237 DMA)',
     'PNP0201': 'EISA Direct Memory Access Controller',
     'PNP0202': 'MCA Direct Memory Access Controller',
@@ -1655,7 +1675,7 @@ KNOWN_ACPI_DEVICES = {
     'PNP0603': 'Generic IDE supporting Microsoft Device Bay Specification',
     'PNP0700': 'PC standard floppy disk controller',
     'PNP0701': 'Standard floppy controller supporting MS Device Bay Spec',
-    'PNP0800': 'AT speaker',  # documented as "Microsoft Sound System Compatible Device"
+    'PNP0800': 'AT speaker',  # documented as "Microsoft Sound System Compatible Device", seen as \_SB_.PC00.LPCB.SPKR
     'PNP0802': 'Microsoft Sound System compatible device',
     'PNP0900': 'VGA Compatible',
     'PNP0901': 'Video Seven VRAM/VRAM II/1024i',
@@ -1696,26 +1716,26 @@ KNOWN_ACPI_DEVICES = {
     'PNP0A04': 'VESA/VL Bus',
     'PNP0A05': 'ACPI Generic ISA Bus / Generic Container Device',
     'PNP0A06': 'ACPI Generic EIO Bus',  # EIO = Extended Input/Output
-    'PNP0A08': 'PCI Express host bridge',
+    'PNP0A08': 'PCI Express host bridge',  # Seen as \_SB_.PC00
     'PNP0A0A': 'Asus BIOS component',  # https://kb.stonegroup.co.uk/index.php?View=entry&EntryID=227
-    'PNP0B00': 'AT Real-Time Clock Controller (RTC)',
+    'PNP0B00': 'AT Real-Time Clock Controller (RTC)',  # Seen as \_SB_.PC00.LPCB.RTC_
     'PNP0B01': 'Intel PIIX4-compatible RTC/CMOS Device',
     'PNP0B02': 'Dallas Semiconductor-compatible RTC/CMOS Device',
     'PNP0C00': 'PnP BIOS',
-    'PNP0C01': 'System board',
+    'PNP0C01': 'System board',  # Seen as \_SB_.MEM_
     'PNP0C02': '(Catch-all devices)',  # not specific to a particular device
     'PNP0C03': 'PnP BIOS event notification interrupt',
-    'PNP0C04': 'Math Coprocessor (x87 FPU)',  # documented as "x87-compatible Floating Point Processing Unit"
+    'PNP0C04': 'Math Coprocessor (x87 FPU)',  # documented as "x87-compatible Floating Point Processing Unit", seen as \_SB_.PC00.LPCB.MATH  # noqa
     'PNP0C05': 'Advanced Power Management (APM) BIOS',
     'PNP0C06': 'Reserved for identification of early Plug and Play',
     'PNP0C07': 'Reserved for identification of early Plug and Play',
     'PNP0C08': 'Advanced Configuration and Power Interface (ACPI) BIOS',  # documented as "ACPI Core Hardware"
-    'PNP0C09': 'Embedded Controller (EC)',
+    'PNP0C09': 'Embedded Controller (EC)',  # Seen as \_SB_.PC00.LPCB.EC__
     'PNP0C0A': 'Control Method Battery',
     'PNP0C0B': 'Fan',
     'PNP0C0C': 'Power Button (PWRB)',
-    'PNP0C0D': 'Lid Switch',
-    'PNP0C0E': 'Sleep Button (SLPB)',
+    'PNP0C0D': 'Lid Switch',  # Seen as \_SB_.LID_
+    'PNP0C0E': 'Sleep Button (SLPB)',  # Seen as \_SB_.SLPB
     'PNP0C0F': 'PCI Interrupt Link',
     'PNP0C10': 'System Indicator',
     'PNP0C11': 'Thermal Zone',
@@ -2321,7 +2341,7 @@ KNOWN_ACPI_DEVICES = {
     # Archtek America Corp.
     'UAC000F': 'Archtek SmartLink Modem 3334BT',
 
-    'USBC000': 'USB Type C',
+    'USBC000': 'USB Type C',  # Seen as \_SB_.UBTC
 
     # 3Com Corp.
     'USR0000': 'Gateway Telepath IIvi 33.6',
