@@ -18,21 +18,17 @@ jobs:
         # Available Python versions: https://github.com/actions/python-versions/blob/main/versions-manifest.json
         # Available PyPy versions: https://downloads.python.org/pypy/versions.json
         python-version:
-          - "2.7"
           - "3.7"
           - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
-          - "pypy-2.7"
           - "pypy-3.6"
           - "pypy-3.7"
           - "pypy-3.8"
           - "pypy-3.9"
         exclude:
           # macos-11 only has pypy-3.7+
-          - os: macos-latest
-            python-version: pypy-2.7
           - os: macos-latest
             python-version: pypy-3.6
           # windows-2022 only has pypy-3.7+
