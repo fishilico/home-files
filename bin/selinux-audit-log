@@ -763,6 +763,7 @@ AUDIT_QUOTED_OR_HEXESC_STRING_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('USER_AVC', 'bus'),
     ('AVC', 'capname'),
     ('VIRT_RESOURCE', 'cgroup'),
+    ('AVC', 'class'),
     ('USER_CMD', 'cmd'),
     ('ANOM_ABEND', 'comm'),
     ('AUDIT_EVENT_LISTENER', 'comm'),
@@ -2465,6 +2466,9 @@ class SELinuxAuditLogAnalyzer:
                 avc_desc += f"({parsed_record['OUID']!r})"
             used_keys.add('ouid')
             used_keys.add('OUID')
+            with suppress(KeyError):
+                avc_desc += f" class={parsed_record['class']!r}"
+            used_keys.add('class')
             print(f"[{entry_formated_time}] {avc_desc}", end='\r\n')
             for key, value in parsed_record.items():
                 if key in used_keys:
