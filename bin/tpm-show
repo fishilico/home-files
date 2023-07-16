@@ -1574,6 +1574,9 @@ class Tpm20Handle(enum.IntEnum):
     TPM_NV_INTEL_TXT_PLATFORM_OWNER = 0x01c10106  # LCP Platform Owner (Intel TXT "PO")
     TPM_NV_INTEL_TXT_LAUNCH_POLICY = 0x01c10131  # Policy for Verified Launch (Intel TXT)
     TPM_NV_INTEL_TXT_LAUNCH_ERROR = 0x01c10132  # Launch error (Intel TXT)
+    # https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-defender-system-guard/how-hardware-based-root-of-trust-helps-protect-windows  # noqa
+    # states that "Platform firmware must set up a TPM NV index for use by the OS with: Handle: 0x01C101C0"
+    TPM_NV_MICROSOFT = 0x01c101c0  # TPM NV Index for use by Microsoft
     TPM_RESERVED_HANDLE_IDEVID_CERT = 0x01c90000  # IDevID Certificate (Initial Device Identifier)
     # 0x02000000-0x02ffffff: HMAC sessions
     TPM_HMAC_SESSION_0 = 0x02000000
@@ -1675,6 +1678,7 @@ WELL_KNOWN_EA_POLICIES: Mapping[str, str] = {
     '06c7d805ad3bec1106502a44c6b2e3b36d157750e8efca1fff998c874a7664c5': 'PolicyLocality(THREE, FOUR) AND PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial)',  # noqa
     'ef9a26fc22d1ae8cecff59e9481ac1ec533dbe228bec6d17930f4cb2cc5b9724': 'PolicyLocality(THREE, FOUR) OR (PolicyLocality(THREE, FOUR) AND PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial))',  # noqa
     'dffdb6c8eafcbe691e358882b18703121eab40de2386f7a8e7b4a06591e1f0ee': '(PolicyLocality(THREE, FOUR) AND PolicyCommandCode(TPM2_CC_NV_Write)) OR (PolicyLocality(THREE, FOUR) AND PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial))',  # noqa
+    'cb45c81ff34bcf0afb9e1a8029fa231c8727303c0922dcce684be3db817c20e1': 'PolicyAuthorize(MSFT_DRTM_AUTH_BLOB_SigningKey) OR (PolicyAuthorize(MSFT_DRTM_AUTH_BLOB_SigningKey) AND PolicyCommandCode(TPM2_CC_NV_UndefineSpaceSpecial))',  # noqa
     '98cbaba62e682c148a202acad533d9d63f85a68392fe1b66648d1c491aef1b3a': 'PolicyAuthValue() AND PolicyCommandCode(TPM2_CC_ObjectChangeAuth)',  # noqa
     '363ac945b6457c47c31f3355dba0db27de8db213d6250c6bf79685003f9fe7ab': 'PolicyAuthValue() AND PolicyCommandCode(TPM2_CC_NV_ChangeAuth)',  # noqa
     'a13eb52d274deb81431f5adc2e40f7e7c4094abba5d325da741e7afc4117901f': 'PolicyCommandCode(TPM2_CC_NV_Read) OR PolicyNvWritten(NO)',  # noqa
