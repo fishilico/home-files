@@ -1373,6 +1373,7 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         140: 'getpriority',
         141: 'setpriority',
         143: 'sched_getparam',
+        145: 'sched_getscheduler',
         157: 'prctl',
         158: 'arch_prctl',
         161: 'chroot',
@@ -1450,6 +1451,7 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         330: 'pkey_alloc',
         331: 'pkey_free',
         332: 'statx',
+        334: 'rseq',
         439: 'faccessat2',
     },
 }
