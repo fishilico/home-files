@@ -1446,6 +1446,7 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         321: 'bpf',
         324: 'membarrier',
         326: 'copy_file_range',
+        329: 'pkey_mprotect',
         330: 'pkey_alloc',
         331: 'pkey_free',
         332: 'statx',
