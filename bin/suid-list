@@ -310,6 +310,10 @@ TRUSTED_SUID_FILES = [
     # (src/start_kdeinit)
     SuidFile('/lib/kde4/libexec/start_kdeinit'),
 
+    # libgtop, https://developer-old.gnome.org/libgtop/stable/
+    # https://gitlab.gnome.org/GNOME/libgtop
+    SuidFile('/lib/libgtop/libgtop_server2'),
+
     # lldpd, https://vincentbernat.github.io/lldpd/
     # https://github.com/lldpd/lldpd
     SuidFile('/s?bin/lldpcli', owners=('_lldpd', )),
