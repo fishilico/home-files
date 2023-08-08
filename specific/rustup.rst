@@ -15,6 +15,7 @@ Install commands in order to install a stable toolchain with ``rustup`` (as advi
     # Install:
     # * rustfmt for "cargo fmt"
     # * clippy to catch common mistakes
+    # * llvm-tools to enable generating profiling data
     # * cargo-outdated to display out-of-date Rust dependencies
     # * cargo-audit to easily check for security vulnerabilities reported to the RustSec Advisory Database
     # * cargo-deps to graph the dependencies of a project
@@ -23,12 +24,20 @@ Install commands in order to install a stable toolchain with ``rustup`` (as advi
     # * cargo-asm to view the generated ASM code (with "cargo asm --asm-style=intel --rust my_crate::my_function")
     rustup component add rustfmt
     rustup component add clippy
+    rustup component add llvm-tools
     cargo install cargo-outdated
     cargo install cargo-audit
     cargo install cargo-deps
     cargo install cargo-geiger
     cargo install cargo-tarpaulin
     cargo install cargo-asm
+
+    # Install tools only available with a nightly compiler
+    # * cargo-fuzz to perform fuzzing (with llvm-dev on Debian to view symbols with llvm-symbolizer)
+    #   doc for coverage: https://rust-fuzz.github.io/book/cargo-fuzz/coverage.html
+    rustup toolchain install nightly
+    rustup component add --toolchain nightly llvm-tools
+    cargo install cargo-fuzz
 
     # Install miri to catch issues in Rust's mid-level intermediate representation (MIR)
     MIRI_NIGHTLY="nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/miri)"
@@ -54,6 +63,9 @@ In order to work on a project (build, run, test, etc.), here are some commands.
 
     # Check whether the files are formatted correctly (--check in nightly)
     cargo fmt --all -- --write-mode=diff
+
+    # Lint the code
+    cargo clippy --all-targets --all-features
 
     # Show the expanded macro definitions of a file
     ~/.rustup/toolchains/nightly-$(uname -m)-unknown-linux-gnu/bin/rustc --pretty=expanded -Z unstable-options file.rs
