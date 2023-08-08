@@ -50,11 +50,11 @@ def format_delta(delta):
 class BatteryFullState(object):
     """Represent a battery which is full"""
 
-    def __init__(self):
-        self.percent = 100
+    def __init__(self, percent):
+        self.percent = percent
 
     def __str__(self):
-        return "Full (100%)"
+        return "Full ({0}%)".format(self.percent)
 
 
 class BatteryDischargingState(object):
@@ -201,9 +201,9 @@ def run_acpi(name_filter=None):
         percent = int(matches.group(1))
 
         if status == 'Full':
-            if percent != 100:
+            if percent not in {99, 100}:
                 raise ValueError("Full battery with non-100 percent?")
-            result.append((name, BatteryFullState()))
+            result.append((name, BatteryFullState(percent)))
         elif status == 'Discharging':
             if len(parts) < 3:
                 raise ValueError("invalid acpi output for battery {0}".format(name))
