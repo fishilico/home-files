@@ -508,6 +508,9 @@ if type alias > /dev/null 2>&1 ; then
     alias flake8-120='flake8 --max-line-length=120'
     alias pylint-120='pylint --max-line-length=120'
 
+    # Run Rust's linter with option "all"
+    alias cargo-clippy-all='cargo clippy --all-features --all-targets'
+
     # Open xterm in fullscreen
     alias xterm-full='xterm -bg black -fg white -fullscreen'
     # Open xterm with black-on-white colors
