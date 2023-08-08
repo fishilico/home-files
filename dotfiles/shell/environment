@@ -33,6 +33,13 @@ done
 export PATH
 unset DIR
 
+# Add Rust's cargo directory to path (without using the real user home in case of sudo)
+HOME_CARGO_BIN="$HOME/.cargo/bin"
+if [ -d "$HOME_CARGO_BIN" ] && [ "${COLON_PATH%:"$HOME_CARGO_BIN":*}" = "$COLON_PATH" ] ; then
+    export PATH="$HOME_CARGO_BIN:$PATH"
+fi
+unset HOME_CARGO_BIN
+
 # Find real home directory
 # Try sudo user
 if [ -z "${REAL_HOME:-}" ] && [ -n "${SUDO_USER:-}" ] ; then
@@ -55,7 +62,9 @@ HOMEBIN="$REAL_HOME/bin"
 if [ -d "$HOMEBIN" ] && [ "${COLON_PATH%:"$HOMEBIN":*}" = "$COLON_PATH" ] ; then
     export PATH="$HOMEBIN:$PATH"
 fi
-unset COLON_PATH HOMEBIN
+unset HOMEBIN
+
+unset COLON_PATH
 
 # Fix $TERM to announce 256 colors (useful for screen, tmux, vim...).
 # For XFCE Terminal, this is a workaround for
