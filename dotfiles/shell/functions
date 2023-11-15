@@ -538,7 +538,8 @@ if [ -x /usr/bin/which ] ; then
                 if ! dpkg --search "$FILEPATH" ; then
                     # On Ubuntu 20.04, /bin is a symlink to /usr/bin but
                     # packages still install programs in /bin (such as grep)
-                    BINFILEPATH="$(printf %s "$FILEPATH" | sed -n 's:^/usr/bin/:/bin/:p')"
+                    # On Ubuntu 22.04, /sbin is a symlink to /usr/sbin
+                    BINFILEPATH="$(printf %s "$FILEPATH" | sed -n 's:^/usr/\(s\?bin\)/:/\1/:p')"
                     if [ -L /bin ] && [ -n "$BINFILEPATH" ] && [ -e "$BINFILEPATH" ] ; then
                         dpkg --search "$BINFILEPATH"
                     else
