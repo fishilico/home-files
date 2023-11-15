@@ -626,6 +626,9 @@ TRUSTED_SGID_FILES = [
     LinkToSuidFile('/etc/alternatives/rxvt', '/bin/urxvt',
                    groups=('utmp', )),
 
+    # shadow, https://github.com/shadow-maint/shadow
+    SuidFile('/bin/groupmems', groups=('groups', )),
+
     # uw-imap, https://web.archive.org/web/20081005002032/https://www.washington.edu/imap/
     # https://salsa.debian.org/holmgren/uw-imap
     SuidFile('/bin/mlock', groups=('mail', )),
