@@ -23,10 +23,12 @@ jobs:
           - "3.9"
           - "3.10"
           - "3.11"
+          - "3.12"
           - "pypy-3.6"
           - "pypy-3.7"
           - "pypy-3.8"
           - "pypy-3.9"
+          - "pypy-3.10"
         exclude:
           # macos-11 only has pypy-3.7+
           - os: macos-latest
@@ -36,7 +38,7 @@ jobs:
             python-version: pypy-3.6
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
