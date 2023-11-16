@@ -31,8 +31,8 @@ set -e
 mkdir -p "$HOME/home-ghidra"
 
 # Copy information from https://github.com/NationalSecurityAgency/ghidra/releases
-ZIPNAME='ghidra_10.3.3_PUBLIC_20230829.zip'
-SHA256='63833361bea8ef5ada1bc28cd2aa2ae4ab43204d2672b595500372582152eebe'
+ZIPNAME='ghidra_10.4_PUBLIC_20230928.zip'
+SHA256='6911d674798f145f8ea723fdd3eb67a8fae8c7be92e117bca081e6ef66acac19'
 VERSION="$(printf %s "$ZIPNAME" | cut -d_ -f2)"
 
 # Build a container for Ghidra from the latest release
@@ -208,6 +208,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     patch -Np1 -i sparc-dwarf-registers.patch && \
     curl -sSL --output 4103.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/4103.patch && \
     patch -Np1 -i 4103.patch && \
+    sed "s/helpPath project(path: ':Base', configuration: 'helpPath')//" -i Ghidra/Processors/WebAssembly/build.gradle && \
     patch -Np1 -i /custom.patch && \
     rm /opt/ghidra/Ghidra/Extensions/SleighDevTools/pcodetest/pcode_defs.py.orig && \
     gradle -I gradle/support/fetchDependencies.gradle init && \
