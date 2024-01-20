@@ -1070,6 +1070,12 @@ def analyze_files_in(dirname, files):
                 # * ENOENT when reading symlinks for a kernel thread
                 if re.match(r'/proc/[0-9]+/', filepath):
                     continue
+                # When building a Fodora Live system in /mnt/sysimage,
+                # /mnt/sysimage/proc/self is broken, so are symlinks:
+                #   /mnt/sysimage/etc/mtab -> ../proc/self/mounts
+                #   /mnt/sysimage/proc/net -> self/net
+                if filepath.endswith(("/etc/mtab", "/proc/net", "/proc/self")):
+                    continue
             raise
 
         if not os.path.exists(realpath):
