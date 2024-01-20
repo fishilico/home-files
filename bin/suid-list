@@ -812,6 +812,8 @@ TRUSTED_CAPS_FILES = [
     # https://cgit.freedesktop.org/gstreamer/gstreamer/tree/
     CapsFile('/lib(32)?/gstreamer-1.0/gst-ptp-helper',
              '= cap_net_bind_service,cap_net_admin+ep'),
+    CapsFile('/libexec/gstreamer-1.0/gst-ptp-helper',
+             'cap_net_bind_service,cap_net_admin,cap_sys_nice=ep'),
     CapsFile('/lib/[a-zA-Z0-9_]+-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-ptp-helper',
              '= cap_net_bind_service,cap_net_admin+ep'),
 
