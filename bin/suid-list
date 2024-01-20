@@ -312,7 +312,7 @@ TRUSTED_SUID_FILES = [
 
     # libgtop, https://developer-old.gnome.org/libgtop/stable/
     # https://gitlab.gnome.org/GNOME/libgtop
-    SuidFile('/lib/libgtop/libgtop_server2'),
+    SuidFile('/lib(exec)?/libgtop/libgtop_server2'),
 
     # lldpd, https://vincentbernat.github.io/lldpd/
     # https://github.com/lldpd/lldpd
@@ -385,6 +385,10 @@ TRUSTED_SUID_FILES = [
                    '/libexec/polkit-agent-helper-1'),
     LinkToSuidFile('/lib/polkit-1/polkit-agent-helper-1',
                    '/libexec/polkit-agent-helper-1'),
+    LinkToSuidFile('/lib/policykit-1/polkit-agent-helper-1',
+                   '/lib/polkit-1/polkit-agent-helper-1'),
+    LinkToSuidFile('/libexec/polkit-agent-helper-1',
+                   '/lib/polkit-1/polkit-agent-helper-1'),
     SuidFile('/lib(exec)?/polkit-1/polkit-agent-helper-1'),
     SuidFile('/libexec/polkit-agent-helper-1'),
 
