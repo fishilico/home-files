@@ -1345,6 +1345,7 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         94: 'lchown',
         95: 'umask',
         96: 'gettimeofday',
+        97: 'getrlimit',
         98: 'getrusage',
         99: 'sysinfo',
         101: 'ptrace',
@@ -1428,6 +1429,7 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         271: 'ppoll',
         272: 'unshare',
         273: 'set_robust_list',
+        277: 'sync_file_range',
         280: 'utimensat',
         281: 'epoll_pwait',
         285: 'fallocate',
@@ -1454,6 +1456,7 @@ SYSCALLS: Mapping[str, Mapping[int, str]] = {
         331: 'pkey_free',
         332: 'statx',
         334: 'rseq',
+        435: 'clone3',
         439: 'faccessat2',
     },
 }
