@@ -400,6 +400,7 @@ AUDIT_DECIMAL_INTEGER_FIELDS: FrozenSet[Tuple[str, str]] = frozenset((
     ('MAC_STATUS', 'enabled'),
     ('MAC_STATUS', 'enforcing'),
     ('NETFILTER_CFG', 'entries'),
+    ('AVC', 'error'),
     ('SYSCALL', 'euid'),
     ('SYSCALL', 'exit'),
     ('NETFILTER_CFG', 'family'),
@@ -1752,10 +1753,16 @@ def split_audit_fields(type_name: str, line: str, prefix: str = ''
 
             # Unescaped command-line in USER_AVC: 'cmdline="/usr/bin/dbus-broker-launch --scope system --audit"'
             # Same for lockdown reason and AppArmor info
+            # Same for AppArmor AVC denied with flags:
+            #   type=AVC msg=audit(...): apparmor="DENIED" operation="mount" class="mount" info="failed flags match"
+            #   error=-13 profile="snap-update-ns.obs-studio" name="/boot/" pid=23972 comm="6"
+            #   srcname="/var/lib/snapd/hostfs/boot/" flags="rw, bind"
             if (type_name, key) in (
                     ('USER_AVC', 'cmdline'),
-                    ('AVC', 'lockdown_reason'),
+                    ('AVC', 'flags'),
                     ('AVC', 'info'),
+                    ('AVC', 'lockdown_reason'),
+                    ('AVC', 'srcname'),
                     ) and value.startswith('"'):
                 if len(value) >= 2 and value.endswith('"'):
                     result[prefix + key] = value[1:-1]
