@@ -123,6 +123,7 @@ SECCOMP_PROFILE='
                 "capset",
                 "chdir",
                 "chmod",
+                "chown",
                 "chroot",
                 "clock_getres",
                 "clock_gettime",
