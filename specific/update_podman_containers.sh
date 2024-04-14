@@ -37,6 +37,9 @@ set -eux
 if podman image exists localhost/podman-bpytop ; then
     "${HOME_FILES_BIN}/podman-bpytop" --update --no-start
 fi
+if podman image exists localhost/podman-cloud ; then
+    "${HOME_FILES_BIN}/podman-cloud" --update aws --version
+fi
 if podman image exists localhost/podman-codespell ; then
     "${HOME_FILES_BIN}/podman-codespell" --update /dev/null
 fi

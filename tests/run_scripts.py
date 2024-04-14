@@ -109,6 +109,7 @@ BIN_SCRIPTS = {
     'ping6-local': 'args[-h]',
     'ping-box': 'never',
     'podman-bpytop': 'never',
+    'podman-cloud': 'never',
     'podman-codespell': 'never',
     'podman-ghidra': 'never',
     'podman-impacket-smbserver': 'never',
