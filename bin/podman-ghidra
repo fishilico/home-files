@@ -31,8 +31,8 @@ set -e
 mkdir -p "$HOME/home-ghidra"
 
 # Copy information from https://github.com/NationalSecurityAgency/ghidra/releases
-ZIPNAME='ghidra_10.4_PUBLIC_20230928.zip'
-SHA256='6911d674798f145f8ea723fdd3eb67a8fae8c7be92e117bca081e6ef66acac19'
+ZIPNAME='ghidra_11.0.2_PUBLIC_20240326.zip'
+SHA256='4f16ae3f288f8c01fd1872e8e55b25c79744e7b1e8a9383c5e576668ca7d1906'
 VERSION="$(printf %s "$ZIPNAME" | cut -d_ -f2)"
 
 # Build a container for Ghidra from the latest release
@@ -167,13 +167,13 @@ RUN \
 # Install Gradle from https://gradle.org/releases/
 # Apply patches from:
 # * https://github.com/NationalSecurityAgency/ghidra/pull/1407 (for Xtensa files), disabled since Ghidra 10.3 as it is no longer compatible
-# * https://github.com/NationalSecurityAgency/ghidra/pull/3006 (for ARCompact files), using git rebase as "patch" does not support renamed files
-#   and patching build.gradle to support Gradle 7 (https://github.com/NationalSecurityAgency/ghidra/commit/3a0ae8ee39a08277c623dc954560e343c7efe3d9)
+# * https://github.com/NationalSecurityAgency/ghidra/pull/3006 (for ARCompact files)
+#   ... with custom branch https://github.com/niooss-ledger/ghidra/commits/arcompact_on_11.0.2
 # * https://github.com/pietroborrello/ghidra-atom-microcode (for Intel microcode, as "x86ucode" architecture)
 # * https://github.com/niooss-ledger/ghidra/commits/sparc-dwarf-registers (for Sparc 32 DWARF register definitions ; this needs more tests before being submitted as Pull Request)
 # * https://github.com/NationalSecurityAgency/ghidra/pull/1778 (for NDS32 files), disabled since Ghidra 10.3 as it is no longer compatible
 # * https://github.com/NationalSecurityAgency/ghidra/pull/4103 (for WebAssembly files)
-# * https://github.com/threatrack/ghidra-patchdiff-correlator extension, to have bulk correlators in Ghidra Version Tracking
+# * https://github.com/threatrack/ghidra-patchdiff-correlator extension, to have bulk correlators in Ghidra Version Tracking, disabled since Ghidra 11.0 as it is no longer compatible
 # * https://github.com/google/binexport extension, to enable using BinDiff
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qq update && \
@@ -197,11 +197,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     export PATH="/opt/gradle-7.3.3/bin:\$PATH" && \
     git clone --branch "Ghidra_${VERSION}_build" https://github.com/NationalSecurityAgency/ghidra.git && \
     cd /opt/ghidra && \
-    git fetch origin pull/3006/head:pr/3006 && \
-    git checkout pr/3006 && \
-    git config user.email build@localhost && \
-    git rebase "Ghidra_${VERSION}_build" && \
-    sed "s/compile project(':Base')/api project(':Base')/" -i Ghidra/Processors/ARC/build.gradle && \
+    curl -sSL --output arcompact.patch https://github.com/niooss-ledger/ghidra/commit/94bae1a917325d2fb9687b4681749ff3af688d6a.patch && \
+    patch -Np1 -i arcompact.patch && \
     git -C Ghidra/Processors/ clone https://github.com/pietroborrello/ghidra-atom-microcode && \
     cp -f Ghidra/Processors/ARC/build.gradle Ghidra/Processors/ghidra-atom-microcode/build.gradle && \
     curl -sSL --output sparc-dwarf-registers.patch https://github.com/niooss-ledger/ghidra/commit/afb5f00104ed48c6e6a9c5caa731a9057e2a2d1a.patch && \
@@ -216,16 +213,11 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     ls -l /opt/ghidra/build/dist && \
     unzip -d /opt "build/dist/ghidra_${VERSION}_DEV_"*"_linux_x86_64.zip" && \
     export "GHIDRA_INSTALL_DIR=/opt/ghidra_${VERSION}_DEV" && \
-    git -C /opt clone --depth 1 --branch v0.5 https://github.com/threatrack/ghidra-patchdiff-correlator && \
-    sed 's,<LINK rel="stylesheet" type="text/css" href="../../shared/Frontpage.css">,<LINK rel="stylesheet" type="text/css" href="help/shared/DefaultStyle.css">,' -i /opt/ghidra-patchdiff-correlator/PatchDiffCorrelator/src/main/help/help/topics/patchdiffcorrelator/help.html && \
-    (cd /opt/ghidra-patchdiff-correlator/PatchDiffCorrelator && gradle) && \
-    cp "/opt/ghidra-patchdiff-correlator/PatchDiffCorrelator/dist/ghidra_${VERSION}_DEV_"*"_PatchDiffCorrelator.zip" "/opt/ghidra_${VERSION}_DEV/Extensions/Ghidra/" && \
     git -C /opt clone --depth 1 --branch v12 https://github.com/google/binexport && \
     (cd /opt/binexport/java && gradle) && \
     cp "/opt/binexport/java/dist/ghidra_${VERSION}_DEV_"*"_BinExport.zip" "/opt/ghidra_${VERSION}_DEV/Extensions/Ghidra/" && \
     cd / && \
-    rm -rf /opt/ghidra /opt/gradle-6.9 /root/.ghidra /custom.patch && \
-    rm -rf /opt/ghidra-patchdiff-correlator && \
+    rm -rf /opt/ghidra /opt/gradle-7.3.3 /root/.ghidra /custom.patch && \
     rm -rf /opt/binexport
 
 # Second stage, without build dependencies
