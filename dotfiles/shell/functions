@@ -554,7 +554,7 @@ if [ -x /usr/bin/which ] ; then
         whichpkg() {
             /usr/bin/which "$@" | xargs qfile
         }
-    elif [ -x /usr/local/bin/brew ] ; then
+    elif [ -x /usr/local/bin/brew ] || [ -x /opt/homebrew/bin/brew ] ; then
         # Mac OS X files are symlinks to /usr/local/Cellar/PKGNAME/...
         whichpkg() {
             /usr/bin/which "$@" | xargs realpath
