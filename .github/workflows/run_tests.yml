@@ -30,9 +30,14 @@ jobs:
           - "pypy-3.9"
           - "pypy-3.10"
         exclude:
-          # macos-11 only has pypy-3.7+
+          # macos-14 with arm64 architecture only has Python 3.8+
+          - os: macos-latest
+            python-version: "3.7"
+          # macos-14 with arm64 architecture only has pypy-3.8+
           - os: macos-latest
             python-version: pypy-3.6
+          - os: macos-latest
+            python-version: pypy-3.7
           # windows-2022 only has pypy-3.7+
           - os: windows-latest
             python-version: pypy-3.6
