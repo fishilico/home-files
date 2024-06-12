@@ -31,8 +31,8 @@ set -e
 mkdir -p "$HOME/home-ghidra"
 
 # Copy information from https://github.com/NationalSecurityAgency/ghidra/releases
-ZIPNAME='ghidra_11.0.3_PUBLIC_20240410.zip'
-SHA256='2462a2d0ab11e30f9e907cd3b4aa6b48dd2642f325617e3d922c28e752be6761'
+ZIPNAME='ghidra_11.1_PUBLIC_20240607.zip'
+SHA256='293f60e04fa480315d2c467f4b2b4b10b3b6b5c8a8416bf7167fe082406e3be8'
 VERSION="$(printf %s "$ZIPNAME" | cut -d_ -f2)"
 
 # Build a container for Ghidra from the latest release
@@ -186,6 +186,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         g++ \
         make \
         patch \
+        python3 \
+        python3-pip \
+        python3-wheel \
         unzip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/ /var/log/* && \
@@ -201,7 +204,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     patch -Np1 -i arcompact.patch && \
     git -C Ghidra/Processors/ clone https://github.com/pietroborrello/ghidra-atom-microcode && \
     cp -f Ghidra/Processors/ARC/build.gradle Ghidra/Processors/ghidra-atom-microcode/build.gradle && \
-    curl -sSL --output sparc-dwarf-registers.patch https://github.com/niooss-ledger/ghidra/commit/afb5f00104ed48c6e6a9c5caa731a9057e2a2d1a.patch && \
+    curl -sSL --output sparc-dwarf-registers.patch https://github.com/niooss-ledger/ghidra/commit/c46cd736ebeabe23e458904b7294838ae4c70456.patch && \
     patch -Np1 -i sparc-dwarf-registers.patch && \
     curl -sSL --output 4103.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/4103.patch && \
     patch -Np1 -i 4103.patch && \
