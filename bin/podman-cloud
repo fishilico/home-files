@@ -51,6 +51,7 @@
 #   - to get SSH config: gcloud compute config-ssh
 #
 # - Pacu (AWS exploitation framework) https://github.com/RhinoSecurityLabs/pacu
+# - saml2aws (login on AWS using a SAML identity provider) https://github.com/Versent/saml2aws
 
 set -e
 
@@ -68,7 +69,8 @@ build_container() {
     # Build a container with cloud-related tools
     podman build --no-cache -t localhost/podman-cloud -f /dev/stdin << EOF
 FROM docker.io/library/debian:bookworm-slim
-RUN export DEBIAN_FRONTEND=noninteractive && \
+RUN set -eux && \
+    export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install --no-install-recommends --no-install-suggests -y \
         ca-certificates \
@@ -95,11 +97,16 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/ /var/log/* && \
     cd /opt && \
-    curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip && \
+    curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip && \
     unzip -q awscliv2.zip && \
     ./aws/install --bin-dir /usr/bin && \
     rm -r awscliv2.zip aws && \
-    pip3 install --break-system-packages pacu
+    pip3 install --break-system-packages pacu && \
+    SAML2AWS_CURRENT_VERSION="$(curl -fsSL https://api.github.com/repos/Versent/saml2aws/releases/latest | jq -r '.tag_name|sub("^v"; "")')" && \
+    curl -fsSL "https://github.com/Versent/saml2aws/releases/download/v\${SAML2AWS_CURRENT_VERSION}/saml2aws_\${SAML2AWS_CURRENT_VERSION}_linux_amd64.tar.gz" -o saml2aws.tar.gz && \
+    tar -xzf saml2aws.tar.gz saml2aws && \
+    install --mode=0755 saml2aws /usr/bin/saml2aws && \
+    rm saml2aws.tar.gz saml2aws
 EOF
 }
 
