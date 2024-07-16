@@ -47,6 +47,7 @@ build_container() {
     # Install curl and wget to be able to install rustup
     # Install build-essential, cmake... to compile projects
     # Install npm for NodeJS
+    # Install libssl-dev to compile some projects with OpenSSL
     podman build --no-cache -t localhost/podman-vscodium -f /dev/stdin << EOF
 FROM docker.io/library/debian:bullseye-slim
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -62,9 +63,11 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         git \
         iproute2 \
         libasound2 \
+        libssl-dev \
         libx11-xcb1 \
         libxshmfence1 \
         npm \
+        pkgconf \
         procps \
         wget \
         && \
@@ -139,6 +142,7 @@ SECCOMP_PROFILE='
                 "epoll_create",
                 "epoll_create1",
                 "epoll_ctl",
+                "epoll_pwait",
                 "epoll_wait",
                 "eventfd2",
                 "execve",
