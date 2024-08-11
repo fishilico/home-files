@@ -51,6 +51,9 @@
 #   - to get SSH config: gcloud compute config-ssh
 #
 # - Pacu (AWS exploitation framework) https://github.com/RhinoSecurityLabs/pacu
+#   This installs AWS CLI v1 through a Python package, due to using awscli package.
+#   This was reported in https://github.com/RhinoSecurityLabs/pacu/issues/446
+#   and in the mean time, the new command is renamed aws1
 # - Firebase Admin Python SDK https://firebase.google.com/docs/admin/setup#python
 # - saml2aws (login on AWS using a SAML identity provider) https://github.com/Versent/saml2aws
 
@@ -103,6 +106,10 @@ RUN set -eux && \
     ./aws/install --bin-dir /usr/bin && \
     rm -r awscliv2.zip aws && \
     pip3 install --break-system-packages pacu && \
+    mv /usr/local/bin/aws /usr/local/bin/aws1 && \
+    mv /usr/local/bin/aws_bash_completer /usr/local/bin/aws1_bash_completer && \
+    mv /usr/local/bin/aws_completer /usr/local/bin/aws1_completer && \
+    mv /usr/local/bin/aws_zsh_completer.sh /usr/local/bin/aws1_zsh_completer.sh && \
     pip3 install --break-system-packages firebase-admin && \
     SAML2AWS_CURRENT_VERSION="$(curl -fsSL https://api.github.com/repos/Versent/saml2aws/releases/latest | jq -r '.tag_name|sub("^v"; "")')" && \
     curl -fsSL "https://github.com/Versent/saml2aws/releases/download/v\${SAML2AWS_CURRENT_VERSION}/saml2aws_\${SAML2AWS_CURRENT_VERSION}_linux_amd64.tar.gz" -o saml2aws.tar.gz && \
