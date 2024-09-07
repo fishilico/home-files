@@ -24,6 +24,8 @@
 # Aggressively clean-up files created by docker
 #
 # This is a rough equivalent of "docker system prune"
+#
+# For "docker buildx", the cache can be cleared with "docker buildx prune"
 
 # Remove all stopped containers
 CONTAINERS_NUM="$(docker ps -a -q | wc -l)"
