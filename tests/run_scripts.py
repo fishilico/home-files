@@ -134,6 +134,7 @@ BIN_SCRIPTS = {
     'tpm-show': '(python>=3.7)help',
     'update-packages': 'never',
     'useful-selinux-modules': '(python>=3.6)help',
+    'vagrant': 'never',
     'vagrant-wireshark': 'args[-h]',
     'vlc': 'never',
     'vsock-cid': 'never',
