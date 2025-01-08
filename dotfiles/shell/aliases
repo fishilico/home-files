@@ -415,6 +415,9 @@ if type alias > /dev/null 2>&1 ; then
     #   awk '{print $2}' /etc/ssh/ssh_host_dsa_key.pub |base64 -d |sha256sum
     alias sshfp-here='ssh-keygen -r $(hostname)'
 
+    # SSH without checking the host keys (YOLO mode, for example for SSH to locahost)
+    alias sshyolo='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
+
     # View mails in hold queue
     if command -v postqueue > /dev/null 2>&1 ; then
         alias mailq-hold='postqueue -p |lgrep -E "^[0-9A-F]*!"'
