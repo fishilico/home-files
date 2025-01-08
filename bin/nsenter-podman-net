@@ -26,6 +26,11 @@
 # Optionally register a network namespace (netns) with 'ip netns' command. This
 # enables using 'ip netns identify' to get the name of the current container
 # through its network namespace.
+#
+# To make sudo not ask for a password when using this command, add this to its
+# configuration (/etc/sudoers.d/99-nsenter-podman-net):
+#
+#   $USER ALL=(ALL) NOPASSWD: /usr/bin/nsenter --net --uts --target [1-9][0-9]* sudo -u $USER -s -- *
 
 set -eu
 
@@ -122,10 +127,10 @@ fi
 
 if [ "$CURRENT_USER" = root ] ; then
     # Directly run nsenter
-    exec nsenter --net --target "$CONTAINER_PID" -- "$@"
+    exec nsenter --net --uts --target "$CONTAINER_PID" -- "$@"
 else
     # Use sudo to switch users
-    exec sudo nsenter --net --target "$CONTAINER_PID" sudo -u niooss -s -- "$@"
+    exec sudo nsenter --net --uts --target "$CONTAINER_PID" sudo -u "$CURRENT_USER" -s -- "$@"
 fi
 echo >&2 "Error: unable to enter the network namespace of $CONTAINER_PID"
 exit 1
