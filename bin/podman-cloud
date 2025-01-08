@@ -53,6 +53,7 @@
 #   - to list Compute instances: gcloud compute instances list
 #   - to get SSH config: gcloud compute config-ssh
 #
+# - Terraform https://developer.hashicorp.com/terraform
 # - Pacu (AWS exploitation framework) https://github.com/RhinoSecurityLabs/pacu
 #   This installs AWS CLI v1 through a Python package, due to using awscli package.
 #   This was reported in https://github.com/RhinoSecurityLabs/pacu/issues/446
@@ -89,6 +90,8 @@ RUN set -eux && \
         openssh-client \
         python3 \
         python3-pip \
+        python3-venv \
+        python3-wheel \
         python-is-python3 \
         unzip \
         vim && \
@@ -101,8 +104,10 @@ RUN set -eux && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" > /etc/apt/sources.list.d/helm-stable-debian.list && \
     curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /etc/apt/keyrings/cloud.google.gpg && \
     echo 'deb [signed-by=/etc/apt/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main' > /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" > /etc/apt/sources.list.d/hashicorp.list && \
     apt-get update && \
-    apt-get install --no-install-recommends --no-install-suggests -y google-cloud-cli google-cloud-cli-gke-gcloud-auth-plugin helm kubectl && \
+    apt-get install --no-install-recommends --no-install-suggests -y google-cloud-cli google-cloud-cli-gke-gcloud-auth-plugin helm kubectl terraform && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/ /var/log/* && \
     cd /opt && \
@@ -184,6 +189,7 @@ SECCOMP_PROFILE='
     "syscalls": [
         {
             "names": [
+                "accept4",
                 "access",
                 "arch_prctl",
                 "bind",
@@ -198,6 +204,7 @@ SECCOMP_PROFILE='
                 "close",
                 "close_range",
                 "connect",
+                "copy_file_range",
                 "dup",
                 "dup2",
                 "dup3",
@@ -205,6 +212,7 @@ SECCOMP_PROFILE='
                 "epoll_create1",
                 "epoll_ctl",
                 "epoll_pwait",
+                "eventfd2",
                 "execve",
                 "exit",
                 "exit_group",
@@ -218,6 +226,7 @@ SECCOMP_PROFILE='
                 "fcntl",
                 "fdatasync",
                 "flock",
+                "fsetxattr",
                 "fstat",
                 "fstatfs",
                 "fsync",
@@ -242,11 +251,13 @@ SECCOMP_PROFILE='
                 "getsockopt",
                 "gettid",
                 "getuid",
+                "getxattr",
                 "ioctl",
                 "kill",
                 "lchown",
                 "lgetxattr",
                 "link",
+                "listen",
                 "listxattr",
                 "lseek",
                 "lstat",
@@ -260,6 +271,8 @@ SECCOMP_PROFILE='
                 "nanosleep",
                 "newfstatat",
                 "openat",
+                "pidfd_open",
+                "pidfd_send_signal",
                 "pipe2",
                 "poll",
                 "prctl",
@@ -274,6 +287,7 @@ SECCOMP_PROFILE='
                 "recvmsg",
                 "rename",
                 "renameat",
+                "renameat2",
                 "rmdir",
                 "rseq",
                 "rt_sigaction",
@@ -289,6 +303,7 @@ SECCOMP_PROFILE='
                 "set_robust_list",
                 "set_tid_address",
                 "setgroups",
+                "setitimer",
                 "setpgid",
                 "setresgid",
                 "setresuid",
