@@ -116,7 +116,7 @@ RUN set -eux && \
     mv /usr/local/bin/aws_completer /usr/local/bin/aws1_completer && \
     mv /usr/local/bin/aws_zsh_completer.sh /usr/local/bin/aws1_zsh_completer.sh && \
     pip3 install --break-system-packages firebase-admin && \
-    SAML2AWS_CURRENT_VERSION="$(curl -fsSL https://api.github.com/repos/Versent/saml2aws/releases/latest | jq -r '.tag_name|sub("^v"; "")')" && \
+    SAML2AWS_CURRENT_VERSION="\$(curl -fsSL https://api.github.com/repos/Versent/saml2aws/releases/latest | jq -r '.tag_name|sub("^v"; "")')" && \
     curl -fsSL "https://github.com/Versent/saml2aws/releases/download/v\${SAML2AWS_CURRENT_VERSION}/saml2aws_\${SAML2AWS_CURRENT_VERSION}_linux_amd64.tar.gz" -o saml2aws.tar.gz && \
     tar -xzf saml2aws.tar.gz saml2aws && \
     install --mode=0755 saml2aws /usr/bin/saml2aws && \
