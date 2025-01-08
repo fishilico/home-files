@@ -172,6 +172,9 @@ if ! grep -e '^ID=debian$' -e '^ID_LIKE=debian$' /usr/lib/os-release > /dev/null
         # Redhat
         grep-*$(uname -m))
             ;;
+        # Ubuntu
+        grep:\ /usr/bin/grep)
+            ;;
         *)
             die "whichpkg grep returned an unknown result: $PKGGREP"
             ;;
