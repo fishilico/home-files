@@ -147,10 +147,12 @@ def hexdump(data: bytes, indent: str = '') -> None:
 
 # TCG TPM Vendor Registry from https://trustedcomputinggroup.org/resource/vendor-id-registry/
 TPM_VENDOR_BY_ID: Mapping[int, str] = {
+    0x025E: "Solidigm",
     0x100B: "National Semiconductor",
     0x1011: "Qualcomm",
     0x1014: "IBM",  # International Business Machines
     0x1022: "AMD",  # Advanced Micro Devices
+    0x103C: "HPI",
     0x104A: "STMicroelectronics",
     0x104C: "Texas Instruments",
     0x1050: "Nuvoton Technology",  # Formerly Winbond
@@ -166,9 +168,12 @@ TPM_VENDOR_BY_ID: Mapping[int, str] = {
     0x1B4E: "Nationz",
     0x232A: "Fuzhou Rockchip",
     0x232B: "FlySlice Technologies",
+    0x2406: "Wisekey",
     0x6666: "Google",
+    0x6688: "Ant Group",
     0x8086: "Intel",
     0x8888: "Huawei",
+    0x9999: "NSING",
     0xC5C0: "Cisco",
 }
 
