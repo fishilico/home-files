@@ -229,6 +229,7 @@ TRUSTED_SUID_FILES = [
 
     # dbus, https://www.freedesktop.org/wiki/Software/dbus/
     # https://cgit.freedesktop.org/dbus/dbus/tree/
+    SuidFile('/lib/dbus-daemon-launch-helper'),
     SuidFile('/lib(32|64|exec)?/dbus-1(.0)?/dbus-daemon-launch-helper'),
 
     # dma, DragonFly Mail Agent, https://www.dragonflybsd.org/handbook/mta/
