@@ -772,6 +772,10 @@ KNOWN_SUID_FILES = [
     # https://sourceware.org/git/gitweb.cgi?p=systemtap.git;a=tree
     SuidFile('/bin/staprun'),
 
+    # tcptraceroute, https://github.com/mct/tcptraceroute (not updated since 2017)
+    SuidFile('/bin/tcptraceroute.mt'),
+    LinkToSuidFile('/bin/tcptraceroute', '/bin/tcptraceroute.mt'),
+
     # usermode, https://pagure.io/usermode/
     # https://pagure.io/usermode/tree/master
     SuidFile('/s?bin/userhelper'),
