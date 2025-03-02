@@ -136,6 +136,7 @@ BIN_SCRIPTS = {
     'useful-selinux-modules': '(python>=3.6)help',
     'vagrant-wireshark': 'args[-h]',
     'vlc': 'never',
+    'vsock-cid': 'never',
     'who-is-here': 'direct',
     'xscreen-resolution': 'never',
     'xfconf-dump': '(xfconf-query)direct',
