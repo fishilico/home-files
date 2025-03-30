@@ -1622,6 +1622,15 @@ class Tpm20Handle(enum.IntEnum):
     TPM_RH_ACT_D = 0x4000011d
     TPM_RH_ACT_E = 0x4000011e
     TPM_RH_ACT_F = 0x4000011f
+    TPM_RH_FW_OWNER = 0x40000140  # references the firmware-limited Owner hierarchy
+    TPM_RH_FW_ENDORSEMENT = 0x40000141  # references the firmware-limited Endorsement hierarchy
+    TPM_RH_FW_PLATFORM = 0x40000142  # references the firmware-limited Platform hierarchy
+    TPM_RH_FW_NULL = 0x40000143  # references the firmware-limited NULL hierarchy
+    # For TPM_RH_SVN_..., the low 2 bytes represent the minimum SVN value to which the hierarchy is limited.
+    TPM_RH_SVN_OWNER_BASE = 0x40010000  # references the base SVN-limited Owner hierarchy.
+    TPM_RH_SVN_ENDORSEMENT_BASE = 0x40020000  # references the base SVN-limited Endorsement hierarchy.
+    TPM_RH_SVN_PLATFORM_BASE = 0x40030000  # references the base SVN-limited Platform hierarchy.
+    TPM_RH_SVN_NULL_BASE = 0x40040000  # references the base SVN-limited NULL hierarchy.
     # 0x80000000-0x80ffffff: Transient handles
     TPM_TRANSIENT_HANDLE_0 = 0x80000000
     # Reserved Handles in persistent objects
