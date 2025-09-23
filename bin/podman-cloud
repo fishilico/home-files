@@ -37,6 +37,8 @@
 #   - to authenticate with a MFA (Multi-Factor Authentication) token:
 #     export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...
 #     aws sts get-session-token --serial-number "arn:aws:iam::$AWS_ACCOUNT_ID:mfa/$AWS_USER" --token-code 112233
+#   - to get credentials of a profile using environment variables:
+#     aws configure export-credentials --format=env --profile=${AWS_PROFILE:-default}
 #   - to list files in an AWS S3 bucket: aws s3 ls s3://bucket
 #   - to get IAM policy: aws iam get-account-authorization-details
 #   - to list Compute instances: aws ec2 describe-instances
@@ -212,6 +214,7 @@ SECCOMP_PROFILE='
                 "epoll_create1",
                 "epoll_ctl",
                 "epoll_pwait",
+                "epoll_wait",
                 "eventfd2",
                 "execve",
                 "exit",
