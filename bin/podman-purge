@@ -24,6 +24,13 @@
 # Aggressively clean-up files created by podman
 #
 # This is a rough equivalent of "podman system prune"
+#
+# Sometimes, "podman rmi" fails with "image is in use by a container".
+# To see such images:
+#
+#     podman ps --all --storage
+#
+# To remove them, "podman rmi --force ..." car be used.
 
 # Remove all stopped containers
 CONTAINERS_NUM="$(podman ps -a -q | wc -l)"
