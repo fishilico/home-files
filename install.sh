@@ -96,6 +96,7 @@ install_rec() {
             fi
 
             # Describe the potential issues which remain
+            # shellcheck disable=SC2268
             if ! [ -L "$DST_FILE" ]
             then
                 # A real file exists. Show a message if it is not ignored
