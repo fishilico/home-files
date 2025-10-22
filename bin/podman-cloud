@@ -67,8 +67,8 @@ set -e
 
 build_container() {
     # Update the base image
-    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/debian:bookworm-slim)
-    podman pull docker.io/library/debian:bookworm-slim
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/debian:trixie-slim)
+    podman pull docker.io/library/debian:trixie-slim
     for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
         if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
             echo "Removing old podman base image ${OLD_BASE_IMAGE}"
@@ -78,7 +78,7 @@ build_container() {
 
     # Build a container with cloud-related tools
     podman build --no-cache -t localhost/podman-cloud -f /dev/stdin << EOF
-FROM docker.io/library/debian:bookworm-slim
+FROM docker.io/library/debian:trixie-slim
 RUN set -eux && \
     export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
@@ -90,6 +90,7 @@ RUN set -eux && \
         less \
         mandoc \
         openssh-client \
+        postgresql-client \
         python3 \
         python3-pip \
         python3-venv \
@@ -97,13 +98,13 @@ RUN set -eux && \
         python-is-python3 \
         unzip \
         vim && \
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
-    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' > /etc/apt/sources.list.d/kubernetes.list && \
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.34/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
+    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.34/deb/ /' > /etc/apt/sources.list.d/kubernetes.list && \
     echo 'Package: kubectl' > /etc/apt/preferences.d/k8s && \
-    echo 'Pin: release o=obs://build.opensuse.org/isv:kubernetes:core:stable:v1.29/deb,n=deb,l=isv:kubernetes:core:stable:v1.29,c=' >> /etc/apt/preferences.d/k8s && \
+    echo 'Pin: release o=obs://build.opensuse.org/isv:kubernetes:core:stable:v1.34/deb,n=deb,l=isv:kubernetes:core:stable:v1.34,c=' >> /etc/apt/preferences.d/k8s && \
     echo 'Pin-Priority: 1000' >> /etc/apt/preferences.d/k8s && \
-    curl -fsSL https://baltocdn.com/helm/signing.asc | gpg --dearmor -o /usr/share/keyrings/helm.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" > /etc/apt/sources.list.d/helm-stable-debian.list && \
+    curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor -o /usr/share/keyrings/helm.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main" > /etc/apt/sources.list.d/helm-stable-debian.list && \
     curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /etc/apt/keyrings/cloud.google.gpg && \
     echo 'deb [signed-by=/etc/apt/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main' > /etc/apt/sources.list.d/google-cloud-sdk.list && \
     curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg && \
@@ -117,12 +118,11 @@ RUN set -eux && \
     unzip -q awscliv2.zip && \
     ./aws/install --bin-dir /usr/bin && \
     rm -r awscliv2.zip aws && \
-    pip3 install --break-system-packages pacu && \
-    mv /usr/local/bin/aws /usr/local/bin/aws1 && \
-    mv /usr/local/bin/aws_bash_completer /usr/local/bin/aws1_bash_completer && \
-    mv /usr/local/bin/aws_completer /usr/local/bin/aws1_completer && \
-    mv /usr/local/bin/aws_zsh_completer.sh /usr/local/bin/aws1_zsh_completer.sh && \
-    pip3 install --break-system-packages firebase-admin && \
+    python3 -m venv /opt/venv4pacu && \
+    /opt/venv4pacu/bin/pip3 install pacu && \
+    ln -s /opt/venv4pacu/bin/pacu /usr/local/bin/pacu && \
+    python3 -m venv /opt/venv4firebase && \
+    /opt/venv4firebase/bin/pip3 install firebase-admin && \
     SAML2AWS_CURRENT_VERSION="\$(curl -fsSL https://api.github.com/repos/Versent/saml2aws/releases/latest | jq -r '.tag_name|sub("^v"; "")')" && \
     curl -fsSL "https://github.com/Versent/saml2aws/releases/download/v\${SAML2AWS_CURRENT_VERSION}/saml2aws_\${SAML2AWS_CURRENT_VERSION}_linux_amd64.tar.gz" -o saml2aws.tar.gz && \
     tar -xzf saml2aws.tar.gz saml2aws && \
