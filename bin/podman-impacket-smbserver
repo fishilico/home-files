@@ -34,8 +34,8 @@
 
 build_container() {
     # Update the base image
-    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/python:3.9-alpine)
-    podman pull docker.io/library/python:3.9-alpine
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/python:3.14-alpine)
+    podman pull docker.io/library/python:3.14-alpine
     for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
         if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
             echo "Removing old podman base image ${OLD_BASE_IMAGE}"
@@ -44,7 +44,7 @@ build_container() {
     done
 
     podman build --no-cache -t localhost/podman-impacket -f /dev/stdin << EOF
-FROM docker.io/library/python:3.9-alpine
+FROM docker.io/library/python:3.14-alpine
 RUN apk --update --no-cache add \
     gcc \
     git \
@@ -195,6 +195,7 @@ SECCOMP_PROFILE='
         {
             "names": [
                 "accept4",
+                "access",
                 "arch_prctl",
                 "bind",
                 "brk",
@@ -248,12 +249,15 @@ SECCOMP_PROFILE='
                 "rt_sigreturn",
                 "sendto",
                 "set_tid_address",
+                "setfsgid",
+                "setfsuid",
                 "setresgid",
                 "setresuid",
                 "setsockopt",
                 "shutdown",
                 "socket",
                 "stat",
+                "statfs",
                 "uname",
                 "unlink",
                 "utimensat",

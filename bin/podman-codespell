@@ -27,8 +27,8 @@ set -e
 
 build_container() {
     # Update the base image
-    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/python:3.9-alpine)
-    podman pull docker.io/library/python:3.9-alpine
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/python:3.14-alpine)
+    podman pull docker.io/library/python:3.14-alpine
     for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
         if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
             echo "Removing old podman base image ${OLD_BASE_IMAGE}"
@@ -39,7 +39,7 @@ build_container() {
     # Build a container that runs codespell, using the latest dictionaries from git master,
     # ignoring some really common suggestions.
     podman build --no-cache -t localhost/podman-codespell -f /dev/stdin << EOF
-FROM docker.io/library/python:3.9-alpine
+FROM docker.io/library/python:3.14-alpine
 RUN pip3 install codespell && \
     wget -O/master-dictionary.txt https://raw.githubusercontent.com/codespell-project/codespell/master/codespell_lib/data/dictionary.txt && \
     wget -O/master-dictionary_code.txt https://raw.githubusercontent.com/codespell-project/codespell/master/codespell_lib/data/dictionary_code.txt && \
@@ -118,6 +118,7 @@ SECCOMP_PROFILE='
                 "read",
                 "readlink",
                 "readv",
+                "rename",
                 "rt_sigaction",
                 "rt_sigprocmask",
                 "rt_sigreturn",
@@ -129,7 +130,9 @@ SECCOMP_PROFILE='
                 "set_tid_address",
                 "setuid",
                 "stat",
+                "statfs",
                 "tgkill",
+                "unlink",
                 "write"
             ],
             "action": "SCMP_ACT_ALLOW"
