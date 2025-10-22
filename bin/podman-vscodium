@@ -30,8 +30,8 @@ set -e
 
 build_container() {
     # Update the base image
-    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/debian:bullseye-slim)
-    podman pull docker.io/library/debian:bullseye-slim
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/debian:trixie-slim)
+    podman pull docker.io/library/debian:trixie-slim
     for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
         if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
             echo "Removing old podman base image ${OLD_BASE_IMAGE}"
@@ -49,7 +49,7 @@ build_container() {
     # Install npm for NodeJS
     # Install libssl-dev to compile some projects with OpenSSL
     podman build --no-cache -t localhost/podman-vscodium -f /dev/stdin << EOF
-FROM docker.io/library/debian:bullseye-slim
+FROM docker.io/library/debian:trixie-slim
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qq update && \
     apt-get install --no-install-recommends --no-install-suggests -qqy extrepo && \
@@ -168,6 +168,7 @@ SECCOMP_PROFILE='
                 "getegid",
                 "geteuid",
                 "getgid",
+                "getgroups",
                 "getpeername",
                 "getpgrp",
                 "getpid",
@@ -221,6 +222,7 @@ SECCOMP_PROFILE='
                 "recvfrom",
                 "recvmsg",
                 "rename",
+                "restart_syscall",
                 "rmdir",
                 "rt_sigaction",
                 "rt_sigprocmask",
