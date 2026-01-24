@@ -273,6 +273,7 @@ SECCOMP_PROFILE='
                 "munmap",
                 "nanosleep",
                 "newfstatat",
+                "open",
                 "openat",
                 "pidfd_open",
                 "pidfd_send_signal",
