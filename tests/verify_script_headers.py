@@ -280,7 +280,16 @@ def test():
                 elif dirpath.endswith(('/bin', '\\bin')) and not ext:
                     # binary files can be of several types
                     verify_bin(filepath)
-                elif dirpath.endswith(('/dotfiles', '/dotfiles/cargo', '\\dotfiles', '\\dotfiles\\cargo')):
+                elif dirpath.endswith(
+                    (
+                        '/dotfiles',
+                        '/dotfiles/cargo',
+                        '/dotfiles/config/apport',
+                        '\\dotfiles',
+                        '\\dotfiles\\cargo',
+                        '\\dotfiles\\config\\apport',
+                    )
+                ):
                     # dotfiles contains text files
                     pass
                 elif dirpath.endswith(('/dotfiles/shell', '\\dotfiles\\shell')):
