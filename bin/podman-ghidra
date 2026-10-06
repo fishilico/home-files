@@ -31,70 +31,14 @@ set -e
 mkdir -p "$HOME/home-ghidra"
 
 # Copy information from https://github.com/NationalSecurityAgency/ghidra/releases
-ZIPNAME='ghidra_11.3.1_PUBLIC_20250219.zip'
-SHA256='bcda0a9de8993444766cc255964c65c042b291ddaf6c50d654e316e442b441fa'
+ZIPNAME='ghidra_12.1.3_PUBLIC_20260817.zip'
 VERSION="$(printf %s "$ZIPNAME" | cut -d_ -f2)"
-
-# Build a container for Ghidra from the latest release
-build_container_from_release() {
-    # Update the base image
-    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/openjdk:21-slim)
-    podman pull docker.io/library/openjdk:21-slim
-    for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
-        if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
-            echo "Removing old podman base image ${OLD_BASE_IMAGE}"
-            podman image rm -- "${OLD_BASE_IMAGE}"
-        fi
-    done
-
-    # Customize the user of Ghidra, to be connect to a remote server using a specific name
-    GHIDRA_USER_NAME="$(cat "$HOME/home-ghidra/username.txt" || true)"
-    if [ -z "$GHIDRA_USER_NAME" ] ; then
-        GHIDRA_USER_NAME=ghidra-user
-    fi
-
-    # Map the user ID to the same one in the container
-    GHIDRA_USER_ID="$(id -u)"
-
-    podman build -t "localhost/podman-ghidra:$VERSION" -f /dev/stdin << EOF
-FROM docker.io/library/openjdk:21-slim
-
-# Create our own launcher instead of using ghidraRun, in order to launch Ghidra in foreground
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get -qq update && \
-    apt-get install --no-install-recommends --no-install-suggests -qqy \
-        ca-certificates \
-        curl \
-        libfontconfig1 \
-        libfreetype6 \
-        libx11-6 \
-        libxi6 \
-        libxrender1 \
-        libxtst6 \
-        unzip && \
-    cd /opt && \
-    curl -sSL --output "$ZIPNAME" "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${VERSION}_build/$ZIPNAME" && \
-    printf %s "$SHA256  $ZIPNAME" | sha256sum -c && \
-    unzip "./$ZIPNAME" && \
-    rm "./$ZIPNAME" && \
-    apt-get purge -qqy curl unzip && \
-    apt-get -qqy autoremove --purge && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/ /var/log/* && \
-    useradd --uid "${GHIDRA_USER_ID}" --user-group --no-create-home user && \
-    echo '#!/bin/sh' > /usr/local/bin/ghidra && \
-    echo 'exec "/opt/ghidra_${VERSION}_PUBLIC/support/launch.sh" fg Ghidra 2G "" ghidra.GhidraRun "\$@"' >> /usr/local/bin/ghidra && \
-    chmod +x /usr/local/bin/ghidra && \
-    ln -s "/opt/ghidra_${VERSION}_PUBLIC/support/sleigh" /usr/local/bin/sleigh && \
-    echo "VMARGS=-Duser.name=${GHIDRA_USER_NAME}" >> "/opt/ghidra_${VERSION}_PUBLIC/support/launch.properties"
-EOF
-}
 
 # Build a container for Ghidra using some patches
 build_container_with_patches() {
     # Update the base image
-    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/openjdk:21-slim)
-    podman pull docker.io/library/openjdk:21-slim
+    mapfile -t OLD_BASE_IMAGES < <(podman image list '--format={{.Id}}' docker.io/library/debian:13-slim)
+    podman pull docker.io/library/debian:13-slim
     for OLD_BASE_IMAGE in "${OLD_BASE_IMAGES[@]}" ; do
         if [ "$(podman image list '--format={{.Dangling}}' --filter "id=${OLD_BASE_IMAGE}")" = 'true' ] ; then
             echo "Removing old podman base image ${OLD_BASE_IMAGE}"
@@ -117,7 +61,7 @@ build_container_with_patches() {
 # building and docker.io/library/openjdk:17-slim (Debian 10) when running,
 # /opt/ghidra_10.0.1_DEV/Ghidra/Features/Decompiler/os/linux64/decompile is
 # missing version GLIBCXX_3.4.26 from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.
-FROM docker.io/library/openjdk:21-slim as stage0
+FROM docker.io/library/debian:13-slim as stage0
 
 # Add custom patch
 # sed "s:\(.*\):echo '\1' >> /custom.patch \&\& \\\\:" exported.patch
@@ -172,9 +116,10 @@ RUN \
 # * https://github.com/pietroborrello/ghidra-atom-microcode (for Intel microcode, as "x86ucode" architecture)
 # * https://github.com/niooss-ledger/ghidra/commits/sparc-dwarf-registers (for Sparc 32 DWARF register definitions ; this needs more tests before being submitted as Pull Request)
 # * https://github.com/NationalSecurityAgency/ghidra/pull/1778 (for NDS32 files), disabled since Ghidra 10.3 as it is no longer compatible
-# * https://github.com/NationalSecurityAgency/ghidra/pull/4103 (for WebAssembly files, adjusted for 11.3.1 release: https://github.com/NationalSecurityAgency/ghidra/pull/4103#issuecomment-2709710446)
+# * https://github.com/NationalSecurityAgency/ghidra/pull/4103 (for WebAssembly files, adjusted for 11.3.1 release: https://github.com/NationalSecurityAgency/ghidra/pull/4103#issuecomment-2709710446, disabled since Ghidra 12.0 as it is no longer compatible)
+# * https://github.com/NationalSecurityAgency/ghidra/pull/8990 (to fix ARM Thumb function pointers)
 # * https://github.com/threatrack/ghidra-patchdiff-correlator extension, to have bulk correlators in Ghidra Version Tracking, disabled since Ghidra 11.0 as it is no longer compatible
-# * https://github.com/google/binexport extension, to enable using BinDiff
+# * https://github.com/google/binexport extension, to enable using BinDiff, disabled since Ghidra 12.0 as it is no longer compatible (https://github.com/google/binexport/issues/166)
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qq update && \
     apt-get install --no-install-recommends --no-install-suggests -qqy \
@@ -189,29 +134,29 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         python3 \
         python3-pip \
         python3-wheel \
+        openjdk-25-jdk \
         unzip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/ /var/log/* && \
     cd /opt && \
-    curl -sSL --output gradle.zip https://services.gradle.org/distributions/gradle-8.11.1-bin.zip && \
-    echo 'f397b287023acdba1e9f6fc5ea72d22dd63669d59ed4a289a29b1a76eee151c6  gradle.zip' | sha256sum -c && \
+    curl -sSL --output gradle.zip https://services.gradle.org/distributions/gradle-9.4.1-bin.zip && \
+    echo '2ab2958f2a1e51120c326cad6f385153bb11ee93b3c216c5fccebfdfbb7ec6cb  gradle.zip' | sha256sum -c && \
     unzip gradle.zip && \
     rm gradle.zip && \
-    export PATH="/opt/gradle-8.11.1/bin:\$PATH" && \
+    export PATH="/opt/gradle-9.4.1/bin:\$PATH" && \
+    export LANG=C.utf8 && \
     git clone --branch "Ghidra_${VERSION}_build" https://github.com/NationalSecurityAgency/ghidra.git && \
     cd /opt/ghidra && \
-    curl -sSL --output arcompact.patch https://github.com/niooss-ledger/ghidra/commit/94bae1a917325d2fb9687b4681749ff3af688d6a.patch && \
+    curl -sSL --output arcompact.patch https://github.com/niooss-ledger/ghidra/commit/d3fbf109ada6d051750e973779170c1758622530.patch && \
     patch -Np1 -i arcompact.patch && \
     git -C Ghidra/Processors/ clone https://github.com/pietroborrello/ghidra-atom-microcode && \
     cp -f Ghidra/Processors/ARC/build.gradle Ghidra/Processors/ghidra-atom-microcode/build.gradle && \
     curl -sSL --output sparc-dwarf-registers.patch https://github.com/niooss-ledger/ghidra/commit/c46cd736ebeabe23e458904b7294838ae4c70456.patch && \
     patch -Np1 -i sparc-dwarf-registers.patch && \
     rm /opt/ghidra/Ghidra/Processors/Sparc/certification.manifest.orig && \
-    curl -sSL --output 4103.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/4103.patch && \
-    sed 's/\t\tULongSpanSet uninitialized = bytes.getUninitialized(offset, offset + size - 1);/\t\tULongSpanSet uninitialized = computeUninitialized(offset, size);/' -i 4103.patch && \
-    patch -Np1 -i 4103.patch && \
-    rm -f /opt/ghidra/Ghidra/Framework/Emulation/src/main/java/ghidra/pcode/exec/BytesPcodeExecutorStateSpace.java.orig && \
-    sed "s/helpPath project(path: ':Base', configuration: 'helpPath')//" -i Ghidra/Processors/WebAssembly/build.gradle && \
+    curl -sSL --output 8990.patch https://patch-diff.githubusercontent.com/raw/NationalSecurityAgency/ghidra/pull/8990.patch && \
+    patch -Np1 -i 8990.patch && \
+    rm /opt/ghidra/Ghidra/Features/Decompiler/src/decompile/cpp/type.cc.orig && \
     patch -Np1 -i /custom.patch && \
     rm /opt/ghidra/Ghidra/Extensions/SleighDevTools/pcodetest/pcode_defs.py.orig && \
     rm /opt/ghidra/Ghidra/Processors/ARC/data/languages/ARCompact.slaspec.orig && \
@@ -219,18 +164,16 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     gradle buildGhidra && \
     ls -l /opt/ghidra/build/dist && \
     unzip -d /opt "build/dist/ghidra_${VERSION}_DEV_"*"_linux_x86_64.zip" && \
-    export "GHIDRA_INSTALL_DIR=/opt/ghidra_${VERSION}_DEV" && \
-    git -C /opt clone --depth 1 --branch v12-20240417-ghidra_11.0.3 https://github.com/google/binexport && \
-    (cd /opt/binexport/java && gradle) && \
-    cp "/opt/binexport/java/dist/ghidra_${VERSION}_DEV_"*"_BinExport.zip" "/opt/ghidra_${VERSION}_DEV/Extensions/Ghidra/" && \
     cd / && \
     rm -rf /opt/ghidra /opt/gradle-8.11.1 /root/.ghidra /custom.patch && \
     rm -rf /opt/binexport
 
 # Second stage, without build dependencies
-FROM docker.io/library/openjdk:21-slim
+FROM docker.io/library/debian:13-slim
 
-ENV GHIDRA_INSTALL_DIR=/opt/ghidra_${VERSION}_DEV
+ENV \
+    GHIDRA_INSTALL_DIR=/opt/ghidra_${VERSION}_DEV \
+    LD_LIBRARY_PATH=/usr/lib/jvm/java-25-openjdk-amd64/lib
 
 COPY --from=stage0 /opt/ghidra_${VERSION}_DEV /opt/ghidra_${VERSION}_DEV
 
@@ -249,31 +192,20 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         ipython3 \
         python3 \
         python3-pip \
-        python3-wheel && \
+        python3-venv \
+        python3-wheel \
+        openjdk-25-jdk && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/ /var/log/* && \
     useradd --uid "${GHIDRA_USER_ID}" --user-group --no-create-home user && \
     echo '#!/bin/sh' > /usr/local/bin/ghidra && \
     echo 'exec "/opt/ghidra_${VERSION}_DEV/support/launch.sh" fg jdk Ghidra 2G "" ghidra.GhidraRun "\$@"' >> /usr/local/bin/ghidra && \
     chmod +x /usr/local/bin/ghidra && \
+    echo '#!/bin/sh' > /usr/local/bin/pyghidra && \
+    echo 'exec "/opt/ghidra_${VERSION}_DEV/support/pyghidraRun" --console' >> /usr/local/bin/pyghidra && \
+    chmod +x /usr/local/bin/pyghidra && \
     ln -s "/opt/ghidra_${VERSION}_DEV/support/sleigh" /usr/local/bin/sleigh && \
     echo "VMARGS=-Duser.name=${GHIDRA_USER_NAME}" >> "/opt/ghidra_${VERSION}_DEV/support/launch.properties"
-
-# Install Pyhidra from https://github.com/dod-cyber-crime-center/pyhidra
-# Interactive example:
-#   import pyhidra, IPython
-#   with pyhidra.open_program("binary_file.exe") as flat_api: IPython.embed()
-#   program = flat_api.getCurrentProgram()
-#   listing = program.getListing()
-#   entry_addr = program.symbolTable.getGlobalSymbols("entry")[0].getAddress()
-#   entry_fct = listing.getFunctionAt(entry_addr)
-#   import ghidra.app.decompiler.DecompInterface
-#   decomp = ghidra.app.decompiler.DecompInterface()
-#   decomp.openProgram(program)
-#   decomp_result = decomp.decompileFunction(entry_fct, 10000, None)
-#   print(decomp_result.getDecompiledFunction().getC())  # C code as string
-#   print(decomp_result.getCCodeMarkup()) # C nodes
-RUN pip3 install "git+https://github.com/dod-cyber-crime-center/pyhidra@1.3.0" --break-system-packages
 EOF
 }
 
@@ -312,6 +244,7 @@ SECCOMP_PROFILE='
                 "clone",
                 "clone3",
                 "close",
+                "close_range",
                 "connect",
                 "dup",
                 "dup2",
@@ -355,6 +288,7 @@ SECCOMP_PROFILE='
                 "lgetxattr",
                 "link",
                 "listen",
+                "listxattr",
                 "lseek",
                 "lstat",
                 "madvise",
@@ -362,9 +296,11 @@ SECCOMP_PROFILE='
                 "mkdir",
                 "mmap",
                 "mprotect",
+                "mremap",
                 "munmap",
                 "nanosleep",
                 "newfstatat",
+                "open",
                 "openat",
                 "pipe",
                 "pipe2",
@@ -376,6 +312,7 @@ SECCOMP_PROFILE='
                 "pwrite64",
                 "read",
                 "readlink",
+                "readlinkat",
                 "recvfrom",
                 "recvmsg",
                 "rename",
@@ -406,6 +343,7 @@ SECCOMP_PROFILE='
                 "shutdown",
                 "socket",
                 "socketpair",
+                "symlink",
                 "stat",
                 "statfs",
                 "statx",
@@ -417,6 +355,7 @@ SECCOMP_PROFILE='
                 "utimensat",
                 "vfork",
                 "wait4",
+                "waitid",
                 "write",
                 "writev"
             ],
@@ -425,9 +364,9 @@ SECCOMP_PROFILE='
     ]
 }'
 
-# By default, launch Ghidra
+# By default, launch PyGhidra
 if [ $# -eq 0 ] ; then
-    set ghidra
+    set pyghidra
 fi
 
 # Mount ~/Downloads too, to easily transmit files
