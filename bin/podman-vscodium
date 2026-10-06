@@ -25,6 +25,14 @@
 #
 # Use install instructions from
 # https://gitlab.com/paulcarroty/vscodium-deb-rpm-repo#option-3-debian-only
+#
+# Some extensions:
+#
+# - Recommended VSCode extension if you want to get a nice branch-to-branch
+#   comparison, with the folder view of modified files like on GitHub:
+#     https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens
+# - Vim emulation for Visual Studio Code:
+#     https://open-vsx.org/extension/vscodevim/vim
 
 set -e
 
@@ -63,10 +71,12 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         git \
         iproute2 \
         libasound2 \
+        libgmp-dev \
         libssl-dev \
         libx11-xcb1 \
         libxshmfence1 \
         npm \
+        opam \
         pkgconf \
         procps \
         wget \
@@ -101,6 +111,9 @@ fi
 
 # Add specific volumes
 #PODMAN_ARGS+=(--volume "$HOME/myproject/:/home/user/myproject/:rw")
+
+# Do not conflict with local cargo
+PODMAN_ARGS+=(--env CARGO_TARGET_DIR=/tmp/cargo-target-dir)
 
 # By default, launch VSCodium in a DBus session, to be able to click on links
 if [ $# -eq 0 ] ; then
@@ -145,6 +158,7 @@ SECCOMP_PROFILE='
                 "epoll_create1",
                 "epoll_ctl",
                 "epoll_pwait",
+                "epoll_pwait2",
                 "epoll_wait",
                 "eventfd2",
                 "execve",
@@ -156,11 +170,14 @@ SECCOMP_PROFILE='
                 "fallocate",
                 "fchdir",
                 "fchmod",
+                "fchmodat",
+                "fchmodat2",
                 "fchown",
                 "fcntl",
                 "fdatasync",
                 "flistxattr",
                 "flock",
+                "fsetxattr",
                 "fstat",
                 "fstatfs",
                 "fsync",
@@ -172,7 +189,9 @@ SECCOMP_PROFILE='
                 "geteuid",
                 "getgid",
                 "getgroups",
+                "getitimer",
                 "getpeername",
+                "getpgid",
                 "getpgrp",
                 "getpid",
                 "getppid",
@@ -197,13 +216,17 @@ SECCOMP_PROFILE='
                 "link",
                 "linkat",
                 "listen",
+                "llistxattr",
                 "lseek",
                 "lstat",
                 "madvise",
                 "memfd_create",
                 "mincore",
                 "mkdir",
+                "mkdirat",
+                "mknodat",
                 "mmap",
+                "mount",
                 "mprotect",
                 "mremap",
                 "munmap",
@@ -211,9 +234,11 @@ SECCOMP_PROFILE='
                 "newfstatat",
                 "open",
                 "openat",
+                "perf_event_open",
                 "pidfd_open",
                 "pipe",
                 "pipe2",
+                "pivot_root",
                 "pkey_alloc",
                 "pkey_mprotect",
                 "poll",
@@ -229,18 +254,23 @@ SECCOMP_PROFILE='
                 "recvfrom",
                 "recvmsg",
                 "rename",
+                "renameat",
+                "renameat2",
                 "restart_syscall",
                 "rmdir",
                 "rseq",
                 "rt_sigaction",
                 "rt_sigprocmask",
                 "rt_sigreturn",
+                "rt_sigsuspend",
+                "rt_sigtimedwait",
                 "sched_getaffinity",
                 "sched_getattr",
                 "sched_getparam",
                 "sched_getscheduler",
                 "sched_setaffinity",
                 "sched_setattr",
+                "sched_setscheduler",
                 "sched_yield",
                 "seccomp",
                 "select",
@@ -250,6 +280,9 @@ SECCOMP_PROFILE='
                 "sendto",
                 "set_robust_list",
                 "set_tid_address",
+                "setfsgid",
+                "setfsuid",
+                "setitimer",
                 "setpgid",
                 "setpriority",
                 "setresgid",
@@ -262,14 +295,19 @@ SECCOMP_PROFILE='
                 "shmget",
                 "shutdown",
                 "sigaltstack",
+                "signalfd4",
                 "socket",
                 "socketpair",
+                "splice",
                 "stat",
                 "statfs",
                 "statx",
                 "symlink",
+                "symlinkat",
                 "sysinfo",
                 "tgkill",
+                "timerfd_create",
+                "timerfd_settime",
                 "umask",
                 "uname",
                 "unlink",
@@ -288,11 +326,16 @@ SECCOMP_PROFILE='
 }'
 
 # N.B. If there are graphical issues, add QT_X11_NO_MITSHM=1
-# Modify PATH to include Rust programs
+# Modify PATH to include Rust and OCaml programs (with opam env)
 exec podman run --rm \
     --network=private \
     --env "DISPLAY=$DISPLAY" \
-    --env "PATH=/home/user/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+    --env OPAM_SWITCH_PREFIX='/home/user/.opam/default' \
+    --env OCAMLTOP_INCLUDE_PATH='/home/user/.opam/default/lib/toplevel' \
+    --env CAML_LD_LIBRARY_PATH='/home/user/.opam/default/lib/stublibs:/home/user/.opam/default/lib/ocaml/stublibs:/home/user/.opam/default/lib/ocaml' \
+    --env OCAML_TOPLEVEL_PATH='/home/user/.opam/default/lib/toplevel' \
+    --env MANPATH=':/home/user/.opam/default/man' \
+    --env PATH='/home/user/.opam/default/bin:/home/user/.elan/bin:/home/user/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' \
     --volume /tmp/.X11-unix/:/tmp/.X11-unix/:rw \
     --volume "$HOME/home-vscodium:/home/user:rw" \
     "${PODMAN_ARGS[@]}" \
