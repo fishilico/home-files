@@ -841,6 +841,8 @@ TRUSTED_CAPS_FILES = [
              'cap_net_bind_service,cap_net_admin,cap_sys_nice=ep'),
     CapsFile('/lib/[a-zA-Z0-9_]+-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-ptp-helper',
              '= cap_net_bind_service,cap_net_admin+ep'),
+    CapsFile('/lib/[a-zA-Z0-9_]+-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-ptp-helper',
+             'cap_net_bind_service,cap_net_admin,cap_sys_nice=ep'),
 
     # inetutils, https://www.gnu.org/software/inetutils/
     # https://git.savannah.gnu.org/cgit/inetutils.git/tree/
