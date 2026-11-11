@@ -456,8 +456,24 @@ TRUSTED_SUID_FILES = [
     # sudo, https://www.sudo.ws/
     # https://www.sudo.ws/repos/sudo
     SuidFile('/bin/sudo'),
+    SuidFile('/bin/sudo.ws'),
     SuidFile('/bin/sudoedit'),
+    LinkToSuidFile('/bin/sudo', '/bin/sudo.ws'),
     LinkToSuidFile('/bin/sudoedit', '/bin/sudo'),
+    LinkToSuidFile('/bin/sudoedit', '/bin/sudo.ws'),
+    LinkToSuidFile('/etc/alternatives/sudo', '/bin/sudo.ws'),
+    LinkToSuidFile('/etc/alternatives/sudoedit', '/bin/sudo.ws'),
+
+    # sudo-rs, https://github.com/trifectatechfoundation/sudo-rs
+    LinkToSuidFile('/bin/su-rs', '/lib/cargo/bin/su'),
+    LinkToSuidFile('/bin/sudo', '/lib/cargo/bin/sudo'),
+    LinkToSuidFile('/bin/sudo-rs', '/lib/cargo/bin/sudo'),
+    LinkToSuidFile('/bin/sudoedit', '/lib/cargo/bin/sudo'),
+    LinkToSuidFile('/bin/sudoedit-rs', '/lib/cargo/bin/sudo'),
+    LinkToSuidFile('/etc/alternatives/sudo', '/lib/cargo/bin/sudo'),
+    LinkToSuidFile('/etc/alternatives/sudoedit', '/lib/cargo/bin/sudo'),
+    SuidFile('/lib/cargo/bin/su'),
+    SuidFile('/lib/cargo/bin/sudo'),
 
     # util-linux, https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/
     # https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git/tree/
