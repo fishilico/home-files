@@ -675,7 +675,7 @@ KNOWN_SUID_FILES = [
     SuidFile('/bin/atop'),
     LinkToSuidFile('/bin/atopsar', '/bin/atop'),
 
-    # authbind, https://web.archive.org/web/20190503081103/https://debian-administration.org/article/386/Running_network_services_as_a_non-root_user.  # noqa
+    # authbind, https://web.archive.org/web/20190503081103/https://debian-administration.org/article/386/Running_network_services_as_a_non-root_user.  # noqa: E501
     # https://www.chiark.greenend.org.uk/ucgi/~ian/git?p=authbind.git;a=tree
     SuidFile('/lib/authbind/helper'),
 
@@ -934,6 +934,11 @@ TRUSTED_CAPS_FILES = [
     # shadow, https://github.com/shadow-maint/shadow
     CapsFile('/bin/newgidmap', '= cap_setgid+ep'),
     CapsFile('/bin/newuidmap', '= cap_setuid+ep'),
+
+    # snappy (snap-confine), https://snapcraft.io/
+    # https://github.com/snapcore/snapd
+    CapsFile('/lib/snapd/snap-confine',
+             'cap_chown,cap_dac_override,cap_dac_read_search,cap_fowner,cap_setgid,cap_setuid,cap_sys_chroot,cap_sys_ptrace,cap_sys_admin,cap_sys_resource=p'),  # noqa: E501
 
     # spice-gtk3, https://spice-space.org/
     # https://gitlab.freedesktop.org/spice/spice-gtk
