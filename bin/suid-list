@@ -191,6 +191,10 @@ TRUSTED_SUID_FILES = [
     LinkToSuidFile('/bin/atrm', '/bin/at', owners=('daemon', 'root'),
                    groups=('daemon', )),
 
+    # authopen (by Apple), https://keith.github.io/xcode-man-pages/authopen.1.html
+    # https://github.com/keith/xcode-man-pages/blob/a89e4a0b02e8e5fd71931f45039a35ae19df0b60/docs/authopen.1.html
+    SuidFile('/libexec/authopen'),
+
     # bubblewrap, https://projectatomic.io/blog/2017/07/unprivileged-containers-with-bwrap-oci-and-bubblewrap/
     # https://github.com/containers/bubblewrap
     SuidFile('/bin/bwrap'),
@@ -415,6 +419,10 @@ TRUSTED_SUID_FILES = [
     SuidFile('/bin/screen', groups=('screen', 'utmp', )),
     SuidFile('/bin/screen-[0-9.]+'),
     LinkToSuidFile('/bin/screen', '/bin/screen-[0-9.]+'),
+
+    # security_authtrampoline (by Apple)
+    # https://theevilbit.github.io/posts/macos_authorization/
+    SuidFile('/libexec/security_authtrampoline'),
 
     # shadow, https://github.com/shadow-maint/shadow
     SuidFile('/bin/chage'),
@@ -670,6 +678,10 @@ assert all(x.owners is None for x in TRUSTED_SGID_FILES)
 # administrator may decide to remove the SUID bit without breaking the entire
 # system, in order to squeeze the attack surface.
 KNOWN_SUID_FILES = [
+    # Apple Remote Desktop Agent
+    # https://nvd.nist.gov/vuln/detail/cve-2008-2830
+    SuidFile('/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent'),
+
     # atop, https://www.atoptool.nl/
     # https://www.atoptool.nl/downloadnetatop.php
     SuidFile('/bin/atop'),
