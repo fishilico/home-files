@@ -8,6 +8,9 @@ name: Run tests
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   tests:
 
@@ -45,10 +48,12 @@ jobs:
             python-version: pypy-3.6
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
 
